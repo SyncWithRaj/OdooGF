@@ -515,7 +515,7 @@ export default function AuthPage() {
       {/* PASSWORD RESET MODAL */}
       {isResetModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 max-w-md w-full p-6 text-gray-900">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 max-w-md w-full p-6 text-gray-900 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
               <div>
                 <h3 className="text-lg font-bold text-gray-900">Reset Your Password</h3>

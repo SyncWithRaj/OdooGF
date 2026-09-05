@@ -89,7 +89,7 @@ export default function DealHealthPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             {/* Live Database Probe Mini Badge */}
             <div className={`px-3 py-1.5 rounded-full border text-xs font-medium flex items-center gap-2 ${
               isHealthy ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
@@ -167,7 +167,7 @@ export default function DealHealthPage() {
               {dealAlerts.anomalies.map((item, idx) => (
                 <div key={idx} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-bold text-slate-900">{item.quoteNumber}</span>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200">
                         HIGH RISK
@@ -220,7 +220,7 @@ export default function DealHealthPage() {
               {dealAlerts.stalledDeals.map((deal, idx) => (
                 <div key={idx} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-bold text-slate-900">{deal.quoteNumber}</span>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
                         STALLED &gt;7D

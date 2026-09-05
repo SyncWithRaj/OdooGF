@@ -94,7 +94,7 @@ export default function GovernancePage() {
       <AppLayout>
         {/* Flash Toast */}
         {notification && (
-          <div className="fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-sm font-medium border border-slate-700 animate-in fade-in">
+          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-sm font-medium border border-slate-700 animate-in fade-in slide-in-from-bottom-4">
             <span className={`w-2.5 h-2.5 rounded-full ${notification.type === 'error' ? 'bg-rose-500' : 'bg-emerald-400'}`}></span>
             <span>{notification.message}</span>
           </div>
@@ -309,7 +309,7 @@ export default function GovernancePage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
+                <table className="w-full text-left border-collapse text-xs min-w-[620px]">
                   <thead>
                     <tr className="border-b border-slate-200 font-semibold text-slate-600">
                       <th className="py-3 px-4">Risk Level</th>

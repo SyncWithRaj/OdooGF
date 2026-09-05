@@ -144,7 +144,7 @@ export default function ReportsPage() {
               Real-time win/loss conversion rates, discount leakage alerts, and sales team performance ranking.
             </p>
           </div>
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <div className="flex items-center bg-white border border-slate-200 rounded-xl p-0.5 text-xs font-semibold">
               {['30D', '90D', 'ALL'].map((r) => (
                 <button
@@ -288,7 +288,7 @@ export default function ReportsPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600">
+            <table className="w-full text-left text-xs text-slate-600 min-w-[760px]">
               <thead className="bg-slate-50/75 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
                 <tr>
                   <th className="py-3 px-4 w-12 text-center">Rank</th>
