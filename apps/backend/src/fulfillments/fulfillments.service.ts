@@ -503,4 +503,116 @@ export class FulfillmentsService {
       fulfillmentOrder: await this.getFulfillmentById(id),
     };
   }
+
+  // ----------------------------------------------------------------------------
+  // B6 SPECIAL FLOW: CONSOLIDATE REMAINING BACKORDER
+  // "If stock arrives mid fulfillment, a 'Consolidate Remaining Backorder' prompt appears automatically."
+  // ----------------------------------------------------------------------------
+  async consolidateRemainingBackorders(id: string) {
+    const order = await this.prisma.fulfillmentOrder.findUnique({
+      where: { id },
+      include: {
+        splitItems: true,
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Fulfillment order '${id}' not found`);
+    }
+
+    if (!order.hasBackorder) {
+      return {
+        success: true,
+        message: 'No pending backorders exist for this fulfillment order',
+        fulfillmentOrder: await this.getFulfillmentById(id),
+      };
+    }
+
+    const backorderItems = order.splitItems.filter((i) => i.quantityBackordered > 0);
+    let anyConsolidated = false;
+
+    for (const boItem of backorderItems) {
+      const availableStocks = await this.prisma.warehouseStock.findMany({
+        where: {
+          productId: boItem.productId,
+          available: { gt: 0 },
+        },
+        include: { warehouse: true },
+        orderBy: { warehouse: { shippingCostWeight: 'asc' } },
+      });
+
+      let remainingBo = boItem.quantityBackordered;
+
+      for (const stock of availableStocks) {
+        if (remainingBo <= 0) break;
+
+        const alloc = Math.min(remainingBo, stock.available);
+        if (alloc > 0) {
+          anyConsolidated = true;
+          const shipCost = Number(
+            (alloc * 10.0 * stock.warehouse.shippingCostWeight).toFixed(2),
+          );
+          await this.prisma.fulfillmentSplitItem.create({
+            data: {
+              fulfillmentOrderId: id,
+              warehouseId: stock.warehouseId,
+              productId: boItem.productId,
+              quantityFulfilled: alloc,
+              quantityBackordered: 0,
+              estimatedShipCost: shipCost,
+            },
+          });
+          remainingBo -= alloc;
+        }
+      }
+
+      if (remainingBo === 0) {
+        await this.prisma.fulfillmentSplitItem.delete({
+          where: { id: boItem.id },
+        });
+      } else {
+        await this.prisma.fulfillmentSplitItem.update({
+          where: { id: boItem.id },
+          data: { quantityBackordered: remainingBo },
+        });
+      }
+    }
+
+    const remainingBoItems = await this.prisma.fulfillmentSplitItem.findMany({
+      where: { fulfillmentOrderId: id, quantityBackordered: { gt: 0 } },
+    });
+
+    const hasBackorder = remainingBoItems.length > 0;
+    const allItems = await this.prisma.fulfillmentSplitItem.findMany({
+      where: { fulfillmentOrderId: id },
+    });
+
+    const distinctWhs = new Set(
+      allItems.filter((i) => i.quantityFulfilled > 0).map((i) => i.warehouseId),
+    );
+    const estCostTotal = allItems.reduce((acc, i) => acc + i.estimatedShipCost, 0);
+
+    await this.prisma.fulfillmentOrder.update({
+      where: { id },
+      data: {
+        hasBackorder,
+        totalShipments: distinctWhs.size,
+        estimatedCostTotal: Number(estCostTotal.toFixed(2)),
+        status: hasBackorder ? FulfillmentStatus.BACKORDER : FulfillmentStatus.CONFIRMED,
+      },
+    });
+
+    return {
+      success: true,
+      anyConsolidated,
+      hasBackorder,
+      status: hasBackorder ? FulfillmentStatus.BACKORDER : FulfillmentStatus.CONFIRMED,
+      message: anyConsolidated
+        ? (hasBackorder
+            ? 'Partial backorder consolidated with newly arrived inventory.'
+            : 'All backorders fully consolidated into active shipments! Order ready for dispatch.')
+        : 'No new warehouse inventory available to consolidate pending backorders.',
+      fulfillmentOrder: await this.getFulfillmentById(id),
+    };
+  }
 }

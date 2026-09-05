@@ -87,4 +87,12 @@ export class FulfillmentsController {
   ) {
     return this.fulfillmentsService.dispatchFulfillment(id, dto);
   }
+
+  @Post(':id/consolidate-backorder')
+  @Roles(Role.ADMIN, Role.SALES_MANAGER, Role.FINANCE)
+  @ApiOperation({ summary: 'B6 Special Flow: Consolidate remaining backorders when new warehouse stock arrives' })
+  @ApiResponse({ status: 200, description: 'Backorders consolidated into active shipments' })
+  async consolidateBackorder(@Param('id') id: string) {
+    return this.fulfillmentsService.consolidateRemainingBackorders(id);
+  }
 }
