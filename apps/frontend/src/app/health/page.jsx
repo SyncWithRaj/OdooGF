@@ -5,17 +5,22 @@ import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { apiClient } from '@/services/apiClient';
 import Link from 'next/link';
+import { toast } from 'react-toastify';
 
 export default function DealHealthPage() {
   const [healthData, setHealthData] = useState(null);
   const [dealAlerts, setDealAlerts] = useState({ alerts: [], anomalies: [], stalledDeals: [] });
   const [loading, setLoading] = useState(true);
   const [nudgingQuoteId, setNudgingQuoteId] = useState(null);
-  const [toast, setToast] = useState(null);
 
   const showToast = (msg, type = 'success') => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
+    if (type === 'error') {
+      toast.error(msg);
+    } else if (type === 'info') {
+      toast.info(msg);
+    } else {
+      toast.success(msg);
+    }
   };
 
   const loadData = async () => {
@@ -64,37 +69,23 @@ export default function DealHealthPage() {
   return (
     <RequireRole roles={['manager', 'finance', 'admin', 'rep']}>
       <AppLayout>
-        {/* Toast */}
-        {toast && (
-          <div
-            className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-lg border text-xs font-semibold flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 ${
-              toast.type === 'error'
-                ? 'bg-rose-50 text-rose-800 border-rose-200'
-                : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-            }`}
-          >
-            <span>{toast.type === 'error' ? '❌' : '✅'}</span>
-            {toast.msg}
-          </div>
-        )}
-
         {/* Top Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            <h1 className="text-2xl font-bold text-zinc-900 tracking-tight">
               Deal Health &amp; Anomaly Surveillance
             </h1>
-            <p className="text-xs text-slate-500 mt-1">
-              Screen 14 / B9 &bull; Real-time detection of stalled deals, discount anomalies, and rep nudges.
+            <p className="text-xs text-zinc-500 mt-1">
+              Autonomous monitoring probing for pipeline bottlenecks, discount policy violations, and stalled proposals.
             </p>
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
             {/* Live Database Probe Mini Badge */}
             <div className={`px-3 py-1.5 rounded-full border text-xs font-medium flex items-center gap-2 ${
-              isHealthy ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
+              isHealthy ? 'bg-zinc-100 text-zinc-900 border-zinc-200' : 'bg-rose-50 text-rose-700 border-rose-200'
             }`}>
-              <span className={`w-2 h-2 rounded-full ${isHealthy ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+              <span className={`w-2 h-2 rounded-full ${isHealthy ? 'bg-zinc-900 animate-pulse' : 'bg-rose-500'}`} />
               <span>PostgreSQL 16: {isHealthy ? 'Connected (1ms)' : 'Offline'}</span>
             </div>
 
@@ -240,7 +231,9 @@ export default function DealHealthPage() {
                       onClick={() => handleNudge(deal.quotationId)}
                       className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-2xs disabled:opacity-50"
                     >
-                      <span>🔔</span>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                      </svg>
                       {nudgingQuoteId === deal.quotationId ? 'Nudging...' : 'Nudge Rep'}
                     </button>
                     <Link
