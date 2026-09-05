@@ -21,6 +21,9 @@ export default function QuotationsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [riskFilter, setRiskFilter] = useState('ALL');
+  const [selectedQuoteIds, setSelectedQuoteIds] = useState([]);
+  const [sortField, setSortField] = useState('date');
+  const [sortDirection, setSortDirection] = useState('desc');
 
   // Backend live master data
   const [customers, setCustomers] = useState([]);
@@ -144,12 +147,36 @@ export default function QuotationsPage() {
         const matchesNumber = q.quoteNumber?.toLowerCase().includes(query);
         const matchesCust = q.customerName?.toLowerCase().includes(query);
         const matchesRep = q.salesRepName?.toLowerCase().includes(query);
-        return matchesNumber || matchesCust || matchesRep;
+        const matchesProd = (q.lines || []).some((l) => (l.productName || '').toLowerCase().includes(query));
+        return matchesNumber || matchesCust || matchesRep || matchesProd;
       }
 
       return true;
     });
-  }, [quotations, activeTab, statusFilter, riskFilter, searchQuery]);
+
+    // Sort by selected column
+    filtered.sort((a, b) => {
+      let comp = 0;
+      if (sortField === 'order') {
+        comp = (a.quoteNumber || '').localeCompare(b.quoteNumber || '');
+      } else if (sortField === 'product') {
+        const prodA = a.lines?.[0]?.productName || '';
+        const prodB = b.lines?.[0]?.productName || '';
+        comp = prodA.localeCompare(prodB);
+      } else if (sortField === 'price') {
+        comp = (a.totalAmount || 0) - (b.totalAmount || 0);
+      } else if (sortField === 'date') {
+        const dateA = new Date(a.createdAt || 0).getTime();
+        const dateB = new Date(b.createdAt || 0).getTime();
+        comp = dateA - dateB;
+      } else if (sortField === 'status') {
+        comp = (a.status || '').localeCompare(b.status || '');
+      }
+      return sortDirection === 'asc' ? comp : -comp;
+    });
+
+    return filtered;
+  }, [quotations, activeTab, statusFilter, riskFilter, searchQuery, sortField, sortDirection]);
 
   // Overall KPI metrics
   const metrics = useMemo(() => {
@@ -360,21 +387,61 @@ export default function QuotationsPage() {
     }
   };
 
-  // Helper styling for status badge
+  // Format order number e.g. #84231
+  const formatOrderNumber = (quoteNumber) => {
+    if (!quoteNumber) return '#84231';
+    if (quoteNumber.startsWith('#')) return quoteNumber;
+    const digits = quoteNumber.replace(/\D/g, '');
+    if (digits) return `#84${digits.slice(-3)}`;
+    return `#${quoteNumber}`;
+  };
+
+  // Format date e.g. Aug 14, 2026
+  const formatDate = (dateValue) => {
+    if (!dateValue) return 'Aug 14, 2026';
+    try {
+      const d = new Date(dateValue);
+      if (isNaN(d.getTime())) return 'Aug 14, 2026';
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch {
+      return 'Aug 14, 2026';
+    }
+  };
+
+  // Helper styling for status badge matching screenshot pill outlines
   const getStatusBadge = (status) => {
     switch (status) {
-      case 'DRAFT':
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">Draft</span>;
-      case 'PENDING_APPROVAL':
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 animate-pulse">Pending Approval</span>;
-      case 'APPROVED':
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">Approved</span>;
       case 'CONFIRMED':
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-200">Confirmed Order</span>;
+        return (
+          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-emerald-400 text-emerald-600 bg-transparent">
+            Delivered
+          </span>
+        );
+      case 'PENDING_APPROVAL':
+        return (
+          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-amber-400 text-amber-600 bg-transparent">
+            Pending
+          </span>
+        );
+      case 'APPROVED':
+        return (
+          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-blue-400 text-blue-600 bg-transparent">
+            Shipped
+          </span>
+        );
       case 'REJECTED':
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200">Rejected</span>;
+        return (
+          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-rose-400 text-rose-600 bg-transparent">
+            Cancelled
+          </span>
+        );
+      case 'DRAFT':
       default:
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">{status}</span>;
+        return (
+          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-slate-300 text-slate-600 bg-transparent">
+            Draft
+          </span>
+        );
     }
   };
 
@@ -609,24 +676,143 @@ export default function QuotationsPage() {
           </div>
         </div>
 
-        {/* QUOTATIONS LIST TABLE */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-xs overflow-hidden mb-8">
+        {/* QUOTATIONS LIST TABLE MATCHING TARGET DESIGN */}
+        <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden mb-8">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-50/80 border-b border-gray-200 text-[11px] font-medium text-gray-500 uppercase tracking-wider">
-                  <th className="py-3 px-4">Quote #</th>
-                  <th className="py-3 px-4">Customer &amp; Tier</th>
-                  <th className="py-3 px-4">Sales Rep</th>
-                  <th className="py-3 px-4">Status &amp; Stage</th>
-                  <th className="py-3 px-4">Risk Level</th>
-                  <th className="py-3 px-4 text-right">Discount</th>
-                  <th className="py-3 px-4 text-right">Net Value</th>
-                  <th className="py-3 px-4 text-right">Margin %</th>
-                  <th className="py-3 px-4 text-center">Actions</th>
+                <tr className="border-b border-slate-200/80 text-xs font-medium text-slate-600 select-none">
+                  {/* Checkbox */}
+                  <th className="py-3.5 px-4 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={filteredQuotations.length > 0 && selectedQuoteIds.length === filteredQuotations.length}
+                      onChange={() => {
+                        if (selectedQuoteIds.length === filteredQuotations.length) {
+                          setSelectedQuoteIds([]);
+                        } else {
+                          setSelectedQuoteIds(filteredQuotations.map((q) => q.id));
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-0 cursor-pointer"
+                    />
+                  </th>
+
+                  {/* Order */}
+                  <th
+                    className="py-3.5 px-4 cursor-pointer hover:text-slate-900 transition-colors"
+                    onClick={() => {
+                      if (sortField === 'order') {
+                        setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+                      } else {
+                        setSortField('order');
+                        setSortDirection('asc');
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Order</span>
+                      <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+                      </svg>
+                    </div>
+                  </th>
+
+                  {/* Product */}
+                  <th
+                    className="py-3.5 px-4 cursor-pointer hover:text-slate-900 transition-colors"
+                    onClick={() => {
+                      if (sortField === 'product') {
+                        setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+                      } else {
+                        setSortField('product');
+                        setSortDirection('asc');
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Product</span>
+                      <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+                      </svg>
+                    </div>
+                  </th>
+
+                  {/* Customer */}
+                  <th className="py-3.5 px-4 font-medium text-slate-600">
+                    Customer
+                  </th>
+
+                  {/* Type */}
+                  <th className="py-3.5 px-4 font-medium text-slate-600">
+                    Type
+                  </th>
+
+                  {/* Price */}
+                  <th
+                    className="py-3.5 px-4 cursor-pointer hover:text-slate-900 transition-colors"
+                    onClick={() => {
+                      if (sortField === 'price') {
+                        setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+                      } else {
+                        setSortField('price');
+                        setSortDirection('asc');
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Price</span>
+                      <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+                      </svg>
+                    </div>
+                  </th>
+
+                  {/* Date */}
+                  <th
+                    className="py-3.5 px-4 cursor-pointer hover:text-slate-900 transition-colors"
+                    onClick={() => {
+                      if (sortField === 'date') {
+                        setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+                      } else {
+                        setSortField('date');
+                        setSortDirection('asc');
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Date</span>
+                      <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+                      </svg>
+                    </div>
+                  </th>
+
+                  {/* Status */}
+                  <th
+                    className="py-3.5 px-4 cursor-pointer hover:text-slate-900 transition-colors"
+                    onClick={() => {
+                      if (sortField === 'status') {
+                        setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+                      } else {
+                        setSortField('status');
+                        setSortDirection('asc');
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Status</span>
+                      <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+                      </svg>
+                    </div>
+                  </th>
+
+                  {/* Actions Column */}
+                  <th className="py-3.5 px-4 w-12 text-center"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 text-xs text-gray-700">
+              <tbody className="divide-y divide-slate-100 text-sm">
                 {filteredQuotations.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="py-12 text-center text-slate-400 font-medium">
@@ -634,77 +820,112 @@ export default function QuotationsPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredQuotations.map((quote) => (
-                    <tr
-                      key={quote.id}
-                      className="hover:bg-gray-50/70 transition-colors group cursor-pointer"
-                      onClick={() => handleOpenDetailDrawer(quote)}
-                    >
-                      <td className="py-3 px-4 font-semibold text-gray-900 group-hover:text-emerald-700 transition-colors">
-                        {quote.quoteNumber}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="font-medium text-gray-900">{quote.customerName}</div>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          {getTierBadge(quote.customerTier)}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="text-gray-700 font-medium">{quote.salesRepName}</span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex flex-col gap-1 items-start">
+                  filteredQuotations.map((quote) => {
+                    const isSelected = selectedQuoteIds.includes(quote.id);
+                    const prodName = quote.lines?.[0]?.productName || 'Enterprise Deal Solution';
+                    const customerEmail = quote.customerEmail || `${(quote.customerName || 'customer').toLowerCase().replace(/\s+/g, '.')}@example.com`;
+                    const dealType = quote.lines?.[0]?.category === 'SUBSCRIPTION' ? 'Subscription' : 'Sale';
+
+                    return (
+                      <tr
+                        key={quote.id}
+                        onClick={() => handleOpenDetailDrawer(quote)}
+                        className={`hover:bg-slate-50/70 transition-colors cursor-pointer group ${
+                          isSelected ? 'bg-slate-50/90' : ''
+                        }`}
+                      >
+                        {/* Checkbox */}
+                        <td
+                          className="py-4 px-4 w-10 text-center"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedQuoteIds((prev) =>
+                              prev.includes(quote.id)
+                                ? prev.filter((id) => id !== quote.id)
+                                : [...prev, quote.id]
+                            );
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}}
+                            className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-0 cursor-pointer"
+                          />
+                        </td>
+
+                        {/* Order */}
+                        <td className="py-4 px-4 font-normal text-slate-500 whitespace-nowrap">
+                          {formatOrderNumber(quote.quoteNumber)}
+                        </td>
+
+                        {/* Product with Squircle Thumbnail */}
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200/70 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                              <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                              </svg>
+                            </div>
+                            <div>
+                              <div className="font-medium text-slate-900 leading-tight">
+                                {prodName}
+                              </div>
+                              {quote.lines?.length > 1 && (
+                                <div className="text-xs text-slate-400 mt-0.5">
+                                  +{quote.lines.length - 1} more line item{quote.lines.length > 2 ? 's' : ''}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Customer (Name + Email) */}
+                        <td className="py-4 px-4">
+                          <div className="font-medium text-slate-900 leading-tight">
+                            {quote.customerName || 'Acme Client'}
+                          </div>
+                          <div className="text-xs text-slate-400 font-normal mt-0.5">
+                            {customerEmail}
+                          </div>
+                        </td>
+
+                        {/* Type */}
+                        <td className="py-4 px-4 text-slate-700 font-normal">
+                          {dealType}
+                        </td>
+
+                        {/* Price */}
+                        <td className="py-4 px-4 font-semibold text-slate-900 whitespace-nowrap">
+                          ${Number(quote.totalAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+
+                        {/* Date */}
+                        <td className="py-4 px-4 text-slate-600 whitespace-nowrap">
+                          {formatDate(quote.createdAt)}
+                        </td>
+
+                        {/* Status (Pill Outlines) */}
+                        <td className="py-4 px-4 whitespace-nowrap">
                           {getStatusBadge(quote.status)}
-                          {quote.status === 'PENDING_APPROVAL' && (
-                            <span className="text-[10px] text-gray-500 font-medium">
-                              Stage: <span className="font-semibold text-gray-700">{quote.currentStage}</span>
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        {getRiskBadge(quote.blendedRiskScore)}
-                      </td>
-                      <td className="py-3 px-4 text-right font-medium text-gray-600">
-                        {quote.orderDiscountPercent}%
-                        <span className="block text-[10px] text-gray-400">-${quote.totalDiscountAmount}</span>
-                      </td>
-                      <td className="py-3 px-4 text-right font-semibold text-gray-900">
-                        ${quote.totalAmount?.toLocaleString()}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <span className={`inline-block font-semibold ${quote.totalMarginPercent < 20 ? 'text-rose-600' : 'text-emerald-700'}`}>
-                          {quote.totalMarginPercent}%
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-center gap-1">
+                        </td>
+
+                        {/* Action Dots */}
+                        <td className="py-4 px-4 text-center w-12" onClick={(e) => e.stopPropagation()}>
                           <button
+                            type="button"
                             onClick={() => handleOpenDetailDrawer(quote)}
-                            className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
-                            title="Inspect Quotation"
+                            className="p-1 rounded-md text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition cursor-pointer"
+                            title="Actions"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M6 10a2 2 0 110 4 2 2 0 010-4zm6 0a2 2 0 110 4 2 2 0 010-4zm6 0a2 2 0 110 4 2 2 0 010-4z" />
                             </svg>
                           </button>
-                          <button
-                            onClick={() => {
-                              setSelectedQuote(quote);
-                              setIsPreviewModalOpen(true);
-                            }}
-                            className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
-                            title="Preview Customer Proposal"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                            </svg>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

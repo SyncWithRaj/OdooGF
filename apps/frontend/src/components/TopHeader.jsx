@@ -19,18 +19,30 @@ export default function TopHeader({ onToggleSidebar, isCollapsed = false }) {
     <header className="h-14 bg-white/95 border-b border-slate-200/80 backdrop-blur-md sticky top-0 z-30 px-4 sm:px-6 flex items-center justify-between">
       {/* Left side: Sidebar Toggle */}
       <div className="flex items-center gap-3">
-        {/* Toggle Sidebar Button (Collapse to single-line app icon mode / Expand) */}
+        {/* Toggle Sidebar Button (Sidebar Panel Toggle matching user design) */}
         <button
           type="button"
           onClick={onToggleSidebar}
           aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse to single-line app icons'}
           title={isCollapsed ? 'Expand sidebar' : 'Collapse to single-line app icons'}
-          className="w-9 h-9 rounded-2xl bg-slate-100/90 hover:bg-slate-200/90 text-slate-800 flex items-center justify-center transition-all duration-150 cursor-pointer shadow-2xs active:scale-95 group border border-slate-200/60"
+          className="w-9 h-9 rounded-xl bg-white hover:bg-slate-100 text-slate-800 flex items-center justify-center transition-all duration-150 cursor-pointer shadow-2xs active:scale-95 group border border-slate-200/80"
         >
-          <svg className="w-4 h-4 text-slate-700 group-hover:text-slate-900 transition-colors" viewBox="0 0 20 20" fill="currentColor">
-            <rect x="3" y="4" width="14" height="2.2" rx="1.1" />
-            <rect x="3" y="8.9" width="8" height="2.2" rx="1.1" />
-            <rect x="3" y="13.8" width="14" height="2.2" rx="1.1" />
+          <svg
+            className="w-5 h-5 text-slate-800 group-hover:text-slate-950 transition-colors"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="3" y="3" width="18" height="18" rx="3.5" />
+            <line x1="8.5" y1="3" x2="8.5" y2="21" />
+            {isCollapsed ? (
+              <path d="M12.5 8.5l3.5 3.5-3.5 3.5" />
+            ) : (
+              <path d="M16 8.5l-3.5 3.5 3.5 3.5" />
+            )}
           </svg>
         </button>
       </div>
