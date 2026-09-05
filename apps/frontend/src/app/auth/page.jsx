@@ -445,52 +445,63 @@ export default function AuthPage() {
         </div>
       </div>
 
-      {/* ================= RIGHT COLUMN: Enterprise CPQ Platform Showcase ================= */}
-      <aside className="hidden lg:flex flex-col bg-zinc-950 text-white min-h-screen p-10 lg:p-12 justify-between border-l border-zinc-800 relative overflow-hidden">
-        {/* Top Header */}
-        <div className="flex items-center justify-between z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 text-zinc-200 border border-zinc-800 text-xs font-semibold">
-            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-            Enterprise Sales Engine
-          </div>
-          <span className="text-xs text-zinc-400 font-mono">v1.0.4</span>
+      {/* ================= RIGHT COLUMN: Full-Cover Enterprise CPQ Showcase ================= */}
+      <aside className="hidden lg:flex flex-col justify-between min-h-screen p-10 lg:p-14 relative overflow-hidden bg-zinc-950 text-white border-l border-zinc-800">
+        {/* Full-Cover Background Image */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src="/dealflow_cpq_showcase.jpg"
+            alt="DealFlow360 Enterprise CPQ Platform"
+            className="w-full h-full object-cover object-top filter brightness-[0.88] contrast-[1.08]"
+          />
+          {/* Top subtle vignette */}
+          <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-zinc-950/80 to-transparent pointer-events-none" />
+          {/* Bottom gradient fade for clean text readability */}
+          <div className="absolute inset-x-0 bottom-0 h-96 bg-gradient-to-t from-zinc-950 via-zinc-950/80 to-transparent pointer-events-none" />
         </div>
 
-        {/* Center: Image & Showcase */}
-        <div className="my-auto z-10 max-w-lg w-full">
-          <div className="relative rounded-2xl overflow-hidden border border-zinc-800 shadow-2xl bg-zinc-900 group">
-            {/* Image */}
-            <img
-              src="/dealflow_cpq_showcase.jpg"
-              alt="DealFlow360 Enterprise CPQ Platform"
-              className="w-full h-auto object-cover transform group-hover:scale-[1.01] transition duration-700"
-            />
-            {/* Subtle gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent pointer-events-none" />
-            <div className="absolute bottom-4 left-4 right-4 text-left pointer-events-none">
-              <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-white text-zinc-950 mb-1 inline-block">
-                CPQ &bull; Dynamic Pricing &bull; Multi-Tier Approvals
-              </span>
-              <p className="text-xs font-medium text-zinc-200">
-                Automated deal governance, real-time margin thresholds, and instant customer portal negotiation.
-              </p>
+        {/* Top Floating Header */}
+        <div className="relative z-10 flex items-center justify-between">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-950/70 backdrop-blur-md text-zinc-200 border border-white/10 text-xs font-semibold shadow-lg">
+            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            <span>Enterprise CPQ Platform</span>
+          </div>
+          <div className="px-3 py-1 rounded-full bg-zinc-950/60 backdrop-blur-md text-zinc-400 border border-white/10 text-[11px] font-mono">
+            v1.0.4
+          </div>
+        </div>
+
+        {/* Bottom Sleek Typography & Stats */}
+        <div className="relative z-10 mt-auto pt-24 pb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-white text-[11px] font-semibold tracking-wide uppercase mb-3">
+            Self-Governing Sales Operations
+          </div>
+
+          <h2 className="text-2xl lg:text-3xl font-bold text-white tracking-tight leading-snug max-w-lg">
+            Autonomous CPQ for high-velocity enterprise sales.
+          </h2>
+
+          <p className="text-xs text-zinc-300 mt-2.5 max-w-md leading-relaxed font-normal">
+            Automated margin guardrails, real-time approval routing, and unified contract fulfillment in a single workspace.
+          </p>
+
+          {/* Clean Metric Row */}
+          <div className="flex items-center gap-6 mt-6 pt-5 border-t border-white/10 max-w-md">
+            <div>
+              <span className="text-lg font-bold text-white tracking-tight block">99.8%</span>
+              <span className="text-[10px] text-zinc-400 uppercase tracking-wider font-medium">Margin Guard</span>
+            </div>
+            <div className="w-px h-7 bg-white/15" />
+            <div>
+              <span className="text-lg font-bold text-white tracking-tight block">&lt; 15 min</span>
+              <span className="text-[10px] text-zinc-400 uppercase tracking-wider font-medium">Approval Speed</span>
+            </div>
+            <div className="w-px h-7 bg-white/15" />
+            <div>
+              <span className="text-lg font-bold text-white tracking-tight block">Zero</span>
+              <span className="text-[10px] text-zinc-400 uppercase tracking-wider font-medium">Margin Leaks</span>
             </div>
           </div>
-
-          <div className="mt-6 space-y-2">
-            <h2 className="text-lg font-bold text-white tracking-tight">
-              Self-Governing CPQ for High-Velocity Teams
-            </h2>
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              Empower sales representatives with real-time margin guardrails, auto-routed multi-tier approvals, and seamless contract fulfillment.
-            </p>
-          </div>
-        </div>
-
-        {/* Bottom Tagline */}
-        <div className="text-xs text-zinc-500 border-t border-zinc-800/80 pt-6 z-10 flex items-center justify-between">
-          <span>DealFlow360 Platform</span>
-          <span>Enterprise Sales Operations</span>
         </div>
       </aside>
 
