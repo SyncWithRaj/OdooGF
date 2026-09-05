@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-export default function TopHeader({ onToggleSidebar }) {
+export default function TopHeader({ onToggleSidebar, isCollapsed = false }) {
   const { user, isAuthenticated, logout } = useAuth();
   const router = useRouter();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -19,12 +19,13 @@ export default function TopHeader({ onToggleSidebar }) {
     <header className="h-14 bg-white/95 border-b border-slate-200/80 backdrop-blur-md sticky top-0 z-30 px-4 sm:px-6 flex items-center justify-between">
       {/* Left side: Sidebar Toggle + Outlet Switcher */}
       <div className="flex items-center gap-3">
-        {/* Toggle Sidebar Button (Collapse / Mobile Drawer) */}
+        {/* Toggle Sidebar Button (Collapse to single-line app icon mode / Expand) */}
         <button
           type="button"
           onClick={onToggleSidebar}
-          aria-label="Toggle navigation sidebar"
-          className="p-1.5 rounded-lg border border-slate-200/80 bg-white hover:bg-slate-50 text-slate-600 transition shadow-2xs cursor-pointer"
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse to single-line app icons'}
+          title={isCollapsed ? 'Expand sidebar' : 'Collapse to single-line app icons'}
+          className="p-1.5 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-100 text-slate-700 transition shadow-2xs cursor-pointer active:scale-95"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h10M4 18h16" />
