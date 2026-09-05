@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import {
   FulfillmentStatus,
+  HealthIssueType,
   ProductCategory,
   QuotationStatus,
 } from '@prisma/client';
@@ -19,12 +20,36 @@ export class FulfillmentsService {
   constructor(private readonly prisma: PrismaService) {}
 
   // ----------------------------------------------------------------------------
-  // B6 & B7: INTELLIGENT MULTI-WAREHOUSE SPLIT ENGINE (Screens 7 & 8)
+  // DISTANCE & TRANSIT CALCULATION (Engine 4 & 5)
+  // ----------------------------------------------------------------------------
+  calculateHaversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Earth's radius in km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return Number((R * c).toFixed(1));
+  }
+
+  computeTransitDays(distanceKm: number): number {
+    if (distanceKm <= 300) return 1;
+    if (distanceKm <= 1000) return 2;
+    return 4;
+  }
+
+  // ----------------------------------------------------------------------------
+  // B6 & B7 & ENGINE 5: INTELLIGENT GEO-PROXIMITY MULTI-WAREHOUSE SPLIT ENGINE
   // ----------------------------------------------------------------------------
   async calculateAndCreateSplit(quotationId: string) {
     const quotation = await this.prisma.quotation.findUnique({
       where: { id: quotationId },
       include: {
+        customer: true,
         lines: {
           include: {
             product: true,
@@ -82,9 +107,14 @@ export class FulfillmentsService {
       return this.getFulfillmentById(fulfillmentOrder.id);
     }
 
+    // Dynamic customer shipping coordinates from database
+    const custLat = quotation.customer?.shippingLatitude;
+    const custLon = quotation.customer?.shippingLongitude;
+    const hasCustomerGeo = custLat != null && custLon != null;
+
     // Fetch all active warehouses with current stock for required hardware
     const hardwareProductIds = hardwareLines.map((l) => l.productId);
-    const warehouses = await this.prisma.warehouse.findMany({
+    const allWarehouses = await this.prisma.warehouse.findMany({
       include: {
         warehouseStocks: {
           where: {
@@ -92,39 +122,81 @@ export class FulfillmentsService {
           },
         },
       },
-      orderBy: { shippingCostWeight: 'asc' },
     });
 
-    if (warehouses.length === 0) {
+    if (allWarehouses.length === 0) {
       throw new BadRequestException('No warehouses registered in the system');
     }
 
-    // Strategy 1: Check if any single warehouse can fulfill 100% of all required items
-    let singleCapableWarehouse: any = null;
-    for (const wh of warehouses) {
-      const stockMap = new Map(wh.warehouseStocks.map((s) => [s.productId, s.available]));
-      const canFulfillAll = hardwareLines.every((line) => {
-        const avail = stockMap.get(line.productId) ?? 0;
-        return avail >= line.quantity;
-      });
+    // Calculate real Haversine distance if coordinates exist; otherwise gracefully rank by shippingCostWeight and leadDays
+    const warehousesWithDistance = allWarehouses.map((wh) => {
+      const hasWarehouseGeo = wh.latitude != null && wh.longitude != null;
+      let distanceKm = 0;
+      let transitDays = wh.defaultLeadDays;
 
-      if (canFulfillAll) {
-        singleCapableWarehouse = wh;
-        break; // Already sorted by lowest shippingCostWeight
+      if (hasCustomerGeo && hasWarehouseGeo) {
+        distanceKm = this.calculateHaversineDistance(
+          custLat,
+          custLon,
+          wh.latitude,
+          wh.longitude,
+        );
+        transitDays = this.computeTransitDays(distanceKm);
+      } else {
+        // Logistics fallback when GPS is unconfigured: rank by shipping cost weight and default lead time
+        distanceKm = Number((wh.shippingCostWeight * 500).toFixed(1));
+        transitDays = Math.max(1, wh.defaultLeadDays);
       }
+
+      return {
+        ...wh,
+        distanceKm,
+        transitDays,
+      };
+    });
+
+    warehousesWithDistance.sort((a, b) => {
+      if (hasCustomerGeo) {
+        return a.distanceKm - b.distanceKm;
+      }
+      return a.shippingCostWeight - b.shippingCostWeight;
+    });
+    const top5Warehouses = warehousesWithDistance.slice(0, 5);
+
+    // Strategy 1: Check if the single nearest warehouse can fulfill 100% of all items
+    const nearestWarehouse = top5Warehouses[0];
+    const nearestStockMap = new Map(
+      nearestWarehouse.warehouseStocks.map((s) => [s.productId, s.available]),
+    );
+    const totalNeededByProduct = new Map<string, number>();
+    for (const line of hardwareLines) {
+      totalNeededByProduct.set(
+        line.productId,
+        (totalNeededByProduct.get(line.productId) ?? 0) + line.quantity,
+      );
     }
+    const canFulfill100Nearest = Array.from(totalNeededByProduct.entries()).every(
+      ([prodId, reqQty]) => {
+        const avail = nearestStockMap.get(prodId) ?? 0;
+        return avail >= reqQty;
+      },
+    );
 
     const splitItemsData: any[] = [];
     let hasBackorder = false;
+    let totalAllocatedUnits = 0;
+    let totalNeededUnits = 0;
 
-    if (singleCapableWarehouse) {
-      // 100% Fulfilled by Single Warehouse (Lowest Shipping Cost)
+    if (canFulfill100Nearest) {
+      // 100% from Nearest Warehouse (Single Shipment, Minimum Distance & Transit Time)
       for (const line of hardwareLines) {
+        totalNeededUnits += line.quantity;
+        totalAllocatedUnits += line.quantity;
         const estShipCost = Number(
-          (line.quantity * 10.0 * singleCapableWarehouse.shippingCostWeight).toFixed(2),
+          (line.quantity * 10.0 * nearestWarehouse.shippingCostWeight * (nearestWarehouse.distanceKm > 500 ? 1.2 : 1.0)).toFixed(2),
         );
         splitItemsData.push({
-          warehouseId: singleCapableWarehouse.id,
+          warehouseId: nearestWarehouse.id,
           productId: line.productId,
           quantityFulfilled: line.quantity,
           quantityBackordered: 0,
@@ -132,20 +204,32 @@ export class FulfillmentsService {
         });
       }
     } else {
-      // Strategy 2: Multi-Warehouse Split Allocation
+      // Strategy 2: Waterfall Multi-Warehouse Allocation across Top 5 Nearest
+      // Track remaining stock across lines to prevent double-allocating when quote has multiple lines of same product
+      const warehouseRemainingStock = new Map<string, number>();
+      for (const wh of top5Warehouses) {
+        for (const stock of wh.warehouseStocks) {
+          warehouseRemainingStock.set(`${wh.id}_${stock.productId}`, stock.available);
+        }
+      }
+
       for (const line of hardwareLines) {
+        totalNeededUnits += line.quantity;
         let remainingNeeded = line.quantity;
 
-        for (const wh of warehouses) {
+        for (const wh of top5Warehouses) {
           if (remainingNeeded <= 0) break;
 
-          const stock = wh.warehouseStocks.find((s) => s.productId === line.productId);
-          const available = stock?.available ?? 0;
+          const stockKey = `${wh.id}_${line.productId}`;
+          const currentAvailable = warehouseRemainingStock.get(stockKey) ?? 0;
 
-          if (available > 0) {
-            const allocated = Math.min(remainingNeeded, available);
+          if (currentAvailable > 0) {
+            const allocated = Math.min(remainingNeeded, currentAvailable);
+            warehouseRemainingStock.set(stockKey, currentAvailable - allocated);
+            totalAllocatedUnits += allocated;
+            const distanceMultiplier = wh.distanceKm > 500 ? 1.2 : 1.0;
             const estShipCost = Number(
-              (allocated * 10.0 * wh.shippingCostWeight).toFixed(2),
+              (allocated * 10.0 * wh.shippingCostWeight * distanceMultiplier).toFixed(2),
             );
 
             splitItemsData.push({
@@ -160,12 +244,11 @@ export class FulfillmentsService {
           }
         }
 
-        // If inventory across all warehouses is insufficient -> Backorder!
+        // Shortage: If inventory across all Top 5 warehouses is insufficient -> Backorder!
         if (remainingNeeded > 0) {
           hasBackorder = true;
-          // Allocate backorder to primary warehouse
           splitItemsData.push({
-            warehouseId: warehouses[0].id,
+            warehouseId: top5Warehouses[0].id,
             productId: line.productId,
             quantityFulfilled: 0,
             quantityBackordered: remainingNeeded,
@@ -187,7 +270,8 @@ export class FulfillmentsService {
       0,
     );
 
-    const targetStatus = hasBackorder
+    const isNetworkShortage = totalAllocatedUnits < totalNeededUnits;
+    const targetStatus = isNetworkShortage
       ? FulfillmentStatus.BACKORDER
       : totalShipments > 1
         ? FulfillmentStatus.SPLIT_PENDING
@@ -222,16 +306,85 @@ export class FulfillmentsService {
       });
     }
 
-    // Update Quotation status to SPLIT_PENDING if currently CONFIRMED
-    if (quotation.status === QuotationStatus.CONFIRMED) {
-      await this.prisma.quotation.update({
-        where: { id: quotationId },
-        data: { status: QuotationStatus.SPLIT_PENDING },
-      });
+    // Delivery Promise Slippage Tracking (Engine 4)
+    // Accurately evaluate only warehouses actually allocated to ship items
+    const allocatedWarehouseIds = new Set(
+      splitItemsData.filter((i) => i.quantityFulfilled > 0).map((i) => i.warehouseId),
+    );
+    const activeAllocatedWarehouses = top5Warehouses.filter((w) =>
+      allocatedWarehouseIds.has(w.id),
+    );
+    const effectiveWarehouses =
+      activeAllocatedWarehouses.length > 0 ? activeAllocatedWarehouses : [top5Warehouses[0]];
+
+    const maxLeadTransit = Math.max(
+      ...effectiveWarehouses.map((w) => w.defaultLeadDays + w.transitDays),
+    );
+    const possibleDate = new Date();
+    possibleDate.setDate(possibleDate.getDate() + maxLeadTransit);
+
+    let hasDeliverySlippage = false;
+    let deliverySlippageDays = 0;
+    if (quotation.promisedDeliveryDate) {
+      const promisedMs = new Date(quotation.promisedDeliveryDate).getTime();
+      const possibleMs = possibleDate.getTime();
+      if (possibleMs > promisedMs) {
+        hasDeliverySlippage = true;
+        deliverySlippageDays = Math.ceil((possibleMs - promisedMs) / (1000 * 60 * 60 * 24));
+
+        const slippageDesc = `Fulfillment routing slippage: Earliest warehouse arrival (${possibleDate.toISOString().slice(0, 10)}) is ${deliverySlippageDays} day(s) after promised date.`;
+        const existingSlippageAlert = await this.prisma.dealHealthAlert.findFirst({
+          where: { quotationId, issueType: HealthIssueType.DELIVERY_SLIPPAGE, isResolved: false },
+        });
+
+        if (!existingSlippageAlert) {
+          await this.prisma.dealHealthAlert.create({
+            data: {
+              quotationId,
+              issueType: HealthIssueType.DELIVERY_SLIPPAGE,
+              description: slippageDesc,
+              isEscalated: deliverySlippageDays > 5,
+              isResolved: false,
+            },
+          });
+        } else {
+          await this.prisma.dealHealthAlert.update({
+            where: { id: existingSlippageAlert.id },
+            data: { description: slippageDesc, isEscalated: deliverySlippageDays > 5, flaggedAt: new Date() },
+          });
+        }
+      } else {
+        await this.prisma.dealHealthAlert.updateMany({
+          where: { quotationId, issueType: HealthIssueType.DELIVERY_SLIPPAGE, isResolved: false },
+          data: { isResolved: true },
+        });
+      }
     }
+
+    // Quotation Shortage Review Trigger (Engine 5)
+    let targetQuoteStatus = quotation.status;
+    if (isNetworkShortage) {
+      targetQuoteStatus = QuotationStatus.SHORTAGE_REVIEW;
+    } else if (quotation.status === QuotationStatus.CONFIRMED) {
+      targetQuoteStatus = QuotationStatus.SPLIT_PENDING;
+    }
+
+    await this.prisma.quotation.update({
+      where: { id: quotationId },
+      data: {
+        status: targetQuoteStatus,
+        possibleDeliveryDate: possibleDate,
+        hasDeliverySlippage,
+        deliverySlippageDays,
+        isShortageReviewRequired: isNetworkShortage,
+        proposedPartialQuantity: isNetworkShortage ? totalAllocatedUnits : null,
+        lastActivityAt: new Date(),
+      },
+    });
 
     return this.getFulfillmentById(fulfillmentOrder.id);
   }
+
 
   // ----------------------------------------------------------------------------
   // GET FULFILLMENT DETAILS
@@ -615,4 +768,65 @@ export class FulfillmentsService {
       fulfillmentOrder: await this.getFulfillmentById(id),
     };
   }
+
+  // ----------------------------------------------------------------------------
+  // SHORTAGE GOVERNANCE (Engine 5: Ops / Finance Review & Partial Offer)
+  // ----------------------------------------------------------------------------
+  async proposeShortageOffer(fulfillmentOrderId: string, proposedQuantity: number) {
+    if (
+      proposedQuantity == null ||
+      typeof proposedQuantity !== 'number' ||
+      isNaN(proposedQuantity) ||
+      proposedQuantity <= 0 ||
+      !Number.isInteger(proposedQuantity)
+    ) {
+      throw new BadRequestException('Proposed quantity must be a positive whole integer greater than 0');
+    }
+
+    const order = await this.prisma.fulfillmentOrder.findUnique({
+      where: { id: fulfillmentOrderId },
+      include: { quotation: { include: { lines: true } } },
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Fulfillment order '${fulfillmentOrderId}' not found`);
+    }
+
+    if (
+      order.quotation.status === QuotationStatus.CANCELLED ||
+      order.quotation.status === QuotationStatus.FULFILLED
+    ) {
+      throw new BadRequestException(
+        `Cannot propose shortage for quotation in '${order.quotation.status}' state`,
+      );
+    }
+
+    const totalHardwareQty = order.quotation.lines
+      .filter((l) => l.category === ProductCategory.HARDWARE)
+      .reduce((sum, l) => sum + l.quantity, 0);
+
+    if (totalHardwareQty > 0 && proposedQuantity >= totalHardwareQty) {
+      throw new BadRequestException(
+        `Proposed partial quantity (${proposedQuantity}) must be strictly less than the total requested order quantity (${totalHardwareQty})`,
+      );
+    }
+
+    await this.prisma.quotation.update({
+      where: { id: order.quotationId },
+      data: {
+        isShortageReviewRequired: true,
+        proposedPartialQuantity: proposedQuantity,
+        status: QuotationStatus.SHORTAGE_REVIEW,
+        lastActivityAt: new Date(),
+      },
+    });
+
+    return {
+      success: true,
+      message: `Ops proposal of ${proposedQuantity} units recorded. Pushed to Customer Portal for customer sign-off.`,
+      fulfillmentOrderId,
+      proposedQuantity,
+    };
+  }
 }
+

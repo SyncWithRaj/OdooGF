@@ -50,6 +50,7 @@ enum QuotationStatus {
   UNDER_NEGOTIATION
   CONFIRMED
   SPLIT_PENDING
+  SHORTAGE_REVIEW
   FULFILLED
   CANCELLED
 }
@@ -156,6 +157,9 @@ model Customer {
   assignedRepId    String?
   assignedRep      User?        @relation("ManagedCustomers", fields: [assignedRepId], references: [id])
   historicalAvgDisc Float       @default(8.0)
+  shippingLatitude  Float?
+  shippingLongitude Float?
+  shippingAddress   String?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
@@ -198,9 +202,11 @@ model Product {
   priceRules         PriceListRule[]
   
   // Upsell pairings
-  recommendedPairings ProductCoPurchaseRule[] @relation("BaseProductPairings")
-  pairedInRules       ProductCoPurchaseRule[] @relation("RecommendedProductPairings")
-  fulfillmentSplits   FulfillmentSplitItem[]
+  recommendedPairings    ProductCoPurchaseRule[] @relation("BaseProductPairings")
+  pairedInRules          ProductCoPurchaseRule[] @relation("RecommendedProductPairings")
+  curatedRecommendations AdminCuratedUpsell[]    @relation("BaseCuratedUpsells")
+  recommendedInCurated   AdminCuratedUpsell[]    @relation("TargetCuratedUpsells")
+  fulfillmentSplits      FulfillmentSplitItem[]
 }
 
 model ProductVariant {
@@ -258,7 +264,10 @@ model Warehouse {
   id                 String   @id @default(uuid())
   name               String   @unique // e.g. "Main Warehouse", "East Depot"
   location           String
+  latitude           Float?
+  longitude          Float?
   shippingCostWeight Float    @default(1.0)
+  defaultLeadDays    Int      @default(1)
   createdAt          DateTime @default(now())
 
   warehouseStocks    WarehouseStock[]
@@ -306,10 +315,21 @@ model Quotation {
   totalMarginPercent      Float           @default(0.0)
   
   // Customer Portal & Negotiation (Screen 11)
-  portalToken             String          @unique @default(uuid())
+  portalToken              String          @unique @default(uuid())
   counterDiscountProposed  Float?
-  requestedDeliveryDate   DateTime?
-  customerTermsConfirmed  Boolean         @default(false)
+  requestedDeliveryDate    DateTime?
+  customerTermsConfirmed   Boolean         @default(false)
+
+  // Delivery Promise Slippage Tracking (Engine 4)
+  promisedDeliveryDate     DateTime?
+  possibleDeliveryDate     DateTime?
+  hasDeliverySlippage      Boolean         @default(false)
+  deliverySlippageDays     Int             @default(0)
+
+  // Multi-Warehouse Unfulfillable Shortage Loop (Engine 5)
+  isShortageReviewRequired Boolean         @default(false)
+  proposedPartialQuantity  Int?
+  customerShortageAction   String?         // "ACCEPTED_PARTIAL" | "WAIT_RESTOCK" | "CANCELLED"
 
   // Deal Health Tracking (Screen 14)
   lastActivityAt          DateTime        @default(now())
@@ -552,5 +572,23 @@ model ProductCoPurchaseRule {
   promotionTag         String?
   createdAt            DateTime @default(now())
 
+  @@unique([baseProductId, recommendedProductId])
+}
+
+// ------------------------------------------------------------------------------
+// 14. ADMIN CURATED UPSELL FEED (Engine 1)
+// ------------------------------------------------------------------------------
+
+model AdminCuratedUpsell {
+  id                   String   @id @default(uuid())
+  baseProductId        String
+  baseProduct          Product  @relation("BaseCuratedUpsells", fields: [baseProductId], references: [id], onDelete: Cascade)
+  recommendedProductId String
+  recommendedProduct   Product  @relation("TargetCuratedUpsells", fields: [recommendedProductId], references: [id], onDelete: Cascade)
+  rank                 Int      // 1 to 5 (1 = highest priority)
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+
+  @@unique([baseProductId, rank])
   @@unique([baseProductId, recommendedProductId])
 }

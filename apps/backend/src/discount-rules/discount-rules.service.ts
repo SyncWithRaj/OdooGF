@@ -244,4 +244,62 @@ export class DiscountRulesService {
       },
     };
   }
+
+  // --------------------------------------------------------------------------
+  // ENGINE 3: 90-DAY ROLLING REP DISCOUNT MEDIAN ANOMALY ENGINE
+  // --------------------------------------------------------------------------
+  async calculateRepHistoricalMedian(salesRepId: string): Promise<{ medianDiscount: number; sampleCount: number }> {
+    if (!salesRepId) {
+      return { medianDiscount: 8.0, sampleCount: 0 };
+    }
+
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+
+    const pastLines = await this.prisma.quotationLine.findMany({
+      where: {
+        quotation: {
+          salesRepId,
+          createdAt: { gte: ninetyDaysAgo },
+          status: { in: ['CONFIRMED', 'FULFILLED', 'SENT_TO_CUSTOMER'] },
+        },
+      },
+      select: { discountPercent: true },
+    });
+
+    const discounts = pastLines.map((l) => l.discountPercent).sort((a, b) => a - b);
+    const sampleCount = discounts.length;
+
+    if (sampleCount < 3) {
+      // Baseline default if rep has fewer than 3 historical lines
+      return { medianDiscount: 8.0, sampleCount };
+    }
+
+    let medianDiscount = 8.0;
+    const mid = Math.floor(sampleCount / 2);
+    if (sampleCount % 2 !== 0) {
+      medianDiscount = discounts[mid];
+    } else {
+      medianDiscount = Number(((discounts[mid - 1] + discounts[mid]) / 2).toFixed(2));
+    }
+
+    return { medianDiscount, sampleCount };
+  }
+
+  async validateLineDiscountAnomaly(
+    salesRepId: string,
+    proposedDiscount: number,
+  ): Promise<{ isAnomaly: boolean; medianDiscount: number; threshold: number; deviation: number }> {
+    const { medianDiscount, sampleCount } = await this.calculateRepHistoricalMedian(salesRepId);
+    const threshold = Number((medianDiscount + 10.0).toFixed(2));
+    const isAnomaly = proposedDiscount > threshold;
+    const deviation = isAnomaly ? Number((proposedDiscount - medianDiscount).toFixed(2)) : 0;
+
+    return {
+      isAnomaly,
+      medianDiscount,
+      threshold,
+      deviation,
+    };
+  }
 }
+

@@ -7,6 +7,7 @@ import {
   ApprovalAction,
   ApprovalStage,
   CustomerTier,
+  HealthIssueType,
   ProductCategory,
   QuotationStatus,
   RiskLevel,
@@ -14,6 +15,8 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { DealHealthStubService } from './deal-health.stub.service';
+import { DiscountRulesService } from '../discount-rules/discount-rules.service';
+import { UpsellRulesService } from '../upsell-rules/upsell-rules.service';
 import {
   AddCommentDto,
   AddUpsellLineDto,
@@ -28,6 +31,8 @@ export class QuotationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly dealHealthStub: DealHealthStubService,
+    private readonly upsellRulesService: UpsellRulesService,
+    private readonly discountRulesService: DiscountRulesService,
   ) {}
 
   // ----------------------------------------------------------------------------
@@ -265,6 +270,7 @@ export class QuotationsService {
         status: QuotationStatus.DRAFT,
         blendedRiskScore: RiskLevel.LOW,
         orderDiscountPercent: dto.orderDiscountPercent ?? 0.0,
+        promisedDeliveryDate: dto.promisedDeliveryDate ? new Date(dto.promisedDeliveryDate) : null,
       },
     });
 
@@ -275,6 +281,8 @@ export class QuotationsService {
         customer.tier,
         dto.lines,
         dto.orderDiscountPercent ?? 0.0,
+        salesRepId,
+        dto.promisedDeliveryDate ? new Date(dto.promisedDeliveryDate) : undefined,
       );
     }
 
@@ -316,11 +324,22 @@ export class QuotationsService {
       );
     }
 
+    if (dto.promisedDeliveryDate) {
+      await this.prisma.quotation.update({
+        where: { id },
+        data: {
+          promisedDeliveryDate: new Date(dto.promisedDeliveryDate),
+        },
+      });
+    }
+
     await this.syncQuotationLines(
       id,
       quotation.customer.tier,
       dto.lines,
       dto.orderDiscountPercent ?? quotation.orderDiscountPercent,
+      quotation.salesRepId,
+      dto.promisedDeliveryDate ? new Date(dto.promisedDeliveryDate) : quotation.promisedDeliveryDate ?? undefined,
     );
 
     return this.getQuotationById(id);
@@ -334,6 +353,8 @@ export class QuotationsService {
     customerTier: CustomerTier,
     lineDtos: QuotationLineItemDto[],
     orderDiscountPercent: number = 0,
+    salesRepId?: string,
+    promisedDeliveryDate?: Date,
   ) {
     const [tierCeilings, categoryCeilings] = await Promise.all([
       this.prisma.tierDiscountCeiling.findMany(),
@@ -438,6 +459,107 @@ export class QuotationsService {
       blendedRiskScore = RiskLevel.MEDIUM;
     }
 
+    // Validate 90-day rep median anomaly across lines (Engine 3)
+    let hasRepDiscountAnomaly = false;
+    let repAnomalyMessage = '';
+    if (salesRepId) {
+      for (const line of computedLines) {
+        const anomaly = await this.discountRulesService.validateLineDiscountAnomaly(
+          salesRepId,
+          line.discountPercent,
+        );
+        if (anomaly.isAnomaly) {
+          hasRepDiscountAnomaly = true;
+          repAnomalyMessage = `Line discount ${line.discountPercent}% breaches sales rep 90-day median (${anomaly.medianDiscount}%) by +${anomaly.deviation}pt (threshold: ${anomaly.threshold}%).`;
+          break;
+        }
+      }
+    }
+
+    if (hasRepDiscountAnomaly) {
+      blendedRiskScore = RiskLevel.HIGH;
+      const existingAnomalyAlert = await this.prisma.dealHealthAlert.findFirst({
+        where: { quotationId, issueType: HealthIssueType.DISCOUNT_ANOMALY, isResolved: false },
+      });
+      if (!existingAnomalyAlert) {
+        await this.prisma.dealHealthAlert.create({
+          data: {
+            quotationId,
+            issueType: HealthIssueType.DISCOUNT_ANOMALY,
+            description: repAnomalyMessage,
+            isEscalated: true,
+            isResolved: false,
+          },
+        });
+      } else {
+        await this.prisma.dealHealthAlert.update({
+          where: { id: existingAnomalyAlert.id },
+          data: { description: repAnomalyMessage, flaggedAt: new Date() },
+        });
+      }
+    } else {
+      await this.prisma.dealHealthAlert.updateMany({
+        where: { quotationId, issueType: HealthIssueType.DISCOUNT_ANOMALY, isResolved: false },
+        data: { isResolved: true },
+      });
+    }
+
+    // Lead time & Delivery slippage computation (Engine 4)
+    let hasDeliverySlippage = false;
+    let deliverySlippageDays = 0;
+    let possibleDeliveryDate: Date | null = null;
+
+    if (promisedDeliveryDate) {
+      const maxLeadWarehouse = await this.prisma.warehouse.findFirst({
+        orderBy: { defaultLeadDays: 'desc' },
+      });
+      const leadDays = maxLeadWarehouse?.defaultLeadDays ?? 3;
+      const transitDays = 2; // Standard transit
+      const totalDays = leadDays + transitDays;
+
+      possibleDeliveryDate = new Date();
+      possibleDeliveryDate.setDate(possibleDeliveryDate.getDate() + totalDays);
+
+      const promised = new Date(promisedDeliveryDate);
+      if (possibleDeliveryDate.getTime() > promised.getTime()) {
+        hasDeliverySlippage = true;
+        const diffMs = possibleDeliveryDate.getTime() - promised.getTime();
+        deliverySlippageDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+        const existingSlippageAlert = await this.prisma.dealHealthAlert.findFirst({
+          where: { quotationId, issueType: HealthIssueType.DELIVERY_SLIPPAGE, isResolved: false },
+        });
+        const slippageDesc = `Promised date (${promised.toISOString().slice(0, 10)}) is ${deliverySlippageDays} day(s) earlier than earliest possible delivery (${possibleDeliveryDate.toISOString().slice(0, 10)}).`;
+
+        if (!existingSlippageAlert) {
+          await this.prisma.dealHealthAlert.create({
+            data: {
+              quotationId,
+              issueType: HealthIssueType.DELIVERY_SLIPPAGE,
+              description: slippageDesc,
+              isEscalated: deliverySlippageDays > 5,
+              isResolved: false,
+            },
+          });
+        } else {
+          await this.prisma.dealHealthAlert.update({
+            where: { id: existingSlippageAlert.id },
+            data: { description: slippageDesc, isEscalated: deliverySlippageDays > 5, flaggedAt: new Date() },
+          });
+        }
+      } else {
+        await this.prisma.dealHealthAlert.updateMany({
+          where: { quotationId, issueType: HealthIssueType.DELIVERY_SLIPPAGE, isResolved: false },
+          data: { isResolved: true },
+        });
+      }
+    } else {
+      await this.prisma.dealHealthAlert.updateMany({
+        where: { quotationId, issueType: HealthIssueType.DELIVERY_SLIPPAGE, isResolved: false },
+        data: { isResolved: true },
+      });
+    }
+
     await this.prisma.quotation.update({
       where: { id: quotationId },
       data: {
@@ -449,6 +571,9 @@ export class QuotationsService {
         totalMarginPercent: Number(finalMarginPercent.toFixed(2)),
         blendedRiskScore,
         lastActivityAt: new Date(),
+        ...(possibleDeliveryDate && { possibleDeliveryDate }),
+        hasDeliverySlippage,
+        deliverySlippageDays,
       },
     });
 
@@ -461,7 +586,7 @@ export class QuotationsService {
   }
 
   // ----------------------------------------------------------------------------
-  // B5: AI UPSELL RECOMMENDATION ENGINE & 1-CLICK ADD (Screen 4)
+  // B5: HYBRID UPSELL & CROSS-SELL RECOMMENDATION ENGINE (Admin + FP-Growth/Affinity)
   // ----------------------------------------------------------------------------
   async getUpsellSuggestions(quotationId: string) {
     const quote = await this.prisma.quotation.findUnique({
@@ -482,53 +607,24 @@ export class QuotationsService {
       return [];
     }
 
-    // Find pairing rules where base product is currently in the quote
-    // and recommended product is NOT yet in the quote
-    const pairings = await this.prisma.productCoPurchaseRule.findMany({
-      where: {
-        baseProductId: { in: currentProductIds },
-        recommendedProductId: { notIn: currentProductIds },
+    const recommendations = await this.upsellRulesService.getHybridCartRecommendations(currentProductIds);
+
+    return recommendations.map((item) => ({
+      ruleId: item.productId,
+      baseProductId: currentProductIds[0],
+      baseProductName: item.baseProductName || 'Base Cart Item',
+      recommendedProduct: {
+        id: item.productId,
+        sku: item.sku,
+        name: item.name,
+        category: item.category,
+        baseCost: item.baseCost,
+        basePrice: item.basePrice,
+        isSubscription: item.isSubscription,
+        recurringInterval: item.recurringInterval,
       },
-      include: {
-        baseProduct: {
-          select: { id: true, name: true, sku: true },
-        },
-        recommendedProduct: {
-          select: {
-            id: true,
-            sku: true,
-            name: true,
-            category: true,
-            baseCost: true,
-            basePrice: true,
-            isSubscription: true,
-            recurringInterval: true,
-          },
-        },
-      },
-      orderBy: { coPurchaseScore: 'desc' },
-    });
-
-    // Deduplicate by recommendedProductId (keep highest coPurchaseScore)
-    const seen = new Set<string>();
-    const uniqueSuggestions = [];
-
-    for (const rule of pairings) {
-      if (!seen.has(rule.recommendedProductId)) {
-        seen.add(rule.recommendedProductId);
-        uniqueSuggestions.push({
-          ruleId: rule.id,
-          baseProductId: rule.baseProductId,
-          baseProductName: rule.baseProduct.name,
-          recommendedProduct: rule.recommendedProduct,
-          coPurchaseScore: rule.coPurchaseScore,
-          marginDeltaBoost: rule.marginDeltaBoost,
-          promotionTag: rule.promotionTag ?? 'Recommended Pairing',
-        });
-      }
-    }
-
-    return uniqueSuggestions;
+      ...item,
+    }));
   }
 
   async addUpsellLine(
@@ -547,6 +643,18 @@ export class QuotationsService {
       throw new NotFoundException(`Quotation with ID '${quotationId}' not found`);
     }
 
+    if (
+      quote.status === QuotationStatus.CONFIRMED ||
+      quote.status === QuotationStatus.FULFILLED ||
+      quote.status === QuotationStatus.CANCELLED
+    ) {
+      throw new BadRequestException(
+        `Cannot edit lines of quotation in '${quote.status}' state`,
+      );
+    }
+
+    const qtyToAdd = Math.max(1, dto.quantity ?? 1);
+
     // Existing lines mapped to DTO format
     const currentLines: QuotationLineItemDto[] = quote.lines.map((l) => ({
       productId: l.productId,
@@ -556,18 +664,25 @@ export class QuotationsService {
       discountPercent: l.discountPercent,
     }));
 
-    // Append recommended upsell item
-    currentLines.push({
-      productId: dto.recommendedProductId,
-      quantity: dto.quantity ?? 1,
-      discountPercent: dto.discountPercent ?? 0.0,
-    });
+    // If item already exists in quote, increment quantity instead of creating duplicate line
+    const existingIndex = currentLines.findIndex((l) => l.productId === dto.recommendedProductId);
+    if (existingIndex >= 0) {
+      currentLines[existingIndex].quantity += qtyToAdd;
+    } else {
+      currentLines.push({
+        productId: dto.recommendedProductId,
+        quantity: qtyToAdd,
+        discountPercent: Math.max(0, dto.discountPercent ?? 0.0),
+      });
+    }
 
     await this.syncQuotationLines(
       quotationId,
       quote.customer.tier,
       currentLines,
       quote.orderDiscountPercent,
+      quote.salesRepId,
+      quote.promisedDeliveryDate ?? undefined,
     );
 
     return this.getQuotationById(quotationId);

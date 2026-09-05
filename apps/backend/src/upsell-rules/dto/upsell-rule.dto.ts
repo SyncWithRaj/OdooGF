@@ -46,3 +46,20 @@ export class UpdateUpsellRuleDto {
   @IsOptional()
   promotionTag?: string;
 }
+
+export class CreateAdminCuratedUpsellDto {
+  @ApiProperty({ example: 'product-uuid-1', description: 'Base product ID being purchased' })
+  @IsUUID()
+  baseProductId: string;
+
+  @ApiProperty({ example: 'product-uuid-2', description: 'Recommended product ID (curated by admin)' })
+  @IsUUID()
+  recommendedProductId: string;
+
+  @ApiProperty({ example: 1, description: 'Priority rank (1 to 5, where 1 is highest priority)' })
+  @IsNumber()
+  @Min(1)
+  @Max(5)
+  rank: number;
+}
+

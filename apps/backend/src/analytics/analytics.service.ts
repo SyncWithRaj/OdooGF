@@ -89,55 +89,129 @@ export class AnalyticsService {
   }
 
   // ----------------------------------------------------------------------------
-  // SCREEN 14: DEAL HEALTH & ANOMALY DASHBOARD
+  // ----------------------------------------------------------------------------
+  // SCREEN 14 & ENGINE 2: DEAL HEALTH & ANOMALY DASHBOARD
   // ----------------------------------------------------------------------------
   async getDealHealthAlerts() {
-    const alerts = await this.prisma.dealHealthAlert.findMany({
-      include: {
-        quotation: {
-          include: {
-            customer: {
-              select: { name: true, tier: true, companyName: true },
-            },
-            salesRep: {
-              select: { fullName: true, email: true },
+    const openStatuses: QuotationStatus[] = [
+      QuotationStatus.DRAFT,
+      QuotationStatus.PENDING_APPROVAL,
+      QuotationStatus.SENT_TO_CUSTOMER,
+      QuotationStatus.UNDER_NEGOTIATION,
+      QuotationStatus.SHORTAGE_REVIEW,
+    ];
+
+    const [alerts, openQuotes] = await Promise.all([
+      this.prisma.dealHealthAlert.findMany({
+        include: {
+          quotation: {
+            include: {
+              customer: {
+                select: { name: true, tier: true, companyName: true },
+              },
+              salesRep: {
+                select: { fullName: true, email: true },
+              },
             },
           },
         },
-      },
-      orderBy: { flaggedAt: 'desc' },
+        orderBy: { flaggedAt: 'desc' },
+      }),
+      this.prisma.quotation.findMany({
+        where: { status: { in: openStatuses } },
+        include: {
+          customer: { select: { id: true, name: true, tier: true, companyName: true } },
+          salesRep: { select: { id: true, fullName: true, email: true } },
+          lines: true,
+        },
+        orderBy: { lastActivityAt: 'asc' },
+      }),
+    ]);
+
+    const now = Date.now();
+    let idleLowCount = 0;
+    let idleMediumCount = 0;
+    let idleCriticalCount = 0;
+
+    const idleDeals = openQuotes.map((q) => {
+      const diffMs = Math.max(0, now - new Date(q.lastActivityAt).getTime());
+      const idleTimeDays = Number((diffMs / (1000 * 60 * 60 * 24)).toFixed(1));
+
+      let severity: 'LOW' | 'MEDIUM' | 'CRITICAL' = 'LOW';
+      if (idleTimeDays >= 14.0) {
+        severity = 'CRITICAL';
+        idleCriticalCount++;
+      } else if (idleTimeDays >= 7.0) {
+        severity = 'MEDIUM';
+        idleMediumCount++;
+      } else {
+        severity = 'LOW';
+        idleLowCount++;
+      }
+
+      return {
+        quotationId: q.id,
+        quoteNumber: q.quoteNumber,
+        customerName: q.customer.name,
+        salesRepName: q.salesRep.fullName,
+        totalAmount: q.totalAmount,
+        status: q.status,
+        lastActivityAt: q.lastActivityAt,
+        idleTimeDays,
+        severity,
+        isStalled: idleTimeDays >= 14.0,
+      };
     });
 
-    // Also identify any deals with high discount deviation
-    const highRiskQuotes = await this.prisma.quotation.findMany({
-      where: {
-        blendedRiskScore: RiskLevel.HIGH,
-        status: { in: [QuotationStatus.DRAFT, QuotationStatus.PENDING_APPROVAL] },
-      },
-      include: {
-        customer: true,
-        salesRep: true,
-      },
-    });
+    // Discount Anomalies
+    const discountAnomalies = openQuotes
+      .filter((q) => q.blendedRiskScore === RiskLevel.HIGH)
+      .map((q) => ({
+        quotationId: q.id,
+        quoteNumber: q.quoteNumber,
+        customerName: q.customer.name,
+        salesRepName: q.salesRep.fullName,
+        issueType: HealthIssueType.DISCOUNT_ANOMALY,
+        totalAmount: q.totalAmount,
+        severity: 'CRITICAL',
+        description: `Significant discount breach detected on ${q.quoteNumber}. Deviation exceeds 90-day rep baseline +10%.`,
+        flaggedAt: q.updatedAt,
+      }));
 
-    const anomalySummaries = highRiskQuotes.map((q) => ({
-      quotationId: q.id,
-      quoteNumber: q.quoteNumber,
-      customerName: q.customer.name,
-      salesRepName: q.salesRep.fullName,
-      issueType: HealthIssueType.DISCOUNT_ANOMALY,
-      sentiment: 'WARNING',
-      description: `High discount deviation detected on ${q.quoteNumber}. Requires management sign-off.`,
-      flaggedAt: q.updatedAt,
-      isEscalated: true,
-    }));
+    // Delivery Slippages (Engine 4)
+    const deliverySlippages = openQuotes
+      .filter((q) => q.hasDeliverySlippage)
+      .map((q) => ({
+        quotationId: q.id,
+        quoteNumber: q.quoteNumber,
+        customerName: q.customer.name,
+        salesRepName: q.salesRep.fullName,
+        issueType: HealthIssueType.DELIVERY_SLIPPAGE,
+        totalAmount: q.totalAmount,
+        promisedDeliveryDate: q.promisedDeliveryDate,
+        possibleDeliveryDate: q.possibleDeliveryDate,
+        slippageDays: q.deliverySlippageDays,
+        severity: 'MEDIUM',
+        description: `Delivery promise slippage of ${q.deliverySlippageDays} day(s) detected. Lead time + transit exceeds promised date.`,
+        flaggedAt: q.updatedAt,
+      }));
 
     return {
-      totalAlerts: alerts.length + anomalySummaries.length,
-      alerts,
-      anomalies: anomalySummaries,
+      summary: {
+        totalAlerts: alerts.length + discountAnomalies.length + deliverySlippages.length,
+        idleStalledCritical: idleCriticalCount,
+        idleWarningMedium: idleMediumCount,
+        idleHealthyLow: idleLowCount,
+        discountAnomaliesCount: discountAnomalies.length,
+        deliverySlippagesCount: deliverySlippages.length,
+      },
+      idleDeals,
+      discountAnomalies,
+      deliverySlippages,
+      persistedAlerts: alerts,
     };
   }
+
 
   // ----------------------------------------------------------------------------
   // SCREEN 14: NUDGE REP

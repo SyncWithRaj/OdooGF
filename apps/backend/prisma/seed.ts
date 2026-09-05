@@ -22,6 +22,7 @@ async function main() {
   await prisma.quotation.deleteMany();
   await prisma.warehouseStock.deleteMany();
   await prisma.warehouse.deleteMany();
+  await prisma.adminCuratedUpsell.deleteMany();
   await prisma.productCoPurchaseRule.deleteMany();
   await prisma.priceListRule.deleteMany();
   await prisma.productVariant.deleteMany();
@@ -84,7 +85,7 @@ async function main() {
 
   console.log('✅ Users seeded (Admin, Rep, Manager, Finance).');
 
-  // 3. Seed Customers
+  // 3. Seed Customers with Geo-coordinates & Shipping Addresses
   const acme = await prisma.customer.create({
     data: {
       name: 'Acme Corp',
@@ -94,6 +95,9 @@ async function main() {
       tier: CustomerTier.GOLD,
       assignedRepId: rep.id,
       historicalAvgDisc: 8.0,
+      shippingAddress: '100 Market St, San Francisco, CA 94105',
+      shippingLatitude: 37.7833,
+      shippingLongitude: -122.4167,
     },
   });
 
@@ -106,6 +110,9 @@ async function main() {
       tier: CustomerTier.SILVER,
       assignedRepId: rep.id,
       historicalAvgDisc: 6.5,
+      shippingAddress: '250 Broadway, New York, NY 10007',
+      shippingLatitude: 40.7128,
+      shippingLongitude: -74.0060,
     },
   });
 
@@ -118,10 +125,13 @@ async function main() {
       tier: CustomerTier.BRONZE,
       assignedRepId: rep.id,
       historicalAvgDisc: 4.0,
+      shippingAddress: '300 N Michigan Ave, Chicago, IL 60601',
+      shippingLatitude: 41.8818,
+      shippingLongitude: -87.6231,
     },
   });
 
-  console.log('✅ Customers seeded (Acme Gold, Beta Silver, Delta Bronze).');
+  console.log('✅ Customers seeded with shipping coordinates (Acme Gold, Beta Silver, Delta Bronze).');
 
   // 4. Seed Discount Ceilings & Matrices (Screen 18)
   await prisma.tierDiscountCeiling.createMany({
@@ -165,24 +175,63 @@ async function main() {
 
   console.log('✅ Discount ceilings and approval chain seeded.');
 
-  // 5. Seed Warehouses (Screen 7 & 8)
-  const mainWarehouse = await prisma.warehouse.create({
+  // 5. Seed 5 Geographically Distributed Warehouses (SF, Chicago, Newark, Dallas, Seattle)
+  const sfWarehouse = await prisma.warehouse.create({
     data: {
-      name: 'Main Warehouse',
-      location: 'Central Depot - Bay 4',
+      name: 'San Francisco Bay Depot',
+      location: 'South San Francisco Logistics Park, CA',
+      latitude: 37.7749,
+      longitude: -122.4194,
+      defaultLeadDays: 2,
       shippingCostWeight: 1.0,
     },
   });
 
-  const eastDepot = await prisma.warehouse.create({
+  const chicagoWarehouse = await prisma.warehouse.create({
     data: {
-      name: 'East Depot',
-      location: 'East Coast Logistics Hub',
+      name: 'Chicago Central Depot',
+      location: "O'Hare Cargo Center, Chicago, IL",
+      latitude: 41.8781,
+      longitude: -87.6298,
+      defaultLeadDays: 3,
+      shippingCostWeight: 1.1,
+    },
+  });
+
+  const newarkWarehouse = await prisma.warehouse.create({
+    data: {
+      name: 'Newark East Depot',
+      location: 'Port Newark Logistics Hub, NJ',
+      latitude: 40.7357,
+      longitude: -74.1724,
+      defaultLeadDays: 3,
       shippingCostWeight: 1.2,
     },
   });
 
-  console.log('✅ Warehouses seeded (Main Warehouse, East Depot).');
+  const dallasWarehouse = await prisma.warehouse.create({
+    data: {
+      name: 'Dallas Distribution Hub',
+      location: 'DFW Logistics Interchange, Dallas, TX',
+      latitude: 32.7767,
+      longitude: -96.7970,
+      defaultLeadDays: 2,
+      shippingCostWeight: 1.05,
+    },
+  });
+
+  const seattleWarehouse = await prisma.warehouse.create({
+    data: {
+      name: 'Seattle Pacific Hub',
+      location: 'SeaTac Freight Center, Seattle, WA',
+      latitude: 47.6062,
+      longitude: -122.3321,
+      defaultLeadDays: 4,
+      shippingCostWeight: 1.3,
+    },
+  });
+
+  console.log('✅ 5 Geo-distributed Warehouses seeded (SF, Chicago, Newark, Dallas, Seattle).');
 
   // 6. Seed Products (Hardware, Services, Subscriptions)
   const laptop = await prisma.product.create({
@@ -285,21 +334,33 @@ async function main() {
 
   console.log('✅ Products seeded across Hardware, Services, Subscriptions.');
 
-  // 7. Seed Warehouse Stock Levels (Main vs East)
+  // 7. Seed Warehouse Stock Levels Across Top 5 Hubs
   await prisma.warehouseStock.createMany({
     data: [
-      // Laptop: 40 in Main, 10 in East (Total 50)
-      { warehouseId: mainWarehouse.id, productId: laptop.id, inStock: 40, reserved: 18, available: 22 },
-      { warehouseId: eastDepot.id, productId: laptop.id, inStock: 10, reserved: 6, available: 4 },
-      // Docking Station: 65 in Main
-      { warehouseId: mainWarehouse.id, productId: docking.id, inStock: 65, reserved: 12, available: 53 },
-      // Mouse: 100 in Main, 50 in East
-      { warehouseId: mainWarehouse.id, productId: mouse.id, inStock: 100, reserved: 0, available: 100 },
-      { warehouseId: eastDepot.id, productId: mouse.id, inStock: 50, reserved: 0, available: 50 },
+      // Laptop: Total 33 available across 5 warehouses
+      { warehouseId: sfWarehouse.id, productId: laptop.id, inStock: 6, reserved: 1, available: 5 },
+      { warehouseId: chicagoWarehouse.id, productId: laptop.id, inStock: 10, reserved: 2, available: 8 },
+      { warehouseId: newarkWarehouse.id, productId: laptop.id, inStock: 12, reserved: 2, available: 10 },
+      { warehouseId: dallasWarehouse.id, productId: laptop.id, inStock: 7, reserved: 1, available: 6 },
+      { warehouseId: seattleWarehouse.id, productId: laptop.id, inStock: 4, reserved: 0, available: 4 },
+
+      // Docking Station: 88 available
+      { warehouseId: sfWarehouse.id, productId: docking.id, inStock: 25, reserved: 5, available: 20 },
+      { warehouseId: chicagoWarehouse.id, productId: docking.id, inStock: 30, reserved: 5, available: 25 },
+      { warehouseId: newarkWarehouse.id, productId: docking.id, inStock: 20, reserved: 2, available: 18 },
+      { warehouseId: dallasWarehouse.id, productId: docking.id, inStock: 15, reserved: 0, available: 15 },
+      { warehouseId: seattleWarehouse.id, productId: docking.id, inStock: 10, reserved: 0, available: 10 },
+
+      // Mouse: 190 available
+      { warehouseId: sfWarehouse.id, productId: mouse.id, inStock: 50, reserved: 0, available: 50 },
+      { warehouseId: chicagoWarehouse.id, productId: mouse.id, inStock: 50, reserved: 0, available: 50 },
+      { warehouseId: newarkWarehouse.id, productId: mouse.id, inStock: 40, reserved: 0, available: 40 },
+      { warehouseId: dallasWarehouse.id, productId: mouse.id, inStock: 30, reserved: 0, available: 30 },
+      { warehouseId: seattleWarehouse.id, productId: mouse.id, inStock: 20, reserved: 0, available: 20 },
     ],
   });
 
-  console.log('✅ Warehouse stocks seeded.');
+  console.log('✅ Warehouse stocks seeded across 5 regional hubs.');
 
   // 8. Seed AI Upsell / Co-Purchase Rules (Screen 4)
   await prisma.productCoPurchaseRule.createMany({
@@ -328,7 +389,43 @@ async function main() {
     ],
   });
 
-  console.log('✅ AI Upsell / Cross-Sell pairing rules seeded.');
+  // 8b. Seed Admin Curated Upsell Feed for Laptop Pro 14 (Ranks 1 to 5)
+  await prisma.adminCuratedUpsell.createMany({
+    data: [
+      {
+        baseProductId: laptop.id,
+        recommendedProductId: mouse.id,
+        rank: 1,
+        isActive: true,
+      },
+      {
+        baseProductId: laptop.id,
+        recommendedProductId: docking.id,
+        rank: 2,
+        isActive: true,
+      },
+      {
+        baseProductId: laptop.id,
+        recommendedProductId: carePlan.id,
+        rank: 3,
+        isActive: true,
+      },
+      {
+        baseProductId: laptop.id,
+        recommendedProductId: setupService.id,
+        rank: 4,
+        isActive: true,
+      },
+      {
+        baseProductId: laptop.id,
+        recommendedProductId: supportSla.id,
+        rank: 5,
+        isActive: true,
+      },
+    ],
+  });
+
+  console.log('✅ Admin Curated Upsell Feed (Ranks 1 to 5) and Co-purchase rules seeded.');
 
   // 9. Seed Subscription Plan Templates (A5)
   await prisma.subscriptionPlanTemplate.createMany({
@@ -622,6 +719,134 @@ async function main() {
     ],
   });
 
+  // 11. Seed Historical Quotations for 90-Day Rolling Rep Discount Baseline (Rep J. Rao)
+  const hq1 = await prisma.quotation.create({
+    data: {
+      quoteNumber: 'Q-HIST-01',
+      customerId: acme.id,
+      salesRepId: rep.id,
+      status: QuotationStatus.CONFIRMED,
+      blendedRiskScore: RiskLevel.LOW,
+      subtotalAmount: 4800.0,
+      totalDiscountAmount: 336.0,
+      orderDiscountPercent: 0.0,
+      totalAmount: 4464.0,
+      totalCost: 3200.0,
+      totalMarginPercent: 28.32,
+      createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
+    },
+  });
+
+  await prisma.quotationLine.createMany({
+    data: [
+      {
+        quotationId: hq1.id,
+        productId: laptop.id,
+        category: ProductCategory.HARDWARE,
+        quantity: 4,
+        unitCost: 800.0,
+        unitPrice: 1200.0,
+        discountPercent: 7.0,
+        allowedLimitPercent: 15.0,
+        isOverLimit: false,
+        overLimitPoints: 0.0,
+        lineTotal: 4464.0,
+        lineCostTotal: 3200.0,
+        lineMarginPercent: 28.32,
+      },
+    ],
+  });
+
+  const hq2 = await prisma.quotation.create({
+    data: {
+      quoteNumber: 'Q-HIST-02',
+      customerId: beta.id,
+      salesRepId: rep.id,
+      status: QuotationStatus.CONFIRMED,
+      blendedRiskScore: RiskLevel.LOW,
+      subtotalAmount: 3600.0,
+      totalDiscountAmount: 288.0,
+      orderDiscountPercent: 0.0,
+      totalAmount: 3312.0,
+      totalCost: 2400.0,
+      totalMarginPercent: 27.54,
+      createdAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000),
+    },
+  });
+
+  await prisma.quotationLine.createMany({
+    data: [
+      {
+        quotationId: hq2.id,
+        productId: laptop.id,
+        category: ProductCategory.HARDWARE,
+        quantity: 3,
+        unitCost: 800.0,
+        unitPrice: 1200.0,
+        discountPercent: 8.0,
+        allowedLimitPercent: 10.0,
+        isOverLimit: false,
+        overLimitPoints: 0.0,
+        lineTotal: 3312.0,
+        lineCostTotal: 2400.0,
+        lineMarginPercent: 27.54,
+      },
+    ],
+  });
+
+  const hq3 = await prisma.quotation.create({
+    data: {
+      quoteNumber: 'Q-HIST-03',
+      customerId: delta.id,
+      salesRepId: rep.id,
+      status: QuotationStatus.CONFIRMED,
+      blendedRiskScore: RiskLevel.LOW,
+      subtotalAmount: 2400.0,
+      totalDiscountAmount: 192.0,
+      orderDiscountPercent: 0.0,
+      totalAmount: 2208.0,
+      totalCost: 1600.0,
+      totalMarginPercent: 27.54,
+      createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
+    },
+  });
+
+  await prisma.quotationLine.createMany({
+    data: [
+      {
+        quotationId: hq3.id,
+        productId: laptop.id,
+        category: ProductCategory.HARDWARE,
+        quantity: 2,
+        unitCost: 800.0,
+        unitPrice: 1200.0,
+        discountPercent: 8.0,
+        allowedLimitPercent: 5.0,
+        isOverLimit: true,
+        overLimitPoints: 3.0,
+        lineTotal: 2208.0,
+        lineCostTotal: 1600.0,
+        lineMarginPercent: 27.54,
+      },
+      {
+        quotationId: hq3.id,
+        productId: mouse.id,
+        category: ProductCategory.HARDWARE,
+        quantity: 2,
+        unitCost: 20.0,
+        unitPrice: 45.0,
+        discountPercent: 9.0,
+        allowedLimitPercent: 5.0,
+        isOverLimit: true,
+        overLimitPoints: 4.0,
+        lineTotal: 81.9,
+        lineCostTotal: 40.0,
+        lineMarginPercent: 51.16,
+      },
+    ],
+  });
+
+  console.log('✅ Historical baseline quotations for Rep (90-day median = 8.0%) seeded.');
   console.log('✅ Realistic quotations (Q-1001..Q-1004) and approval requests seeded.');
 
   console.log('🎉 DealFlow360 seed complete!');

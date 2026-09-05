@@ -67,4 +67,37 @@ export class UpsellRulesController {
   async deleteRule(@Param('id') id: string) {
     return this.upsellRulesService.deleteRule(id);
   }
+
+  // --------------------------------------------------------------------------
+  // ADMIN CURATED FEED (Engine 1: Ranks 1 to 5)
+  // --------------------------------------------------------------------------
+  @Get('curated/list')
+  @Roles(Role.ADMIN, Role.SALES_REP, Role.SALES_MANAGER, Role.FINANCE)
+  @ApiOperation({ summary: 'List admin-curated upsell recommendations' })
+  @ApiQuery({ name: 'baseProductId', required: false })
+  async getCuratedUpsells(@Query('baseProductId') baseProductId?: string) {
+    return this.upsellRulesService.getCuratedUpsells(baseProductId);
+  }
+
+  @Post('curated')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Create/update admin-curated recommendation with priority rank (1 to 5)' })
+  async createCuratedUpsell(@Body() dto: any) {
+    return this.upsellRulesService.createCuratedUpsell(dto);
+  }
+
+  @Delete('curated/:id')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Delete admin-curated upsell rule' })
+  async deleteCuratedUpsell(@Param('id') id: string) {
+    return this.upsellRulesService.deleteCuratedUpsell(id);
+  }
+
+  @Post('cart-recommendations')
+  @Roles(Role.ADMIN, Role.SALES_REP, Role.SALES_MANAGER, Role.FINANCE)
+  @ApiOperation({ summary: 'Generate hybrid recommendations for cart items (Admin Feed + FP-Growth Affinity)' })
+  async getCartRecommendations(@Body('productIds') productIds: string[]) {
+    return this.upsellRulesService.getHybridCartRecommendations(productIds || []);
+  }
 }
+
