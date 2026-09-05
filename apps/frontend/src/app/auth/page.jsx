@@ -156,39 +156,39 @@ export default function AuthPage() {
     }
   };
 
-  // ---- Shared style tokens (light theme) ----
+  // ---- Shared style tokens (monochrome theme) ----
   const inputCls =
-    'w-full h-10 px-3.5 rounded-md bg-white border border-gray-200 text-gray-900 placeholder:text-gray-400 text-sm ' +
-    'focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-200 transition disabled:opacity-50';
+    'w-full h-10 px-3.5 rounded-xl bg-white border border-zinc-200 text-zinc-900 placeholder:text-zinc-400 text-xs font-medium ' +
+    'focus:outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-900/10 transition disabled:opacity-50';
 
-  const labelCls = 'block text-sm font-medium text-gray-900 mb-2';
+  const labelCls = 'block text-xs font-semibold text-zinc-700 mb-1.5';
 
-  const linkCls = 'text-gray-900 underline underline-offset-2 hover:text-gray-600 transition cursor-pointer';
+  const linkCls = 'text-zinc-900 font-semibold underline underline-offset-2 hover:text-zinc-600 transition cursor-pointer';
 
   // Already logged in → display active session card
   if (isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 text-gray-900 flex items-center justify-center p-6">
-        <div className="w-full max-w-md bg-white border border-gray-200 rounded-lg p-8 text-center shadow-sm">
-          <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center mx-auto mb-4 text-2xl font-semibold">
+      <div className="min-h-screen bg-[#FAFAFA] text-zinc-900 flex items-center justify-center p-6">
+        <div className="w-full max-w-md bg-white border border-zinc-200 rounded-2xl p-8 text-center shadow-xs">
+          <div className="w-16 h-16 rounded-2xl bg-zinc-900 text-white border border-zinc-800 flex items-center justify-center mx-auto mb-4 text-xl font-black shadow-xs">
             {user?.name?.[0]?.toUpperCase() || 'U'}
           </div>
-          <p className="text-sm text-gray-500 mb-1">Signed in as</p>
-          <p className="text-xl font-semibold text-gray-900">{user?.name}</p>
-          <p className="text-sm text-gray-500 mb-3">{user?.email}</p>
-          <span className="inline-block px-2.5 py-1 rounded-md bg-gray-100 text-gray-700 border border-gray-200 text-xs font-medium mb-6 capitalize">
+          <p className="text-xs text-zinc-400 font-semibold uppercase tracking-wider mb-1">Signed in as</p>
+          <p className="text-xl font-bold text-zinc-900">{user?.name}</p>
+          <p className="text-xs text-zinc-500 font-mono mt-0.5 mb-3">{user?.email}</p>
+          <span className="inline-block px-3 py-1 rounded-full bg-zinc-100 text-zinc-900 border border-zinc-200 text-xs font-bold mb-6 capitalize">
             {user?.role}
           </span>
-          <div className="flex gap-3">
+          <div className="flex gap-2.5">
             <button
               onClick={() => goHome(user)}
-              className="flex-1 h-10 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-300"
+              className="flex-1 h-10 rounded-xl bg-zinc-900 hover:bg-black text-white font-semibold text-xs transition cursor-pointer shadow-xs"
             >
               Continue to {user?.role === 'customer' ? 'Portal' : 'Dashboard'}
             </button>
             <button
               onClick={logout}
-              className="px-5 h-10 rounded-md bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 font-medium text-sm transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-gray-200"
+              className="px-5 h-10 rounded-xl bg-white hover:bg-zinc-50 text-zinc-700 border border-zinc-200 font-semibold text-xs transition cursor-pointer shadow-2xs"
             >
               Sign out
             </button>
@@ -199,30 +199,62 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-[42%_58%] bg-white text-gray-900">
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-[44%_56%] bg-white text-zinc-900">
       {/* ================= LEFT COLUMN: Auth ================= */}
-      <div className="relative flex flex-col min-h-screen border-r border-gray-200">
+      <div className="relative flex flex-col min-h-screen border-r border-zinc-200">
         {/* Brand */}
         <div className="px-8 sm:px-12 lg:px-16 pt-8">
-          <Link href="/" className="inline-flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-md bg-emerald-600 text-white flex items-center justify-center">
-              <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-              </svg>
+          <Link href="/auth" className="inline-flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-zinc-900 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+              DF
             </div>
-            <span className="text-xl font-semibold tracking-tight text-gray-900">DealFlow360</span>
+            <div>
+              <span className="text-base font-bold tracking-tight text-zinc-900 block leading-tight">DealFlow360</span>
+              <span className="text-[10px] text-zinc-400 block leading-none">Self-Governing Sales CPQ</span>
+            </div>
           </Link>
         </div>
 
         {/* Form */}
         <div className="flex-1 flex flex-col justify-center px-8 sm:px-12 lg:px-16 py-10">
-          <div className="w-full max-w-[480px] mx-auto">
-            <div className="mb-8">
-              <h1 className="text-3xl font-normal text-gray-900 tracking-tight">
-                {isLogin ? 'Welcome back' : 'Get started'}
+          <div className="w-full max-w-[440px] mx-auto">
+            {/* Pill Tab Toggle */}
+            <div className="flex p-1 bg-zinc-100 rounded-xl border border-zinc-200/80 mb-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLogin(true);
+                  setError('');
+                  setInfoMessage('');
+                }}
+                className={`flex-1 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  isLogin ? 'bg-white text-zinc-900 shadow-2xs' : 'text-zinc-500 hover:text-zinc-900'
+                }`}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLogin(false);
+                  setError('');
+                  setInfoMessage('');
+                  setSignupStep(1);
+                }}
+                className={`flex-1 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  !isLogin ? 'bg-white text-zinc-900 shadow-2xs' : 'text-zinc-500 hover:text-zinc-900'
+                }`}
+              >
+                Create Account
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-zinc-900 tracking-tight">
+                {isLogin ? 'Welcome back' : 'Create an enterprise account'}
               </h1>
-              <p className="text-sm text-gray-600 mt-2">
-                {isLogin ? 'Sign in to your account' : 'Create a new account'}
+              <p className="text-xs text-zinc-500 mt-1">
+                {isLogin ? 'Enter your credentials to access your live CPQ workspace.' : 'Register with email verification to access DealFlow360.'}
               </p>
             </div>
 
@@ -230,10 +262,10 @@ export default function AuthPage() {
             {error && (
               <div
                 role="alert"
-                className="mb-5 px-3.5 py-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-2"
+                className="mb-5 px-3.5 py-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2"
               >
                 <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
                 <span>{error}</span>
               </div>
@@ -243,7 +275,7 @@ export default function AuthPage() {
             {infoMessage && (
               <div
                 role="status"
-                className="mb-5 px-3.5 py-3 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm"
+                className="mb-5 px-3.5 py-3 rounded-xl bg-zinc-100 border border-zinc-200 text-zinc-900 text-xs font-medium"
               >
                 {infoMessage}
               </div>
@@ -307,8 +339,8 @@ export default function AuthPage() {
                 </div>
               ) : (
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label htmlFor="password" className="text-sm font-medium text-gray-900">Password</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label htmlFor="password" className={labelCls}>Password</label>
                     {isLogin && (
                       <button
                         type="button"
@@ -318,7 +350,7 @@ export default function AuthPage() {
                           setResetError('');
                           setResetSuccess('');
                         }}
-                        className="text-sm text-gray-500 hover:text-gray-900 transition cursor-pointer"
+                        className="text-xs text-zinc-500 hover:text-zinc-900 transition cursor-pointer"
                       >
                         Forgot password?
                       </button>
@@ -338,15 +370,15 @@ export default function AuthPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-7 rounded-md border border-gray-200 bg-white hover:bg-gray-50 text-gray-500 hover:text-gray-900 flex items-center justify-center transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-gray-200"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-500 hover:text-zinc-900 flex items-center justify-center transition cursor-pointer focus:outline-none"
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
                       {showPassword ? (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
                         </svg>
                       ) : (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
@@ -374,7 +406,7 @@ export default function AuthPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full h-11 mt-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                className="w-full h-10 mt-1 rounded-xl bg-zinc-900 hover:bg-black text-white font-semibold text-xs transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed shadow-xs"
               >
                 {submitting
                   ? 'Processing…'
@@ -387,7 +419,7 @@ export default function AuthPage() {
             </form>
 
             {/* Switcher */}
-            <p className="mt-8 text-center text-sm text-gray-600">
+            <p className="mt-6 text-center text-xs text-zinc-500">
               {isLogin ? "Don't have an account? " : 'Already have an account? '}
               <button
                 type="button"
@@ -407,119 +439,69 @@ export default function AuthPage() {
 
         {/* Platform Notice */}
         <div className="px-8 sm:px-12 lg:px-16 pb-8">
-          <p className="max-w-[480px] mx-auto text-xs text-gray-400 leading-relaxed text-center">
+          <p className="max-w-[480px] mx-auto text-[11px] text-zinc-400 leading-relaxed text-center">
             DealFlow360 &bull; Enterprise-grade self-governing CPQ and sales operations platform.
           </p>
         </div>
       </div>
 
-      {/* ================= RIGHT COLUMN: Demo Accounts & Capabilities ================= */}
-      <aside className="hidden lg:flex flex-col bg-slate-900 text-white min-h-screen p-12 justify-between">
+      {/* ================= RIGHT COLUMN: Enterprise CPQ Platform Showcase ================= */}
+      <aside className="hidden lg:flex flex-col bg-zinc-950 text-white min-h-screen p-10 lg:p-12 justify-between border-l border-zinc-800 relative overflow-hidden">
         {/* Top Header */}
-        <div className="flex items-center justify-between">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Live Seed Data Ready
+        <div className="flex items-center justify-between z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 text-zinc-200 border border-zinc-800 text-xs font-semibold">
+            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            Enterprise Sales Engine
           </div>
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-medium transition border border-slate-700"
-          >
-            Explore Demo &rarr;
-          </Link>
+          <span className="text-xs text-zinc-400 font-mono">v1.0.4</span>
         </div>
 
-        {/* Quick Demo Login Cards */}
-        <div className="max-w-md w-full my-auto">
-          <h2 className="text-xl font-bold text-white tracking-tight mb-2">
-            1-Click Demo Profiles
-          </h2>
-          <p className="text-xs text-slate-400 mb-6">
-            Click any account below to autofill verified test credentials (password: <code className="text-emerald-400 font-mono">123456</code>)
-          </p>
+        {/* Center: Image & Showcase */}
+        <div className="my-auto z-10 max-w-lg w-full">
+          <div className="relative rounded-2xl overflow-hidden border border-zinc-800 shadow-2xl bg-zinc-900 group">
+            {/* Image */}
+            <img
+              src="/dealflow_cpq_showcase.jpg"
+              alt="DealFlow360 Enterprise CPQ Platform"
+              className="w-full h-auto object-cover transform group-hover:scale-[1.01] transition duration-700"
+            />
+            {/* Subtle gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent pointer-events-none" />
+            <div className="absolute bottom-4 left-4 right-4 text-left pointer-events-none">
+              <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-white text-zinc-950 mb-1 inline-block">
+                CPQ &bull; Dynamic Pricing &bull; Multi-Tier Approvals
+              </span>
+              <p className="text-xs font-medium text-zinc-200">
+                Automated deal governance, real-time margin thresholds, and instant customer portal negotiation.
+              </p>
+            </div>
+          </div>
 
-          <div className="space-y-2.5">
-            {[
-              {
-                role: 'Sales Rep',
-                email: 'rep@dealflow.com',
-                name: 'J. Rao (Direct Sales)',
-                badge: 'Quotations & Pipeline',
-                badgeCls: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-              },
-              {
-                role: 'Sales Manager',
-                email: 'manager@dealflow.com',
-                name: 'M. Shah (Sales Ops)',
-                badge: 'Approval Queue & Nudge',
-                badgeCls: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-              },
-              {
-                role: 'Finance Controller',
-                email: 'finance@dealflow.com',
-                name: 'R. Iyer (Finance & Ops)',
-                badge: 'Tier-2 Audit & Invoicing',
-                badgeCls: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-              },
-              {
-                role: 'Executive Admin',
-                email: 'admin@dealflow.com',
-                name: 'Aniket Dabhi (Admin)',
-                badge: 'Full Governance & Rules',
-                badgeCls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-              },
-              {
-                role: 'Client Portal',
-                email: 'customer@dealflow.com',
-                name: 'Vikram Mehta (Procurement)',
-                badge: 'Negotiation & Acceptance',
-                badgeCls: 'bg-teal-500/10 text-teal-400 border-teal-500/20',
-              },
-            ].map((item) => (
-              <button
-                key={item.email}
-                type="button"
-                onClick={() => {
-                  setEmail(item.email);
-                  setPassword('123456');
-                  setIsLogin(true);
-                  setError('');
-                }}
-                className="w-full text-left p-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 hover:border-slate-600 transition flex items-center justify-between group cursor-pointer"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors">
-                      {item.role}
-                    </span>
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-md border ${item.badgeCls}`}>
-                      {item.badge}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5 font-mono">{item.email}</p>
-                </div>
-                <span className="text-xs font-semibold text-slate-400 group-hover:text-white transition">
-                  Select &rarr;
-                </span>
-              </button>
-            ))}
+          <div className="mt-6 space-y-2">
+            <h2 className="text-lg font-bold text-white tracking-tight">
+              Self-Governing CPQ for High-Velocity Teams
+            </h2>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Empower sales representatives with real-time margin guardrails, auto-routed multi-tier approvals, and seamless contract fulfillment.
+            </p>
           </div>
         </div>
 
         {/* Bottom Tagline */}
-        <div className="text-xs text-slate-500 border-t border-slate-800 pt-6">
-          DealFlow360 &bull; Automated CPQ & Governance Engine
+        <div className="text-xs text-zinc-500 border-t border-zinc-800/80 pt-6 z-10 flex items-center justify-between">
+          <span>DealFlow360 Platform</span>
+          <span>Enterprise Sales Operations</span>
         </div>
       </aside>
 
       {/* PASSWORD RESET MODAL */}
       {isResetModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 max-w-md w-full p-6 text-gray-900 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-2xl shadow-xl border border-zinc-200 max-w-md w-full p-6 text-zinc-900 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-100 mb-4">
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Reset Your Password</h3>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <h3 className="text-base font-bold text-zinc-900">Reset Your Password</h3>
+                <p className="text-xs text-zinc-500 mt-0.5">
                   {resetStep === 1
                     ? 'Enter your email to receive a 6-digit verification code.'
                     : 'Enter the verification code and choose a new password.'}
@@ -527,20 +509,21 @@ export default function AuthPage() {
               </div>
               <button
                 onClick={() => setIsResetModalOpen(false)}
-                className="p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition cursor-pointer"
+                aria-label="Close"
               >
-                ✕
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
 
             {resetError && (
-              <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs font-medium">
+              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
                 {resetError}
               </div>
             )}
 
             {resetSuccess && (
-              <div className="mb-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
+              <div className="mb-4 p-3 rounded-xl bg-zinc-100 border border-zinc-200 text-zinc-900 text-xs font-medium">
                 {resetSuccess}
               </div>
             )}
@@ -548,28 +531,28 @@ export default function AuthPage() {
             {resetStep === 1 ? (
               <form onSubmit={handleInitiateReset} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Account Email</label>
+                  <label className={labelCls}>Account Email</label>
                   <input
                     type="email"
                     required
                     placeholder="you@example.com"
                     value={resetEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
-                    className="w-full h-10 px-3 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200"
+                    className={inputCls}
                   />
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
                   <button
                     type="button"
                     onClick={() => setIsResetModalOpen(false)}
-                    className="px-4 py-2 rounded-md border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                    className="px-4 py-2 rounded-xl border border-zinc-200 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={resetLoading}
-                    className="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition disabled:opacity-50"
+                    className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-semibold transition disabled:opacity-50 cursor-pointer shadow-xs"
                   >
                     {resetLoading ? 'Sending...' : 'Send Verification Code'}
                   </button>
@@ -578,7 +561,7 @@ export default function AuthPage() {
             ) : (
               <form onSubmit={handleVerifyReset} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">6-Digit Verification Code</label>
+                  <label className={labelCls}>6-Digit Verification Code</label>
                   <input
                     type="text"
                     required
@@ -586,31 +569,31 @@ export default function AuthPage() {
                     placeholder="123456"
                     value={resetOtp}
                     onChange={(e) => setResetOtp(e.target.value)}
-                    className="w-full h-10 px-3 rounded-md border border-gray-200 text-center font-mono tracking-widest text-base focus:outline-none focus:ring-2 focus:ring-gray-200"
+                    className={`${inputCls} text-center font-mono tracking-widest text-base`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">New Password</label>
+                  <label className={labelCls}>New Password</label>
                   <input
                     type="password"
                     required
                     placeholder="At least 6 characters"
                     value={resetNewPassword}
                     onChange={(e) => setResetNewPassword(e.target.value)}
-                    className="w-full h-10 px-3 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200"
+                    className={inputCls}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Confirm New Password</label>
+                  <label className={labelCls}>Confirm New Password</label>
                   <input
                     type="password"
                     required
                     placeholder="Re-enter new password"
                     value={resetConfirmPassword}
                     onChange={(e) => setResetConfirmPassword(e.target.value)}
-                    className="w-full h-10 px-3 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200"
+                    className={inputCls}
                   />
                 </div>
 
@@ -618,14 +601,14 @@ export default function AuthPage() {
                   <button
                     type="button"
                     onClick={() => setResetStep(1)}
-                    className="text-xs text-gray-500 hover:underline"
+                    className="text-xs text-zinc-500 hover:text-zinc-900 hover:underline transition cursor-pointer"
                   >
-                    ← Back to email
+                    &larr; Back to email
                   </button>
                   <button
                     type="submit"
                     disabled={resetLoading}
-                    className="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition disabled:opacity-50"
+                    className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-semibold transition disabled:opacity-50 cursor-pointer shadow-xs"
                   >
                     {resetLoading ? 'Updating...' : 'Set New Password'}
                   </button>
