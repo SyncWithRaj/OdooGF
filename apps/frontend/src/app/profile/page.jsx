@@ -23,7 +23,6 @@ export default function ProfilePage() {
 
   const [avatarSrc, setAvatarSrc] = useState('/avatar.jpg');
   const [bannerSrc, setBannerSrc] = useState('/cover_banner.jpg');
-  const [isConnected, setIsConnected] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
   // Reset Password Modal & form state
@@ -83,10 +82,7 @@ export default function ProfilePage() {
     }
   };
 
-  const handleConnectToggle = () => {
-    setIsConnected(!isConnected);
-    showToast(!isConnected ? `Connected to ${profile.name}` : 'Connection removed');
-  };
+
 
   // Password reset submit handler
   const handlePasswordSubmit = async (e) => {
@@ -298,29 +294,9 @@ export default function ProfilePage() {
               <span>Active Account Profile</span>
             </div>
 
-            {/* Action Buttons: Connect + Reset Password + More Options */}
+            {/* Action Buttons: Reset Password + More Options */}
             <div className="flex items-center gap-2 self-end sm:self-auto">
-              {/* Connect Button */}
-              <button
-                type="button"
-                onClick={handleConnectToggle}
-                className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
-                  isConnected
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                    : 'bg-slate-950 hover:bg-slate-800 text-white'
-                }`}
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  {isConnected ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                  )}
-                </svg>
-                <span>{isConnected ? 'Connected' : 'Connect'}</span>
-              </button>
-
-              {/* Reset Password Button beside Connect */}
+              {/* Reset Password Button */}
               <button
                 type="button"
                 onClick={() => setShowResetModal(true)}
