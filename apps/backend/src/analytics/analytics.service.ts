@@ -266,4 +266,89 @@ export class AnalyticsService {
 
     return [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
   }
+
+  // ----------------------------------------------------------------------------
+  // A7: EXPORT PIPELINE AS PRINTABLE / PDF REPORT (Screen 15)
+  // ----------------------------------------------------------------------------
+  async exportPipelineHtmlReport() {
+    const quotes = await this.prisma.quotation.findMany({
+      include: { customer: true, salesRep: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const totalValue = quotes.reduce((acc, q) => acc + q.totalAmount, 0);
+
+    const rows = quotes
+      .map(
+        (q) => `
+        <tr>
+          <td><strong>${q.quoteNumber}</strong></td>
+          <td>${q.customer.name} (${q.customer.tier})</td>
+          <td>${q.salesRep.fullName}</td>
+          <td><span class="badge">${q.status}</span></td>
+          <td>${q.blendedRiskScore}</td>
+          <td>$${q.totalAmount.toFixed(2)}</td>
+          <td>${q.totalMarginPercent.toFixed(1)}%</td>
+        </tr>`,
+      )
+      .join('');
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>DealFlow360 Executive Sales Pipeline Report</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 40px; color: #1e293b; }
+    h1 { font-size: 24px; margin-bottom: 4px; }
+    .subtitle { color: #64748b; margin-bottom: 24px; font-size: 14px; }
+    .kpi-box { display: flex; gap: 20px; margin-bottom: 30px; }
+    .kpi { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px 24px; }
+    .kpi-title { font-size: 12px; color: #64748b; text-transform: uppercase; font-weight: 600; }
+    .kpi-value { font-size: 22px; font-weight: 700; margin-top: 4px; color: #0f172a; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+    th { background: #f1f5f9; text-align: left; padding: 10px 12px; border-bottom: 2px solid #cbd5e1; }
+    td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; }
+    tr:nth-child(even) { background: #fafafa; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #e0f2fe; color: #0369a1; }
+    @media print { button { display: none; } }
+  </style>
+</head>
+<body>
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+      <h1>DealFlow360 — Executive Sales Pipeline Report</h1>
+      <div class="subtitle">Generated on ${new Date().toLocaleString()} | Self-Governing Sales Operations</div>
+    </div>
+    <button onclick="window.print()" style="padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Print to PDF</button>
+  </div>
+  <div class="kpi-box">
+    <div class="kpi">
+      <div class="kpi-title">Total Active Deals</div>
+      <div class="kpi-value">${quotes.length}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-title">Total Pipeline Valuation</div>
+      <div class="kpi-value">$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Quote #</th>
+        <th>Customer</th>
+        <th>Sales Rep</th>
+        <th>Status</th>
+        <th>Risk Level</th>
+        <th>Amount</th>
+        <th>Margin %</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows}
+    </tbody>
+  </table>
+</body>
+</html>`;
+  }
 }

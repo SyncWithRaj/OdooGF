@@ -69,9 +69,9 @@ export class SubscriptionContractsController {
     return this.subscriptionsService.cancelSubscription(id, dto);
   }
 
-  @Post(':id/adjust-quantity')
+  @Post([':id/adjust-quantity', ':id/modify'])
   @Roles(Role.ADMIN, Role.SALES_MANAGER, Role.FINANCE)
-  @ApiOperation({ summary: 'Upgrade/downgrade subscription seats with mid-cycle proration delta' })
+  @ApiOperation({ summary: 'Upgrade/downgrade subscription seats with mid-cycle proration delta (/modify alias)' })
   @ApiResponse({ status: 200, description: 'Quantity adjusted and prorated charge logged' })
   async adjustQuantity(
     @Param('id') id: string,

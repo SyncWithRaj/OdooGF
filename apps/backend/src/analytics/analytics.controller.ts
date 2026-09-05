@@ -64,10 +64,10 @@ export class AnalyticsController {
     return this.analyticsService.getReports();
   }
 
-  @Get('export/csv')
+  @Get(['export/csv', 'export/xls'])
   @Roles(Role.ADMIN, Role.SALES_MANAGER, Role.FINANCE)
-  @ApiOperation({ summary: 'Export full sales pipeline report as CSV spreadsheet (Screen 15 / A7)' })
-  @ApiResponse({ status: 200, description: 'Downloadable CSV report' })
+  @ApiOperation({ summary: 'Export full sales pipeline report as CSV/XLS spreadsheet (Screen 15 / A7)' })
+  @ApiResponse({ status: 200, description: 'Downloadable CSV/XLS report' })
   async exportCsv(@Res() res: Response) {
     const csvData = await this.analyticsService.exportPipelineCsv();
     res.setHeader('Content-Type', 'text/csv');
@@ -76,5 +76,15 @@ export class AnalyticsController {
       `attachment; filename="dealflow360_pipeline_export_${Date.now()}.csv"`,
     );
     return res.status(200).send(csvData);
+  }
+
+  @Get('export/pdf')
+  @Roles(Role.ADMIN, Role.SALES_MANAGER, Role.FINANCE)
+  @ApiOperation({ summary: 'Export executive pipeline report formatted for print/PDF (Screen 15 / A7)' })
+  @ApiResponse({ status: 200, description: 'Downloadable PDF/Printable report' })
+  async exportPdf(@Res() res: Response) {
+    const reportHtml = await this.analyticsService.exportPipelineHtmlReport();
+    res.setHeader('Content-Type', 'text/html');
+    return res.status(200).send(reportHtml);
   }
 }

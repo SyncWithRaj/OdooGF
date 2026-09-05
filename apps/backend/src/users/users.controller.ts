@@ -50,8 +50,8 @@ export class UsersController {
     return this.usersService.findOne(id);
   }
 
-  @Patch(':id')
-  @ApiOperation({ summary: 'Admin updates user details, role, or team' })
+  @Patch([':id', ':id/role'])
+  @ApiOperation({ summary: 'Admin updates user details, role, or team (/role alias)' })
   @ApiResponse({ status: 200, description: 'User updated successfully' })
   @ApiResponse({ status: 404, description: 'User not found' })
   async update(@Param('id') id: string, @Body() dto: UpdateUserDto) {

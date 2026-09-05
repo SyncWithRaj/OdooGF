@@ -74,4 +74,21 @@ export class DiscountRulesController {
   async updateApprovalMatrix(@Body() dto: UpdateApprovalMatrixDto) {
     return this.discountRulesService.updateApprovalMatrix(dto);
   }
+
+  @Put()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Update discount rules or ceilings (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Rules updated' })
+  async updateRules(@Body() body: any) {
+    if (body.tier && body.maxDiscountPercent !== undefined) {
+      await this.discountRulesService.updateTierCeiling(body);
+    }
+    if (body.category && body.maxDiscountPercent !== undefined) {
+      await this.discountRulesService.updateCategoryCeiling(body);
+    }
+    if (body.riskLevel) {
+      await this.discountRulesService.updateApprovalMatrix(body);
+    }
+    return this.discountRulesService.getAllRules();
+  }
 }

@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -57,6 +58,7 @@ export class ProductsController {
     return this.productsService.findOne(id, userRole);
   }
 
+  @Put(':id')
   @Patch(':id')
   @Roles(Role.ADMIN, Role.SALES_MANAGER)
   @ApiOperation({ summary: 'Update product pricing, margin threshold or details (Admin / Sales Manager)' })
