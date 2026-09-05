@@ -129,9 +129,10 @@ export default function AuthPage() {
           const res = await initiateSignup(name, email, password, confirm);
           setSignupStep(2);
           setInfoMessage(res.message || 'Verification code sent!');
-          if (res.devOtp) {
-            setInfoMessage(`Verification code sent! (Dev OTP: ${res.devOtp})`);
-          }
+          // Removed Dev OTP display from UI for production
+          // if (res.devOtp) {
+          //   setInfoMessage(`Verification code sent! (Dev OTP: ${res.devOtp})`);
+          // }
         } catch (err) {
           setError(err?.message || 'Failed to initiate signup.');
         } finally {
@@ -158,12 +159,12 @@ export default function AuthPage() {
 
   // ---- Shared style tokens (light theme) ----
   const inputCls =
-    'w-full h-10 px-3.5 rounded-md bg-white border border-gray-200 text-gray-900 placeholder:text-gray-400 text-sm ' +
-    'focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-200 transition disabled:opacity-50';
+    'w-full h-10 px-3.5 rounded-md bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 text-sm shadow-xs ' +
+    'focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition disabled:opacity-50';
 
-  const labelCls = 'block text-sm font-medium text-gray-900 mb-2';
+  const labelCls = 'block text-xs sm:text-[13px] font-medium text-gray-700 mb-1.5';
 
-  const linkCls = 'text-gray-900 underline underline-offset-2 hover:text-gray-600 transition cursor-pointer';
+  const linkCls = 'text-gray-900 font-medium underline underline-offset-2 hover:text-gray-600 transition cursor-pointer';
 
   // Already logged in → display active session card
   if (isAuthenticated) {
@@ -182,7 +183,7 @@ export default function AuthPage() {
           <div className="flex gap-3">
             <button
               onClick={() => goHome(user)}
-              className="flex-1 h-10 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-300"
+              className="flex-1 h-10 rounded-md bg-black hover:bg-neutral-800 text-white font-medium text-sm transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-neutral-900/20"
             >
               Continue to {user?.role === 'customer' ? 'Portal' : 'Dashboard'}
             </button>
@@ -199,32 +200,31 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-[42%_58%] bg-white text-gray-900">
+    <div className="min-h-screen grid grid-cols-1 md:grid-cols-[45%_55%] lg:grid-cols-[42%_58%] bg-white text-gray-900">
       {/* ================= LEFT COLUMN: Auth ================= */}
-      <div className="relative flex flex-col min-h-screen border-r border-gray-200">
-        {/* Brand */}
-        <div className="px-8 sm:px-12 lg:px-16 pt-8">
+      <div className="relative flex flex-col justify-center items-center min-h-screen border-r border-gray-200 px-6 sm:px-10 py-12">
+        {/* Brand - pinned top-left matching the documentation button on the right */}
+        <div className="absolute top-8 left-8 sm:top-10 sm:left-12 z-10">
           <Link href="/" className="inline-flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-md bg-emerald-600 text-white flex items-center justify-center">
+            <div className="w-7.5 h-7.5 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-xs">
               <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
               </svg>
             </div>
-            <span className="text-xl font-semibold tracking-tight text-gray-900">DealFlow360</span>
+            <span className="text-lg font-semibold tracking-tight text-gray-900">DealFlow360</span>
           </Link>
         </div>
 
-        {/* Form */}
-        <div className="flex-1 flex flex-col justify-center px-8 sm:px-12 lg:px-16 py-10">
-          <div className="w-full max-w-[480px] mx-auto">
-            <div className="mb-8">
-              <h1 className="text-3xl font-normal text-gray-900 tracking-tight">
-                {isLogin ? 'Welcome back' : 'Get started'}
-              </h1>
-              <p className="text-sm text-gray-600 mt-2">
-                {isLogin ? 'Sign in to your account' : 'Create a new account'}
-              </p>
-            </div>
+        {/* Form - perfectly centered in the login column */}
+        <div className="w-full max-w-[360px] my-auto">
+          <div className="mb-7">
+            <h1 className="text-2xl sm:text-[26px] font-semibold text-gray-900 tracking-tight">
+              {isLogin ? 'Welcome back' : 'Get started'}
+            </h1>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
+              {isLogin ? 'Sign in to your account' : 'Create a new account'}
+            </p>
+          </div>
 
             {/* Error Message */}
             {error && (
@@ -307,8 +307,8 @@ export default function AuthPage() {
                 </div>
               ) : (
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label htmlFor="password" className="text-sm font-medium text-gray-900">Password</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label htmlFor="password" className="text-xs sm:text-[13px] font-medium text-gray-700">Password</label>
                     {isLogin && (
                       <button
                         type="button"
@@ -318,7 +318,7 @@ export default function AuthPage() {
                           setResetError('');
                           setResetSuccess('');
                         }}
-                        className="text-sm text-gray-500 hover:text-gray-900 transition cursor-pointer"
+                        className="text-xs text-gray-500 hover:text-gray-900 transition cursor-pointer"
                       >
                         Forgot password?
                       </button>
@@ -338,7 +338,7 @@ export default function AuthPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-7 rounded-md border border-gray-200 bg-white hover:bg-gray-50 text-gray-500 hover:text-gray-900 flex items-center justify-center transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-gray-200"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition cursor-pointer focus:outline-none"
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
                       {showPassword ? (
@@ -374,7 +374,7 @@ export default function AuthPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full h-11 mt-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                className="w-full h-10 mt-1.5 rounded-md bg-[#111111] hover:bg-neutral-800 text-white font-bold text-sm transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-neutral-900/20 shadow-xs"
               >
                 {submitting
                   ? 'Processing…'
@@ -387,7 +387,7 @@ export default function AuthPage() {
             </form>
 
             {/* Switcher */}
-            <p className="mt-8 text-center text-sm text-gray-600">
+            <p className="mt-6 text-center text-xs sm:text-sm text-gray-600">
               {isLogin ? "Don't have an account? " : 'Already have an account? '}
               <button
                 type="button"
@@ -405,53 +405,41 @@ export default function AuthPage() {
           </div>
         </div>
 
-        {/* Legal */}
-        <div className="px-8 sm:px-12 lg:px-16 pb-8">
-          <p className="max-w-[480px] mx-auto text-xs text-gray-500 leading-relaxed text-center">
-            By continuing, you agree to DealFlow360&apos;s{' '}
-            <Link href="/terms" className="underline underline-offset-2 hover:text-gray-900">Terms of Service</Link> and{' '}
-            <Link href="/privacy" className="underline underline-offset-2 hover:text-gray-900">Privacy Policy</Link>, and to
-            receive periodic emails with updates.
-          </p>
-        </div>
-      </div>
-
       {/* ================= RIGHT COLUMN: Testimonial ================= */}
-      <aside className="hidden lg:flex flex-col bg-gray-50 min-h-screen">
-        {/* Documentation */}
-        <div className="flex justify-end px-12 pt-8">
+      <aside className="relative hidden md:flex flex-col justify-center items-center bg-[#121212] min-h-screen text-white select-none px-8 lg:px-12 xl:px-16 overflow-hidden">
+        {/* Subtle Ambient Dark Glow Overlay */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-neutral-800/20 rounded-full blur-3xl" />
+        </div>
+        {/* Documentation Link - pinned top-right */}
+        <div className="absolute top-8 right-8 lg:top-10 lg:right-12 z-10">
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 h-9 px-3.5 rounded-md bg-white hover:bg-gray-50 text-gray-900 text-sm border border-gray-200 transition"
+            className="inline-flex items-center gap-2 h-8 px-3 rounded-md bg-[#181818] hover:bg-[#202020] text-neutral-300 hover:text-white text-xs font-medium border border-neutral-800 transition"
           >
-            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg className="w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
             <span>Documentation</span>
           </Link>
         </div>
 
-        {/* Quote */}
-        <div className="flex-1 flex items-center justify-center px-16">
-          <figure className="relative max-w-2xl">
-            <span
-              aria-hidden="true"
-              className="absolute -left-14 -top-6 text-[110px] leading-none font-serif italic text-gray-300 select-none"
-            >
-              &ldquo;
-            </span>
-            <blockquote className="text-[32px] leading-[1.25] font-normal text-gray-900 tracking-tight">
-              I&apos;m trying @dealflow360, sales operations alternative that uses automated approvals
-              (and real-time deal health tracking too) in the cloud. It&apos;s incredible 😍
-            </blockquote>
-            <figcaption className="mt-8 flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-gray-300 to-gray-500 border border-gray-200 flex items-center justify-center text-white font-semibold text-sm shadow-sm">
-                JP
-              </div>
-              <span className="text-lg text-gray-900">@JP__Gallegos</span>
-            </figcaption>
-          </figure>
-        </div>
+        {/* Vertical Column Style Quote */}
+        <figure className="relative max-w-[500px] xl:max-w-[540px] w-full my-auto">
+          {/* Iconic double slanted quotation mark with generous spacing */}
+          <svg
+            className="absolute -left-16 sm:-left-20 -top-7 sm:-top-9 w-10 h-7 text-neutral-600 fill-current select-none pointer-events-none"
+            viewBox="0 0 34 24"
+            aria-hidden="true"
+          >
+            <path d="M12.923 0H6.262L0 23.111H6.661L12.923 0Z" />
+            <path d="M33.923 0H27.262L21 23.111H27.661L33.923 0Z" />
+          </svg>
+          <blockquote className="text-[28px] sm:text-[32px] font-medium xl:text-[34px] leading-[1.65] font-normal text-neutral-100 tracking-tight font-sans">
+            I&apos;m trying @dealflow360, sales operations alternative that uses automated approvals
+            (and real-time deal health tracking too) in the cloud. It&apos;s incredible
+          </blockquote>
+        </figure>
       </aside>
 
       {/* PASSWORD RESET MODAL */}
@@ -511,7 +499,7 @@ export default function AuthPage() {
                   <button
                     type="submit"
                     disabled={resetLoading}
-                    className="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition disabled:opacity-50"
+                    className="px-4 py-2 rounded-md bg-black hover:bg-neutral-800 text-white text-xs font-medium transition disabled:opacity-50 cursor-pointer"
                   >
                     {resetLoading ? 'Sending...' : 'Send Verification Code'}
                   </button>
@@ -567,7 +555,7 @@ export default function AuthPage() {
                   <button
                     type="submit"
                     disabled={resetLoading}
-                    className="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition disabled:opacity-50"
+                    className="px-4 py-2 rounded-md bg-black hover:bg-neutral-800 text-white text-xs font-medium transition disabled:opacity-50 cursor-pointer"
                   >
                     {resetLoading ? 'Updating...' : 'Set New Password'}
                   </button>
