@@ -31,15 +31,17 @@ export default function Navbar() {
   };
 
   return (
-    <header className="border-b border-slate-200/80 bg-white/95 backdrop-blur-md sticky top-0 z-40">
+    <header className="border-b border-zinc-200 bg-white sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
-        {/* Brand Logo with Orange Dot Indicator like Shadcn screenshot */}
-        <Link href="/" className="font-bold text-sm sm:text-base tracking-tight text-slate-900 flex items-center gap-2 whitespace-nowrap group">
-          <span className="w-2.5 h-2.5 rounded-full bg-orange-500 ring-4 ring-orange-100 group-hover:scale-110 transition-transform" />
+        {/* Brand Logo */}
+        <Link href="/" className="font-bold text-sm sm:text-base tracking-tight text-zinc-900 flex items-center gap-2 whitespace-nowrap group">
+          <span className="w-6 h-6 rounded-md bg-zinc-900 text-white flex items-center justify-center text-xs font-bold transition-transform group-hover:scale-105">
+            DF
+          </span>
           <span>DealFlow360</span>
         </Link>
 
-        {/* Navigation Tabs with subtle hover and active grey pill */}
+        {/* Navigation Tabs */}
         <nav className="flex items-center gap-1 overflow-x-auto py-1 text-xs">
           {visibleTabs.map((tab) => {
             const active = pathname.startsWith(tab.href);
@@ -47,10 +49,10 @@ export default function Navbar() {
               <Link
                 key={tab.href}
                 href={tab.href}
-                className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-all ${
+                className={`px-3 py-1.5 rounded-md font-medium whitespace-nowrap transition-colors ${
                   active
-                    ? 'bg-slate-100 text-slate-900 font-semibold shadow-xs'
-                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                    ? 'bg-zinc-900 text-white font-semibold shadow-xs'
+                    : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
                 }`}
               >
                 {tab.label}
@@ -62,26 +64,24 @@ export default function Navbar() {
         {/* User Session */}
         {isAuthenticated ? (
           <div className="flex items-center gap-3 whitespace-nowrap">
-            <div className="flex items-center gap-2 text-xs text-slate-600">
-              <span className="hidden sm:inline">Hi, <strong className="text-slate-900 font-semibold">{user?.name}</strong></span>
-              {/* Pastel Buttercream Role Badge */}
-              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-[#FEF9C3] text-amber-900 border border-amber-200/70 shadow-xs">
+            <div className="flex items-center gap-2 text-xs text-zinc-600">
+              <span className="hidden sm:inline">Hi, <strong className="text-zinc-900 font-semibold">{user?.name}</strong></span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-zinc-100 text-zinc-800 border border-zinc-200">
                 {user?.role}
               </span>
             </div>
             {/* Clean Logout Button */}
             <button
               onClick={handleLogout}
-              className="text-xs font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+              className="text-xs font-semibold text-zinc-500 hover:text-rose-600 hover:bg-rose-50 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
             >
               Sign Out
             </button>
           </div>
         ) : (
-          /* Pitch-Dark Primary Button like "+ Add New" / "Download Template" in screenshot */
           <Link
             href="/auth"
-            className="px-4 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition shadow-sm"
+            className="px-4 py-1.5 rounded-md bg-zinc-900 hover:bg-black text-white font-semibold text-xs transition shadow-xs"
           >
             Sign In
           </Link>
