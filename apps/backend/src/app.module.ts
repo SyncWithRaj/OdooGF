@@ -14,6 +14,8 @@ import { UpsellRulesModule } from './upsell-rules/upsell-rules.module';
 import { QuotationsModule } from './quotations/quotations.module';
 import { ApprovalsModule } from './approvals/approvals.module';
 import { PortalModule } from './portal/portal.module';
+import { FulfillmentsModule } from './fulfillments/fulfillments.module';
+import { InvoicesModule } from './invoices/invoices.module';
 
 @Module({
   imports: [
@@ -30,6 +32,8 @@ import { PortalModule } from './portal/portal.module';
     QuotationsModule,
     ApprovalsModule,
     PortalModule,
+    FulfillmentsModule,
+    InvoicesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
