@@ -69,12 +69,12 @@ export default function FulfillmentPage() {
           <h2 className="text-sm font-bold text-slate-900 mb-4">Active Fulfillment Hubs</h2>
           <div className="divide-y divide-slate-100">
             {warehouses.map((w) => (
-              <div key={w.id} className="py-3.5 flex items-center justify-between">
+              <div key={w.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                 <div>
                   <p className="text-xs font-bold text-slate-900">{w.name}</p>
                   <p className="text-[11px] text-slate-500">{w.location} • Logistics Weight {w.shippingCostWeight}x</p>
                 </div>
-                <div className="flex items-center gap-4 text-xs">
+                <div className="flex flex-wrap items-center gap-3 text-xs">
                   <span className="text-slate-500">In Stock: <strong className="text-slate-900">{w.totalInStock}</strong></span>
                   <span className="text-emerald-600 font-semibold">{w.totalAvailable} Available</span>
                   <Link

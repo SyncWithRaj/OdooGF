@@ -529,7 +529,7 @@ export default function QuotationsPage() {
       <AppLayout>
         {/* TOAST NOTIFICATION */}
         {notification && (
-          <div className="fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-sm font-medium border border-slate-700 animate-in fade-in slide-in-from-top-4">
+          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-sm font-medium border border-slate-700 animate-in fade-in slide-in-from-bottom-4">
             <span className={`w-2.5 h-2.5 rounded-full ${notification.type === 'error' ? 'bg-rose-500' : notification.type === 'info' ? 'bg-blue-500' : 'bg-emerald-400'}`}></span>
             <span>{notification.message}</span>
           </div>
@@ -700,7 +700,7 @@ export default function QuotationsPage() {
         {/* QUOTATIONS LIST TABLE MATCHING TARGET DESIGN */}
         <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden mb-8">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse min-w-[760px]">
               <thead>
                 <tr className="border-b border-slate-200/80 text-xs font-medium text-slate-600 select-none">
                   {/* Checkbox */}
@@ -1033,7 +1033,8 @@ export default function QuotationsPage() {
                   </div>
 
                   <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
-                    <table className="w-full text-left text-xs border-collapse">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse min-w-[620px]">
                       <thead>
                         <tr className="bg-gray-50/80 border-b border-gray-200 text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                           <th className="py-2.5 px-3">Product</th>
@@ -1126,6 +1127,7 @@ export default function QuotationsPage() {
                     </table>
                   </div>
                 </div>
+              </div>
 
                 {/* 2.5 AI UPSELL & CROSS-SELL RECOMMENDATIONS (Screen 4 / B5) */}
                 {newQuoteLines.length > 0 && (
@@ -1324,12 +1326,12 @@ export default function QuotationsPage() {
         {/* QUOTATION DETAIL & GOVERNANCE APPROVAL DRAWER                             */}
         {/* ========================================================================= */}
         {isDetailDrawerOpen && selectedQuote && (
-          <div className="fixed inset-0 z-50 overflow-hidden bg-gray-900/40 backdrop-blur-xs animate-in fade-in duration-150">
+                  <div className="fixed inset-0 z-50 overflow-hidden bg-gray-900/40 backdrop-blur-xs animate-in fade-in duration-150">
             <div className="absolute inset-y-0 right-0 max-w-2xl w-full bg-white shadow-xl flex flex-col border-l border-gray-200">
               {/* DRAWER HEADER */}
-              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-white">
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-white flex-wrap">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h2 className="text-xl font-semibold text-gray-900 tracking-tight">
                       {selectedQuote.quoteNumber}
                     </h2>
@@ -1360,24 +1362,24 @@ export default function QuotationsPage() {
                     <span className="text-sm font-semibold text-gray-900">${selectedQuote.subtotalAmount?.toLocaleString()}</span>
                   </div>
                   <div>
-                    <span className="text-xs text-gray-500 block">Discount ({selectedQuote.orderDiscountPercent}%)</span>
-                    <span className="text-sm font-semibold text-amber-700">-${selectedQuote.totalDiscountAmount}</span>
+                    <span className="text-xs text-gray-500 block">Concession Discount</span>
+                    <span className="text-sm font-semibold text-rose-700">-${selectedQuote.totalDiscountAmount?.toLocaleString()}</span>
                   </div>
                   <div>
-                    <span className="text-xs text-gray-500 block">Final Value</span>
-                    <span className="text-base font-semibold text-emerald-700">${selectedQuote.totalAmount?.toLocaleString()}</span>
+                    <span className="text-xs text-gray-500 block">Net Deal Total</span>
+                    <span className="text-sm font-semibold text-gray-900">${selectedQuote.totalAmount?.toLocaleString()}</span>
                   </div>
                   <div>
-                    <span className="text-xs text-gray-500 block">Gross Margin</span>
-                    <span className={`text-base font-semibold ${selectedQuote.totalMarginPercent < 20 ? 'text-rose-600' : 'text-gray-900'}`}>
+                    <span className="text-xs text-gray-500 block">Gross Margin %</span>
+                    <span className={`text-sm font-semibold ${selectedQuote.totalMarginPercent < 20 ? 'text-rose-600' : 'text-emerald-700'}`}>
                       {selectedQuote.totalMarginPercent}%
                     </span>
                   </div>
                 </div>
 
-                {/* GOVERNANCE ROUTING BANNER */}
+                {/* POLICY EVALUATION SUMMARY */}
                 {selectedQuote.flagReasonSummary && (
-                  <div className="p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
+                  <div className="p-3.5 rounded-lg bg-amber-50/70 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
                     <svg className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
@@ -1392,44 +1394,46 @@ export default function QuotationsPage() {
                 <div>
                   <h3 className="text-sm font-medium text-gray-900 mb-2">Order Line Items</h3>
                   <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-gray-50/80 text-[11px] font-medium text-gray-500 uppercase border-b border-gray-200">
-                        <tr>
-                          <th className="py-2.5 px-3">Product</th>
-                          <th className="py-2.5 px-2 text-center">Qty</th>
-                          <th className="py-2.5 px-3 text-right">Price</th>
-                          <th className="py-2.5 px-3 text-right">Disc %</th>
-                          <th className="py-2.5 px-3 text-right">Margin %</th>
-                          <th className="py-2.5 px-3 text-right">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100 text-gray-900">
-                        {selectedQuote.lines?.map((line, idx) => (
-                          <tr key={idx} className="hover:bg-gray-50/50">
-                            <td className="py-2.5 px-3">
-                              <span className="font-medium text-gray-900 block">{line.productName}</span>
-                              <span className="text-[10px] text-gray-400">{line.category}</span>
-                            </td>
-                            <td className="py-2.5 px-2 text-center font-medium">{line.quantity}</td>
-                            <td className="py-2.5 px-3 text-right">${line.unitPrice}</td>
-                            <td className="py-2.5 px-3 text-right">
-                              <span className={`font-medium ${line.isOverLimit ? 'text-rose-600' : 'text-gray-700'}`}>
-                                {line.discountPercent}%
-                              </span>
-                              {line.isOverLimit && (
-                                <span className="block text-[9px] font-semibold text-rose-500">OVER (+{line.overLimitPoints}pt)</span>
-                              )}
-                            </td>
-                            <td className="py-2.5 px-3 text-right font-medium text-gray-600">
-                              {line.lineMarginPercent}%
-                            </td>
-                            <td className="py-2.5 px-3 text-right font-semibold text-gray-900">
-                              ${line.lineRevenue || (line.quantity * line.unitPrice * (1 - line.discountPercent / 100)).toFixed(2)}
-                            </td>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs min-w-[540px]">
+                        <thead className="bg-gray-50/80 text-[11px] font-medium text-gray-500 uppercase border-b border-gray-200">
+                          <tr>
+                            <th className="py-2.5 px-3">Product</th>
+                            <th className="py-2.5 px-2 text-center">Qty</th>
+                            <th className="py-2.5 px-3 text-right">Price</th>
+                            <th className="py-2.5 px-3 text-right">Disc %</th>
+                            <th className="py-2.5 px-3 text-right">Margin %</th>
+                            <th className="py-2.5 px-3 text-right">Total</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 text-gray-900">
+                          {selectedQuote.lines?.map((line, idx) => (
+                            <tr key={idx} className="hover:bg-gray-50/50">
+                              <td className="py-2.5 px-3">
+                                <span className="font-medium text-gray-900 block">{line.productName}</span>
+                                <span className="text-[10px] text-gray-400">{line.category}</span>
+                              </td>
+                              <td className="py-2.5 px-2 text-center font-medium">{line.quantity}</td>
+                              <td className="py-2.5 px-3 text-right">${line.unitPrice}</td>
+                              <td className="py-2.5 px-3 text-right">
+                                <span className={`font-medium ${line.isOverLimit ? 'text-rose-600' : 'text-gray-700'}`}>
+                                  {line.discountPercent}%
+                                </span>
+                                {line.isOverLimit && (
+                                  <span className="block text-[9px] font-semibold text-rose-500">OVER (+{line.overLimitPoints}pt)</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-medium text-gray-600">
+                                {line.lineMarginPercent}%
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-semibold text-gray-900">
+                                ${line.lineRevenue || (line.quantity * line.unitPrice * (1 - line.discountPercent / 100)).toFixed(2)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
 
@@ -1650,33 +1654,35 @@ export default function QuotationsPage() {
 
                 {/* LINE ITEMS */}
                 <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <table className="w-full text-left">
-                    <thead className="bg-gray-50/80 text-[11px] font-medium text-gray-500 uppercase border-b border-gray-200">
-                      <tr>
-                        <th className="py-2.5 px-4">Item &amp; Description</th>
-                        <th className="py-2.5 px-3 text-center">Qty</th>
-                        <th className="py-2.5 px-4 text-right">Unit Price</th>
-                        <th className="py-2.5 px-4 text-right">Discount</th>
-                        <th className="py-2.5 px-4 text-right">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {selectedQuote.lines?.map((line, idx) => (
-                        <tr key={idx}>
-                          <td className="py-3 px-4">
-                            <span className="font-medium text-gray-900 block">{line.productName}</span>
-                            <span className="text-[11px] text-gray-500">{line.category} Category</span>
-                          </td>
-                          <td className="py-3 px-3 text-center font-medium">{line.quantity}</td>
-                          <td className="py-3 px-4 text-right">${line.unitPrice}</td>
-                          <td className="py-3 px-4 text-right text-amber-700 font-medium">{line.discountPercent}%</td>
-                          <td className="py-3 px-4 text-right font-semibold text-gray-900">
-                            ${line.lineRevenue || (line.quantity * line.unitPrice * (1 - line.discountPercent / 100)).toFixed(2)}
-                          </td>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left min-w-[540px]">
+                      <thead className="bg-gray-50/80 text-[11px] font-medium text-gray-500 uppercase border-b border-gray-200">
+                        <tr>
+                          <th className="py-2.5 px-4">Item &amp; Description</th>
+                          <th className="py-2.5 px-3 text-center">Qty</th>
+                          <th className="py-2.5 px-4 text-right">Unit Price</th>
+                          <th className="py-2.5 px-4 text-right">Discount</th>
+                          <th className="py-2.5 px-4 text-right">Amount</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {selectedQuote.lines?.map((line, idx) => (
+                          <tr key={idx}>
+                            <td className="py-3 px-4">
+                              <span className="font-medium text-gray-900 block">{line.productName}</span>
+                              <span className="text-[11px] text-gray-500">{line.category} Category</span>
+                            </td>
+                            <td className="py-3 px-3 text-center font-medium">{line.quantity}</td>
+                            <td className="py-3 px-4 text-right">${line.unitPrice}</td>
+                            <td className="py-3 px-4 text-right text-amber-700 font-medium">{line.discountPercent}%</td>
+                            <td className="py-3 px-4 text-right font-semibold text-gray-900">
+                              ${line.lineRevenue || (line.quantity * line.unitPrice * (1 - line.discountPercent / 100)).toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
                 {/* TOTALS */}

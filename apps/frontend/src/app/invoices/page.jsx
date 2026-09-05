@@ -180,7 +180,7 @@ export default function InvoicesPage() {
       <AppLayout>
         {/* Flash Toast */}
         {notification && (
-          <div className="fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-sm font-medium border border-slate-700 animate-in fade-in">
+          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-sm font-medium border border-slate-700 animate-in fade-in slide-in-from-bottom-4">
             <span className={`w-2.5 h-2.5 rounded-full ${notification.type === 'error' ? 'bg-rose-500' : 'bg-emerald-400'}`}></span>
             <span>{notification.message}</span>
           </div>
@@ -282,7 +282,7 @@ export default function InvoicesPage() {
 
           {/* Table */}
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600">
+            <table className="w-full text-left text-xs text-slate-600 min-w-[760px]">
               <thead className="bg-slate-50/75 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
                 <tr>
                   <th className="py-3 px-4">Invoice #</th>
@@ -364,7 +364,7 @@ export default function InvoicesPage() {
         {/* Modal: Record Payment */}
         {isPayModalOpen && selectedInvoice && (
           <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+            <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-200">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-base font-bold text-slate-900">Record Payment</h3>
@@ -438,7 +438,7 @@ export default function InvoicesPage() {
         {/* Modal: Issue Invoice */}
         {isCreateModalOpen && (
           <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+            <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-200">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-bold text-slate-900">Issue New Invoice</h3>
                 <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1">

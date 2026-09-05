@@ -96,7 +96,7 @@ export default function PipelinePage() {
       <AppLayout>
         {/* Flash Toast */}
         {notification && (
-          <div className="fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-sm font-medium border border-slate-700 animate-in fade-in">
+          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-sm font-medium border border-slate-700 animate-in fade-in slide-in-from-bottom-4">
             <span className={`w-2.5 h-2.5 rounded-full ${notification.type === 'error' ? 'bg-rose-500' : 'bg-emerald-400'}`}></span>
             <span>{notification.message}</span>
           </div>
@@ -168,7 +168,8 @@ export default function PipelinePage() {
             Loading deal pipeline from database...
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start overflow-x-auto pb-4">
+          <div className="overflow-x-auto pb-4">
+            <div className="flex gap-4 items-start min-w-[1300px]">
             {STAGES.map((stage) => {
               const stageDeals = filteredQuotations.filter((q) => {
                 if (stage.id === 'DRAFT') return q.status === 'DRAFT' || !q.status;
@@ -305,6 +306,7 @@ export default function PipelinePage() {
                 </div>
               );
             })}
+            </div>
           </div>
         )}
       </AppLayout>

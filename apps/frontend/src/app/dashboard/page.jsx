@@ -149,7 +149,7 @@ export default function DashboardPage() {
             <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight">
               Executive Dashboard
             </h1>
-            <p className="text-xs text-gray-500 mt-1 flex items-center gap-2">
+            <p className="text-xs text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
               <span>DealFlow360 Live Workspace for <strong className="text-gray-800 font-medium">{user?.name || 'Aryan'}</strong></span>
               <span className="w-1 h-1 rounded-full bg-gray-300" />
               <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
@@ -160,7 +160,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Top Actions */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <Link
               href="/quotations"
               className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium shadow-sm transition cursor-pointer"
@@ -353,7 +353,7 @@ export default function DashboardPage() {
             {/* Table */}
             <div className="border border-gray-200 rounded-md overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
+                <table className="w-full text-left text-xs border-collapse min-w-[620px]">
                   <thead>
                     <tr className="bg-gray-50/80 border-b border-gray-200 text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                       <th className="py-2.5 px-3">Quote #</th>
@@ -413,7 +413,7 @@ export default function DashboardPage() {
 
             {/* Approvals Action Link Banner */}
             {stats.pendingCount > 0 && (
-              <div className="mt-4 p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between">
+              <div className="mt-4 p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                 <div className="flex items-center gap-2">
                   <svg className="w-4 h-4 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -424,7 +424,7 @@ export default function DashboardPage() {
                 </div>
                 <Link
                   href="/approvals"
-                  className="font-medium text-amber-800 underline underline-offset-2 hover:text-amber-950 ml-3 shrink-0"
+                  className="font-medium text-amber-800 underline underline-offset-2 hover:text-amber-950 sm:ml-3 shrink-0"
                 >
                   Go to Approvals &rarr;
                 </Link>
