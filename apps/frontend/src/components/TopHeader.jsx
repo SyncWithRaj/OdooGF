@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-export default function TopHeader({ onToggleSidebar }) {
+export default function TopHeader({ onToggleSidebar, isCollapsed = false }) {
   const { user, isAuthenticated, logout } = useAuth();
   const router = useRouter();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -17,71 +17,38 @@ export default function TopHeader({ onToggleSidebar }) {
 
   return (
     <header className="h-14 bg-white/95 border-b border-slate-200/80 backdrop-blur-md sticky top-0 z-30 px-4 sm:px-6 flex items-center justify-between">
-      {/* Left side: Sidebar Toggle + Outlet Switcher */}
+      {/* Left side: Sidebar Toggle */}
       <div className="flex items-center gap-3">
-        {/* Toggle Sidebar Button (Collapse / Mobile Drawer) */}
+        {/* Toggle Sidebar Button (Sidebar Panel Toggle matching user design) */}
         <button
           type="button"
           onClick={onToggleSidebar}
-          aria-label="Toggle navigation sidebar"
-          className="p-1.5 rounded-lg border border-slate-200/80 bg-white hover:bg-slate-50 text-slate-600 transition shadow-2xs cursor-pointer"
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse to single-line app icons'}
+          title={isCollapsed ? 'Expand sidebar' : 'Collapse to single-line app icons'}
+          className="w-9 h-9 rounded-xl bg-white hover:bg-slate-100 text-slate-800 flex items-center justify-center transition-all duration-150 cursor-pointer shadow-2xs active:scale-95 group border border-slate-200/80"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h10M4 18h16" />
+          <svg
+            className="w-5 h-5 text-slate-800 group-hover:text-slate-950 transition-colors"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="3" y="3" width="18" height="18" rx="3.5" />
+            <line x1="8.5" y1="3" x2="8.5" y2="21" />
+            {isCollapsed ? (
+              <path d="M12.5 8.5l3.5 3.5-3.5 3.5" />
+            ) : (
+              <path d="M16 8.5l-3.5 3.5 3.5 3.5" />
+            )}
           </svg>
         </button>
-
-        {/* Tenant / Outlet Selector matching "Shadcn Outlet" */}
-        <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl hover:bg-slate-50 cursor-pointer border border-transparent hover:border-slate-200/60 transition select-none">
-          <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-xs" />
-          <span className="text-xs font-semibold text-slate-800">DealFlow Outlet</span>
-          <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-          </svg>
-        </div>
       </div>
 
-      {/* Right side: Quick Links, Bell, Moon, Palette, User Avatar */}
+      {/* Right side: User Session & Avatar */}
       <div className="flex items-center gap-3">
-        {/* Download quick link */}
-        <button
-          onClick={() => window.open('https://github.com', '_blank')}
-          className="hidden sm:inline-block text-xs font-medium text-purple-600 hover:text-purple-800 hover:underline transition"
-        >
-          Download
-        </button>
-
-        {/* Notification Bell with Badge */}
-        <button
-          aria-label="View system notifications"
-          className="relative p-1.5 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition cursor-pointer"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-          </svg>
-          <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-rose-500 ring-2 ring-white" />
-        </button>
-
-        {/* Dark/Light Mode Toggle */}
-        <button
-          aria-label="Toggle display theme mode"
-          className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition cursor-pointer"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-          </svg>
-        </button>
-
-        {/* Theme Palette Icon */}
-        <button
-          aria-label="Customize theme colors and appearance"
-          className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition cursor-pointer"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21a4 4 0 01-4-4 4 4 0 014-4 2 2 0 012 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 012-2 4 4 0 014 4 4 4 0 01-4 4H7z" />
-          </svg>
-        </button>
-
         {/* User Session & Avatar */}
         {isAuthenticated ? (
           <div className="relative">
@@ -109,6 +76,13 @@ export default function TopHeader({ onToggleSidebar }) {
                     {user?.role}
                   </span>
                 </div>
+                <Link
+                  href="/profile"
+                  onClick={() => setProfileMenuOpen(false)}
+                  className="block px-3 py-1.5 rounded-lg text-xs text-slate-700 hover:bg-slate-100 font-medium"
+                >
+                  My Profile
+                </Link>
                 <Link
                   href={user?.role === 'customer' ? '/portal' : '/dashboard'}
                   onClick={() => setProfileMenuOpen(false)}

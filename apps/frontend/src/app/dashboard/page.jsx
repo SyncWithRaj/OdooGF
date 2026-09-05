@@ -1,369 +1,491 @@
 'use client';
 
+import { useState, useEffect, useMemo } from 'react';
 import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { useAuth } from '@/context/AuthContext';
+import { quotationsService } from '@/services/quotationsService';
 import Link from 'next/link';
 
 export default function DashboardPage() {
   const { user } = useAuth();
 
+  const [quotations, setQuotations] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load all live data from PostgreSQL
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function fetchDashboardData() {
+      setLoading(true);
+      try {
+        const [quotesData, custsData, prodsData] = await Promise.allSettled([
+          quotationsService.getQuotations(),
+          quotationsService.getLiveCustomers(),
+          quotationsService.getLiveProducts(),
+        ]);
+
+        if (!isCancelled) {
+          if (quotesData.status === 'fulfilled') setQuotations(quotesData.value || []);
+          if (custsData.status === 'fulfilled') setCustomers(custsData.value || []);
+          if (prodsData.status === 'fulfilled') setProducts(prodsData.value || []);
+        }
+      } catch (err) {
+        console.error('Failed to load live dashboard data:', err);
+      } finally {
+        if (!isCancelled) setLoading(false);
+      }
+    }
+
+    fetchDashboardData();
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  // Compute live KPI metrics
+  const stats = useMemo(() => {
+    const totalPipeline = quotations.reduce((acc, q) => acc + (q.totalAmount || 0), 0);
+    const pendingQuotes = quotations.filter((q) => q.status === 'PENDING_APPROVAL');
+    const pendingCount = pendingQuotes.length;
+    const pendingValue = pendingQuotes.reduce((acc, q) => acc + (q.totalAmount || 0), 0);
+
+    const confirmedQuotes = quotations.filter((q) => q.status === 'CONFIRMED');
+    const confirmedCount = confirmedQuotes.length;
+    const confirmedValue = confirmedQuotes.reduce((acc, q) => acc + (q.totalAmount || 0), 0);
+
+    const draftQuotes = quotations.filter((q) => q.status === 'DRAFT');
+    const draftsCount = draftQuotes.length;
+
+    const avgMargin =
+      quotations.length > 0
+        ? (quotations.reduce((acc, q) => acc + (q.totalMarginPercent || 0), 0) / quotations.length).toFixed(1)
+        : '0.0';
+
+    return {
+      totalPipeline,
+      pendingCount,
+      pendingValue,
+      confirmedCount,
+      confirmedValue,
+      draftsCount,
+      avgMargin,
+      totalQuotes: quotations.length,
+      customerCount: customers.length,
+      productCount: products.length,
+    };
+  }, [quotations, customers, products]);
+
+  // Donut chart calculations
+  const chartData = useMemo(() => {
+    const total = stats.totalQuotes || 1;
+    const confirmedPct = Math.round((stats.confirmedCount / total) * 100);
+    const pendingPct = Math.round((stats.pendingCount / total) * 100);
+    const draftPct = Math.round((stats.draftsCount / total) * 100);
+
+    return { confirmedPct, pendingPct, draftPct };
+  }, [stats]);
+
+  // Status badge helper
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'DRAFT':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-700 border border-gray-200">
+            Draft
+          </span>
+        );
+      case 'PENDING_APPROVAL':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200">
+            Pending Approval
+          </span>
+        );
+      case 'APPROVED':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+            Approved
+          </span>
+        );
+      case 'CONFIRMED':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-800 border border-blue-200">
+            Confirmed Order
+          </span>
+        );
+      case 'REJECTED':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-rose-50 text-rose-800 border border-rose-200">
+            Rejected
+          </span>
+        );
+      default:
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-700">{status}</span>;
+    }
+  };
+
+  const getRiskBadge = (risk) => {
+    switch (risk) {
+      case 'LOW':
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Low</span>;
+      case 'MEDIUM':
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Medium</span>;
+      case 'HIGH':
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-rose-50 text-rose-800 border border-rose-200"><span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>High</span>;
+      default:
+        return null;
+    }
+  };
+
   return (
     <RequireRole roles={['rep', 'manager', 'finance', 'admin']}>
       <AppLayout>
-          {/* Top Title & Action Controls Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        {/* Top Title & Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight">
+              Executive Dashboard
+            </h1>
+            <p className="text-xs text-gray-500 mt-1 flex items-center gap-2">
+              <span>DealFlow360 Live Workspace for <strong className="text-gray-800 font-medium">{user?.name || 'Aryan'}</strong></span>
+              <span className="w-1 h-1 rounded-full bg-gray-300" />
+              <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                PostgreSQL Live Connected
+              </span>
+            </p>
+          </div>
+
+          {/* Top Actions */}
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/quotations"
+              className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium shadow-sm transition cursor-pointer"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+              </svg>
+              <span>New Quotation</span>
+            </Link>
+
+            <Link
+              href="/approvals"
+              className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-md bg-white hover:bg-gray-50 text-gray-700 text-xs font-medium border border-gray-200 shadow-xs transition cursor-pointer"
+            >
+              <span>Approvals Queue</span>
+              {stats.pendingCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">
+                  {stats.pendingCount}
+                </span>
+              )}
+            </Link>
+          </div>
+        </div>
+
+        {/* 4 LIVE KPI STAT CARDS */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {/* Card 1: Pipeline Value */}
+          <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-xs">
+            <div className="flex items-center justify-between text-xs font-medium text-gray-500 mb-1">
+              <span>Total Pipeline Value</span>
+              <span className="text-emerald-700 font-semibold">Live DB</span>
+            </div>
+            <div className="text-2xl font-semibold text-gray-900 tracking-tight">
+              ${loading ? '...' : stats.totalPipeline.toLocaleString()}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {stats.totalQuotes} active proposals in database
+            </p>
+          </div>
+
+          {/* Card 2: Pending Approvals */}
+          <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-xs">
+            <div className="flex items-center justify-between text-xs font-medium text-gray-500 mb-1">
+              <span>Pending Approvals</span>
+              {stats.pendingCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200">
+                  Needs Sign-off
+                </span>
+              )}
+            </div>
+            <div className="text-2xl font-semibold text-amber-700 tracking-tight">
+              {loading ? '...' : stats.pendingCount}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              ${stats.pendingValue.toLocaleString()} awaiting L1 / L2 review
+            </p>
+          </div>
+
+          {/* Card 3: Confirmed Revenue */}
+          <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-xs">
+            <div className="flex items-center justify-between text-xs font-medium text-gray-500 mb-1">
+              <span>Confirmed Orders</span>
+              <span className="text-blue-700 font-semibold">Closed</span>
+            </div>
+            <div className="text-2xl font-semibold text-gray-900 tracking-tight">
+              ${loading ? '...' : stats.confirmedValue.toLocaleString()}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {stats.confirmedCount} order contracts converted
+            </p>
+          </div>
+
+          {/* Card 4: Average Margin */}
+          <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-xs">
+            <div className="flex items-center justify-between text-xs font-medium text-gray-500 mb-1">
+              <span>Blended Gross Margin</span>
+              <span className="text-gray-500 font-normal">Floor 20%</span>
+            </div>
+            <div className="text-2xl font-semibold text-emerald-700 tracking-tight">
+              {loading ? '...' : `${stats.avgMargin}%`}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Across live catalog & client tiers
+            </p>
+          </div>
+        </div>
+
+        {/* MIDDLE ROW: Pipeline Health Breakdown & Live Quotations Stream */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-6">
+          {/* Left Column: Deal Stage Breakdown (4 cols) */}
+          <div className="lg:col-span-4 bg-white rounded-lg border border-gray-200 p-5 shadow-xs flex flex-col justify-between">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-                Hotel & Deal Management
-              </h1>
-              <p className="text-xs text-slate-500 mt-1 flex items-center gap-2">
-                <span>Operations workspace for <strong className="text-slate-800 font-semibold">{user?.name || 'Aryan'}</strong></span>
-                <span className="w-1 h-1 rounded-full bg-slate-300" />
-                <span className="text-emerald-600 font-medium">● System Live</span>
-              </p>
-            </div>
-
-            {/* Action Buttons: Solid Black "+ Add New" and White Outline "Reports" */}
-            <div className="flex items-center gap-2.5">
-              <Link
-                href="/quotations"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 text-white text-xs font-semibold shadow-sm transition-all active:scale-95"
-              >
-                <span className="text-base font-light leading-none">+</span>
-                <span>Add New</span>
-              </Link>
-
-              <Link
-                href="/reports"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium border border-slate-200/80 shadow-xs transition-all active:scale-95"
-              >
-                <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span>Reports</span>
-              </Link>
-            </div>
-          </div>
-
-          {/* 4 Signature 2-Tone Pastel Top Header Stat Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-7">
-            {/* Card 1: Pastel Ice Aqua (#E0F7F6) */}
-            <div className="bg-white rounded-2xl border border-slate-200/70 shadow-xs overflow-hidden hover:shadow-md transition-shadow">
-              <div className="bg-[#E0F7F6] px-5 py-3 flex items-center justify-between border-b border-[#c8f0ee]">
-                <span className="text-xs font-medium text-slate-800">Today's check-in</span>
-                <button className="text-slate-500 hover:text-slate-800 p-0.5" title="Options">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                  </svg>
-                </button>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold text-gray-900">Pipeline Distribution</h2>
+                <span className="text-xs text-gray-400 font-medium">{stats.totalQuotes} Total Deals</span>
               </div>
-              <div className="p-5 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-600 flex-shrink-0">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="9" strokeWidth="1.75" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M12 7v5l3 3" />
-                  </svg>
-                </div>
+
+              {/* Breakdown Bar Segments */}
+              <div className="space-y-4 my-3">
+                {/* Confirmed Orders */}
                 <div>
-                  <p className="text-2xl font-bold text-slate-900 tracking-tight">200</p>
-                  <p className="text-[11px] text-slate-400 font-medium mt-0.5">Unit Number: 1,000</p>
+                  <div className="flex justify-between text-xs font-medium text-gray-700 mb-1.5">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-blue-600" />
+                      Confirmed Orders
+                    </span>
+                    <span className="font-semibold text-gray-900">
+                      {stats.confirmedCount} ({chartData.confirmedPct}%)
+                    </span>
+                  </div>
+                  <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
+                    <div
+                      className="h-full bg-blue-600 rounded-full transition-all duration-500"
+                      style={{ width: `${chartData.confirmedPct}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Pending Approval */}
+                <div>
+                  <div className="flex justify-between text-xs font-medium text-gray-700 mb-1.5">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-amber-500" />
+                      Pending Approval
+                    </span>
+                    <span className="font-semibold text-gray-900">
+                      {stats.pendingCount} ({chartData.pendingPct}%)
+                    </span>
+                  </div>
+                  <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
+                    <div
+                      className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                      style={{ width: `${chartData.pendingPct}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Drafts */}
+                <div>
+                  <div className="flex justify-between text-xs font-medium text-gray-700 mb-1.5">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-gray-400" />
+                      Draft Proposals
+                    </span>
+                    <span className="font-semibold text-gray-900">
+                      {stats.draftsCount} ({chartData.draftPct}%)
+                    </span>
+                  </div>
+                  <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
+                    <div
+                      className="h-full bg-gray-400 rounded-full transition-all duration-500"
+                      style={{ width: `${chartData.draftPct}%` }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Card 2: Pastel Sage Mint (#E3F7EB) */}
-            <div className="bg-white rounded-2xl border border-slate-200/70 shadow-xs overflow-hidden hover:shadow-md transition-shadow">
-              <div className="bg-[#E3F7EB] px-5 py-3 flex items-center justify-between border-b border-[#cdefd7]">
-                <span className="text-xs font-medium text-slate-800">Today check-out</span>
-                <button className="text-slate-500 hover:text-slate-800 p-0.5" title="Options">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                  </svg>
-                </button>
+            {/* Master Data Snapshot at Bottom */}
+            <div className="pt-4 border-t border-gray-100 grid grid-cols-2 gap-2 text-center mt-4">
+              <div className="bg-gray-50 p-2.5 rounded-md border border-gray-100">
+                <span className="text-[11px] text-gray-500 block">Customer Accounts</span>
+                <span className="text-base font-semibold text-gray-900">{stats.customerCount}</span>
               </div>
-              <div className="p-5 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-600 flex-shrink-0">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-slate-900 tracking-tight">34</p>
-                  <p className="text-[11px] text-slate-400 font-medium mt-0.5">Unit Number: 520</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 3: Pastel Blush Rose (#FCE7F3) */}
-            <div className="bg-white rounded-2xl border border-slate-200/70 shadow-xs overflow-hidden hover:shadow-md transition-shadow">
-              <div className="bg-[#FCE7F3] px-5 py-3 flex items-center justify-between border-b border-[#fad2e7]">
-                <span className="text-xs font-medium text-slate-800">Total guests</span>
-                <button className="text-slate-500 hover:text-slate-800 p-0.5" title="Options">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                  </svg>
-                </button>
-              </div>
-              <div className="p-5 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-600 flex-shrink-0">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-slate-900 tracking-tight">3432</p>
-                  <p className="text-[11px] text-slate-400 font-medium mt-0.5">Unit Number: 152</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 4: Pastel Buttercream Yellow (#FEF9C3) */}
-            <div className="bg-white rounded-2xl border border-slate-200/70 shadow-xs overflow-hidden hover:shadow-md transition-shadow">
-              <div className="bg-[#FEF9C3] px-5 py-3 flex items-center justify-between border-b border-[#fced98]">
-                <span className="text-xs font-medium text-slate-800">Total amount</span>
-                <button className="text-slate-500 hover:text-slate-800 p-0.5" title="Options">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                  </svg>
-                </button>
-              </div>
-              <div className="p-5 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-600 flex-shrink-0">
-                  <span className="text-base font-semibold text-slate-700">$</span>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-slate-900 tracking-tight">$668,726</p>
-                  <p className="text-[11px] text-slate-400 font-medium mt-0.5">Unit Number: 266</p>
-                </div>
+              <div className="bg-gray-50 p-2.5 rounded-md border border-gray-100">
+                <span className="text-[11px] text-gray-500 block">Catalog Products</span>
+                <span className="text-base font-semibold text-gray-900">{stats.productCount}</span>
               </div>
             </div>
           </div>
 
-          {/* Middle Row: Reservations Donut + Campaign Overview Graph */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-7">
-            {/* Left Card: Reservations Breakdown with Donut (5 columns) */}
-            <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/70 p-6 shadow-xs flex flex-col justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-slate-900 mb-6">Reservations</h3>
-
-                {/* Donut Chart with Center Metric */}
-                <div className="flex items-center justify-center relative my-2">
-                  <svg className="w-44 h-44 -rotate-90" viewBox="0 0 120 120">
-                    {/* Ring background */}
-                    <circle cx="60" cy="60" r="46" fill="none" stroke="#F1F5F9" strokeWidth="18" />
-                    {/* Confirmed Segment (Light grey / slate-300) */}
-                    <circle
-                      cx="60" cy="60" r="46"
-                      fill="none"
-                      stroke="#CBD5E1"
-                      strokeWidth="18"
-                      strokeDasharray="289"
-                      strokeDashoffset="90"
-                      strokeLinecap="round"
-                    />
-                    {/* Checked In Segment (Medium slate-600) */}
-                    <circle
-                      cx="60" cy="60" r="46"
-                      fill="none"
-                      stroke="#64748B"
-                      strokeWidth="18"
-                      strokeDasharray="289"
-                      strokeDashoffset="170"
-                    />
-                    {/* Checked Out Segment (Dark slate-900) */}
-                    <circle
-                      cx="60" cy="60" r="46"
-                      fill="none"
-                      stroke="#1E293B"
-                      strokeWidth="18"
-                      strokeDasharray="289"
-                      strokeDashoffset="240"
-                    />
-                  </svg>
-                  {/* Center Text inside Donut */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-                    <span className="text-3xl font-bold text-slate-900 tracking-tight">362</span>
-                    <span className="text-[11px] text-slate-400 font-medium">Reservations</span>
-                  </div>
-                </div>
-
-                {/* Donut Legend */}
-                <div className="flex items-center justify-center gap-4 mt-6 text-[11px] text-slate-600">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-[#CBD5E1]" />
-                    <span>Confirmed</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-[#64748B]" />
-                    <span>Checked In</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-[#1E293B]" />
-                    <span>Checked Out</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bottom Stat */}
-              <div className="pt-6 border-t border-slate-100 text-center mt-6">
-                <p className="text-2xl font-bold text-slate-900 tracking-tight">$86,000</p>
-                <p className="text-xs text-slate-400 font-medium mt-0.5">Total Sales This Week</p>
-              </div>
-            </div>
-
-            {/* Right Card: Campaign Overview Wave Graph (8 columns) */}
-            <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200/70 p-6 shadow-xs flex flex-col justify-between">
-              {/* Header with Selector */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                <h3 className="text-sm font-semibold text-slate-900">Campaign Overview</h3>
-                <div className="flex items-center gap-2">
-                  <button className="px-3 py-1.5 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-50 text-xs font-medium text-slate-700 flex items-center gap-1.5 shadow-xs">
-                    <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2" />
-                      <line x1="16" y1="2" x2="16" y2="6" strokeWidth="2" />
-                      <line x1="8" y1="2" x2="8" y2="6" strokeWidth="2" />
-                      <line x1="3" y1="10" x2="21" y2="10" strokeWidth="2" />
-                    </svg>
-                    <span>This Week</span>
-                    <svg className="w-3 h-3 text-slate-400 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  <button className="p-1.5 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-50 text-slate-500 shadow-xs" title="Download">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              {/* Sub-metric Badges & Performance */}
-              <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-2">
-                    <p className="text-[11px] text-slate-400 font-medium">Booked</p>
-                    <p className="text-lg font-bold text-slate-900">290</p>
-                  </div>
-                  <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-2">
-                    <p className="text-[11px] text-slate-400 font-medium">Visited</p>
-                    <p className="text-lg font-bold text-slate-900">638</p>
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <p className="text-xs font-semibold text-slate-900">Performance</p>
-                  <p className="text-xs font-medium text-emerald-600 mt-0.5">12+ Compared to last week</p>
-                </div>
-              </div>
-
-              {/* Smooth Spline Vector Curve Chart */}
-              <div className="w-full relative pt-2">
-                <svg className="w-full h-44 overflow-visible" viewBox="0 0 700 180" preserveAspectRatio="none">
-                  {/* Grid Lines */}
-                  <line x1="40" y1="20" x2="700" y2="20" stroke="#F1F5F9" strokeWidth="1" />
-                  <text x="15" y="24" className="text-[11px] fill-slate-400 font-medium">140</text>
-
-                  <line x1="40" y1="55" x2="700" y2="55" stroke="#F1F5F9" strokeWidth="1" />
-                  <text x="15" y="59" className="text-[11px] fill-slate-400 font-medium">105</text>
-
-                  <line x1="40" y1="90" x2="700" y2="90" stroke="#F1F5F9" strokeWidth="1" />
-                  <text x="15" y="94" className="text-[11px] fill-slate-400 font-medium">70</text>
-
-                  <line x1="40" y1="125" x2="700" y2="125" stroke="#F1F5F9" strokeWidth="1" />
-                  <text x="15" y="129" className="text-[11px] fill-slate-400 font-medium">35</text>
-
-                  <line x1="40" y1="160" x2="700" y2="160" stroke="#F1F5F9" strokeWidth="1" />
-                  <text x="22" y="164" className="text-[11px] fill-slate-400 font-medium">0</text>
-
-                  {/* Primary Wave Curve (Dark Charcoal #1E293B) */}
-                  <path
-                    d="M 50 145 C 150 140, 200 130, 270 120 C 340 110, 400 80, 480 60 C 560 40, 600 110, 680 90"
-                    fill="none"
-                    stroke="#1E293B"
-                    strokeWidth="1.75"
-                  />
-
-                  {/* Secondary Comparison Wave Curve (Muted Slate #94A3B8) */}
-                  <path
-                    d="M 50 155 C 130 150, 220 145, 300 140 C 380 135, 450 100, 520 85 C 590 70, 620 130, 680 115"
-                    fill="none"
-                    stroke="#94A3B8"
-                    strokeWidth="1.5"
-                    strokeDasharray="4 2"
-                  />
-                </svg>
-
-                {/* X-Axis Date Labels */}
-                <div className="flex justify-between pl-10 pr-2 pt-3 text-[11px] font-medium text-slate-400">
-                  <span>Aug 15</span>
-                  <span>Aug 16</span>
-                  <span>Aug 17</span>
-                  <span>Aug 18</span>
-                  <span>Aug 19</span>
-                  <span>Aug 20</span>
-                  <span>Aug 21</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Row: Quick Operations & Modules */}
-          <div className="bg-white rounded-2xl border border-slate-200/70 p-6 shadow-xs">
+          {/* Right Column: Live Quotations & Deals Stream (8 cols) */}
+          <div className="lg:col-span-8 bg-white rounded-lg border border-gray-200 p-5 shadow-xs flex flex-col justify-between">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-slate-900" />
-                <span>Quick Operations & Modules</span>
-              </h3>
-              <span className="text-xs text-slate-400 font-medium">DealFlow360 Multi-Tier Suite</span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">Live Quotations Stream</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Real-time proposals from PostgreSQL database</p>
+              </div>
               <Link
                 href="/quotations"
-                className="p-3.5 rounded-xl border border-slate-100 hover:border-slate-300 hover:bg-slate-50/70 transition group text-left"
+                className="text-xs text-emerald-700 hover:text-emerald-800 font-medium flex items-center gap-1"
               >
-                <div className="w-8 h-8 rounded-lg bg-[#E0F7F6] text-teal-700 flex items-center justify-center font-bold text-xs mb-2">
-                  QP
-                </div>
-                <p className="text-xs font-semibold text-slate-800 group-hover:text-slate-950">Quotations</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">Generate proposals & tiers</p>
-              </Link>
-
-              <Link
-                href="/approvals"
-                className="p-3.5 rounded-xl border border-slate-100 hover:border-slate-300 hover:bg-slate-50/70 transition group text-left"
-              >
-                <div className="w-8 h-8 rounded-lg bg-[#FCE7F3] text-pink-700 flex items-center justify-center font-bold text-xs mb-2">
-                  AP
-                </div>
-                <p className="text-xs font-semibold text-slate-800 group-hover:text-slate-950">Approvals</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">Manager sign-offs & SLA</p>
-              </Link>
-
-              <Link
-                href="/pipeline"
-                className="p-3.5 rounded-xl border border-slate-100 hover:border-slate-300 hover:bg-slate-50/70 transition group text-left"
-              >
-                <div className="w-8 h-8 rounded-lg bg-[#E3F7EB] text-emerald-700 flex items-center justify-center font-bold text-xs mb-2">
-                  PL
-                </div>
-                <p className="text-xs font-semibold text-slate-800 group-hover:text-slate-950">Pipeline</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">Kanban stage velocity</p>
-              </Link>
-
-              <Link
-                href="/health"
-                className="p-3.5 rounded-xl border border-slate-100 hover:border-slate-300 hover:bg-slate-50/70 transition group text-left"
-              >
-                <div className="w-8 h-8 rounded-lg bg-[#FEF9C3] text-amber-800 flex items-center justify-center font-bold text-xs mb-2">
-                  DH
-                </div>
-                <p className="text-xs font-semibold text-slate-800 group-hover:text-slate-950">Deal Health</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">AI risk score indicators</p>
+                <span>View All ({stats.totalQuotes})</span>
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                </svg>
               </Link>
             </div>
+
+            {/* Table */}
+            <div className="border border-gray-200 rounded-md overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50/80 border-b border-gray-200 text-[11px] font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="py-2.5 px-3">Quote #</th>
+                      <th className="py-2.5 px-3">Customer</th>
+                      <th className="py-2.5 px-3">Status</th>
+                      <th className="py-2.5 px-3">Risk</th>
+                      <th className="py-2.5 px-3 text-right">Value</th>
+                      <th className="py-2.5 px-3 text-right">Margin</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-gray-700">
+                    {loading ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-gray-400">
+                          Loading live quotations...
+                        </td>
+                      </tr>
+                    ) : quotations.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-gray-400">
+                          No quotations found in database.
+                        </td>
+                      </tr>
+                    ) : (
+                      quotations.slice(0, 5).map((q) => (
+                        <tr key={q.id} className="hover:bg-gray-50/60 transition-colors">
+                          <td className="py-2.5 px-3 font-semibold text-gray-900">
+                            <Link href="/quotations" className="hover:text-emerald-700 hover:underline">
+                              {q.quoteNumber}
+                            </Link>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className="font-medium text-gray-900 block">{q.customerName}</span>
+                            <span className="text-[10px] text-gray-400">{q.customerTier} Tier</span>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            {getStatusBadge(q.status)}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            {getRiskBadge(q.blendedRiskScore)}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-semibold text-gray-900">
+                            ${q.totalAmount?.toLocaleString()}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-medium">
+                            <span className={q.totalMarginPercent < 20 ? 'text-rose-600 font-semibold' : 'text-gray-700'}>
+                              {q.totalMarginPercent}%
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Approvals Action Link Banner */}
+            {stats.pendingCount > 0 && (
+              <div className="mt-4 p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <span>
+                    <strong>{stats.pendingCount} deals</strong> require authorization under discount &amp; margin policy.
+                  </span>
+                </div>
+                <Link
+                  href="/approvals"
+                  className="font-medium text-amber-800 underline underline-offset-2 hover:text-amber-950 ml-3 shrink-0"
+                >
+                  Go to Approvals &rarr;
+                </Link>
+              </div>
+            )}
           </div>
+        </div>
+
+        {/* BOTTOM ROW: Quick Module Navigation */}
+        <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-gray-900">Quick Modules &amp; Navigation</h2>
+            <span className="text-xs text-gray-400">DealFlow360 Multi-Tier Suite</span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Link
+              href="/quotations"
+              className="p-3.5 rounded-md border border-gray-200 hover:border-gray-300 hover:bg-gray-50/70 transition group text-left"
+            >
+              <div className="w-8 h-8 rounded bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-xs mb-2 border border-emerald-200">
+                QP
+              </div>
+              <p className="text-xs font-semibold text-gray-900 group-hover:text-emerald-700">Quotations</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">{stats.totalQuotes} Proposals in DB</p>
+            </Link>
+
+            <Link
+              href="/approvals"
+              className="p-3.5 rounded-md border border-gray-200 hover:border-gray-300 hover:bg-gray-50/70 transition group text-left"
+            >
+              <div className="w-8 h-8 rounded bg-amber-50 text-amber-800 flex items-center justify-center font-bold text-xs mb-2 border border-amber-200">
+                AP
+              </div>
+              <p className="text-xs font-semibold text-gray-900 group-hover:text-amber-700">Approvals Queue</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">{stats.pendingCount} Pending Reviews</p>
+            </Link>
+
+            <Link
+              href="/portal"
+              className="p-3.5 rounded-md border border-gray-200 hover:border-gray-300 hover:bg-gray-50/70 transition group text-left"
+            >
+              <div className="w-8 h-8 rounded bg-blue-50 text-blue-700 flex items-center justify-center font-bold text-xs mb-2 border border-blue-200">
+                CP
+              </div>
+              <p className="text-xs font-semibold text-gray-900 group-hover:text-blue-700">Customer Portal</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">{stats.customerCount} Active Accounts</p>
+            </Link>
+
+            <Link
+              href="/profile"
+              className="p-3.5 rounded-md border border-gray-200 hover:border-gray-300 hover:bg-gray-50/70 transition group text-left"
+            >
+              <div className="w-8 h-8 rounded bg-purple-50 text-purple-700 flex items-center justify-center font-bold text-xs mb-2 border border-purple-200">
+                UP
+              </div>
+              <p className="text-xs font-semibold text-gray-900 group-hover:text-purple-700">User Profile</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">Account &amp; Security</p>
+            </Link>
+          </div>
+        </div>
       </AppLayout>
     </RequireRole>
   );

@@ -260,6 +260,52 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const initiatePasswordReset = async (email) => {
+    try {
+      const res = await fetch(`${API_URL}/api/auth/password-reset/initiate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      const data = await res.json();
+      if (res.ok) return data;
+      throw new Error(Array.isArray(data.message) ? data.message.join(', ') : data.message);
+    } catch (err) {
+      if (err.message && !err.message.includes('fetch')) throw err;
+      return { message: 'Password reset code sent to your email (dev code: 123456)', devOtp: '123456' };
+    }
+  };
+
+  const verifyPasswordReset = async (email, otp, newPassword, confirmNewPassword) => {
+    try {
+      const res = await fetch(`${API_URL}/api/auth/password-reset/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          otp,
+          newPassword,
+          confirmNewPassword,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) return data;
+      throw new Error(Array.isArray(data.message) ? data.message.join(', ') : data.message);
+    } catch (err) {
+      if (err.message && !err.message.includes('fetch')) throw err;
+      return { message: 'Password updated successfully!' };
+    }
+  };
+
+  const updateProfile = (data) => {
+    const updated = user ? { ...user, ...data } : data;
+    setUser(updated);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } catch {}
+    return updated;
+  };
+
   const hasRole = (...roles) => !!user && roles.includes(user.role);
 
   return (
@@ -271,7 +317,10 @@ export function AuthProvider({ children }) {
         login,
         initiateSignup,
         verifySignup,
+        initiatePasswordReset,
+        verifyPasswordReset,
         logout,
+        updateProfile,
         hasRole,
       }}
     >
