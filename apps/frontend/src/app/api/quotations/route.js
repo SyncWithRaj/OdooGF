@@ -148,18 +148,54 @@ export async function POST(request) {
     const count = await prisma.quotation.count();
     const quoteNumber = body.quoteNumber || `Q-${1040 + count + 1}`;
 
-    // Look up default sales rep if missing
-    let repId = body.salesRepId;
-    if (!repId) {
-      const rep = await prisma.user.findFirst({ where: { role: 'SALES_REP' } });
-      repId = rep ? rep.id : (await prisma.user.findFirst()).id;
+    // Ensure valid Customer ID
+    let custId = body.customerId;
+    const custExists = custId ? await prisma.customer.findUnique({ where: { id: custId } }) : null;
+    if (!custExists) {
+      const firstCust = await prisma.customer.findFirst();
+      custId = firstCust ? firstCust.id : null;
     }
+
+    // Ensure valid Sales Rep ID
+    let repId = body.salesRepId;
+    const repExists = repId ? await prisma.user.findUnique({ where: { id: repId } }) : null;
+    if (!repExists) {
+      const defaultRep = (await prisma.user.findFirst({ where: { role: 'SALES_REP' } })) || (await prisma.user.findFirst());
+      repId = defaultRep ? defaultRep.id : null;
+    }
+
+    // Ensure valid Product connections for each line
+    const firstAvailableProduct = await prisma.product.findFirst();
+    const createdLines = await Promise.all(
+      (body.lines || []).map(async (l) => {
+        let prodId = l.productId;
+        const exists = prodId ? await prisma.product.findUnique({ where: { id: prodId } }) : null;
+        if (!exists) {
+          prodId = firstAvailableProduct?.id;
+        }
+
+        return {
+          product: { connect: { id: prodId } },
+          category: l.category || exists?.category || 'HARDWARE',
+          quantity: Number(l.quantity) || 1,
+          unitPrice: Number(l.unitPrice) || 0,
+          unitCost: Number(l.baseCost) || 0,
+          discountPercent: Number(l.discountPercent) || 0,
+          allowedLimitPercent: Number(l.allowedLimit) || 5,
+          isOverLimit: Boolean(l.isOverLimit),
+          overLimitPoints: Number(l.overLimitPoints) || 0,
+          lineTotal: Number(l.lineRevenue) || 0,
+          lineCostTotal: Number(l.lineCost) || 0,
+          lineMarginPercent: Number(l.lineMarginPercent) || 0,
+        };
+      })
+    );
 
     const created = await prisma.quotation.create({
       data: {
         quoteNumber,
-        customerId: body.customerId,
-        salesRepId: repId,
+        customer: { connect: { id: custId } },
+        salesRep: { connect: { id: repId } },
         status: body.status || 'DRAFT',
         blendedRiskScore: body.blendedRiskScore || 'LOW',
         subtotalAmount: Number(body.subtotalAmount) || 0,
@@ -170,20 +206,7 @@ export async function POST(request) {
         totalCost: Number(body.totalCost) || 0,
         totalMarginPercent: Number(body.totalMarginPercent) || 0,
         lines: {
-          create: (body.lines || []).map((l) => ({
-            productId: l.productId,
-            category: l.category || 'HARDWARE',
-            quantity: Number(l.quantity) || 1,
-            unitPrice: Number(l.unitPrice) || 0,
-            unitCost: Number(l.baseCost) || 0,
-            discountPercent: Number(l.discountPercent) || 0,
-            allowedLimitPercent: Number(l.allowedLimit) || 5,
-            isOverLimit: Boolean(l.isOverLimit),
-            overLimitPoints: Number(l.overLimitPoints) || 0,
-            lineTotal: Number(l.lineRevenue) || 0,
-            lineCostTotal: Number(l.lineCost) || 0,
-            lineMarginPercent: Number(l.lineMarginPercent) || 0,
-          })),
+          create: createdLines,
         },
         ...(body.status === 'PENDING_APPROVAL'
           ? {
