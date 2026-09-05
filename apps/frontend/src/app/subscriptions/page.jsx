@@ -4,13 +4,13 @@ import { useState, useEffect, useMemo } from 'react';
 import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { apiClient } from '@/services/apiClient';
+import { toast } from 'react-toastify';
 
 export default function SubscriptionsPage() {
   const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeStatus, setActiveStatus] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
-  const [notification, setNotification] = useState(null);
 
   // Modal
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -27,8 +27,13 @@ export default function SubscriptionsPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const showToast = (message, type = 'success') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 4000);
+    if (type === 'error') {
+      toast.error(message);
+    } else if (type === 'info') {
+      toast.info(message);
+    } else {
+      toast.success(message);
+    }
   };
 
   // Seat Adjustment modal state
@@ -171,14 +176,6 @@ export default function SubscriptionsPage() {
   return (
     <RequireRole roles={['rep', 'manager', 'finance', 'admin']}>
       <AppLayout>
-        {/* Flash Toast */}
-        {notification && (
-          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-sm font-medium border border-slate-700 animate-in fade-in slide-in-from-bottom-4">
-            <span className={`w-2.5 h-2.5 rounded-full ${notification.type === 'error' ? 'bg-rose-500' : 'bg-emerald-400'}`}></span>
-            <span>{notification.message}</span>
-          </div>
-        )}
-
         {/* Header Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
@@ -210,7 +207,7 @@ export default function SubscriptionsPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 mb-6">
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Monthly Recurring (MRR)</p>
-            <p className="text-xl font-black text-emerald-600 mt-1">${metrics.mrr.toLocaleString()}</p>
+            <p className="text-xl font-black text-slate-900 mt-1">${metrics.mrr.toLocaleString()}</p>
             <p className="text-[10px] text-slate-400 mt-1">Normalized monthly recurring run</p>
           </div>
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
@@ -308,7 +305,7 @@ export default function SubscriptionsPage() {
                         <span
                           className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                             sub.status === 'ACTIVE'
-                              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                              ? 'bg-zinc-100 border-zinc-300 text-zinc-900'
                               : sub.status === 'PAUSED'
                               ? 'bg-amber-50 border-amber-200 text-amber-700'
                               : 'bg-slate-100 border-slate-300 text-slate-500'
@@ -344,7 +341,7 @@ export default function SubscriptionsPage() {
                         ) : sub.status === 'PAUSED' ? (
                           <button
                             onClick={() => handleUpdateStatus(sub.id, 'ACTIVE')}
-                            className="px-2 py-1 rounded-lg bg-emerald-600 text-white text-[11px] font-medium hover:bg-emerald-700 cursor-pointer"
+                            className="px-2 py-1 rounded-lg bg-zinc-900 text-white text-[11px] font-medium hover:bg-black cursor-pointer"
                           >
                             Resume
                           </button>
@@ -372,8 +369,8 @@ export default function SubscriptionsPage() {
             <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-200">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-bold text-slate-900">Provision Subscription</h3>
-                <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1">
-                  ✕
+                <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition" aria-label="Close">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>
 
@@ -484,8 +481,8 @@ export default function SubscriptionsPage() {
                   <h3 className="text-base font-bold text-slate-900">Adjust Subscription Seats</h3>
                   <p className="text-xs text-slate-500 font-mono mt-0.5">{selectedSub.planName}</p>
                 </div>
-                <button onClick={() => setIsAdjustModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
-                  ✕
+                <button onClick={() => setIsAdjustModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition cursor-pointer" aria-label="Close">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>
 
