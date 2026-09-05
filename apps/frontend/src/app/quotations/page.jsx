@@ -108,23 +108,6 @@ export default function QuotationsPage() {
     };
   }, [isCreateModalOpen, newQuoteCustomer, newQuoteLines]);
 
-  // Switch persona seamlessly for testing all 4 roles
-  const handleSwitchPersona = async (targetEmail) => {
-    try {
-      const res = await login(targetEmail, '123456');
-      if (res && res.success) {
-        showToast(`Switched persona to ${res.user?.fullName} (${res.user?.role})`, 'info');
-      } else {
-        // Fallback login with password123
-        const res2 = await login(targetEmail, 'password123');
-        if (res2 && res2.success) {
-          showToast(`Switched persona to ${res2.user?.fullName} (${res2.user?.role})`, 'info');
-        }
-      }
-    } catch (e) {
-      console.warn('Quick persona switch:', e);
-    }
-  };
 
   // Filtered Quotations
   const filteredQuotations = useMemo(() => {
@@ -493,38 +476,7 @@ export default function QuotationsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            {/* PERSONA SWITCHER */}
-            <div className="flex items-center bg-gray-100 p-1 rounded-lg border border-gray-200">
-              <span className="text-xs font-medium text-gray-500 px-2">Role:</span>
-              <button
-                onClick={() => handleSwitchPersona('rep@dealflow.com')}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentRole === 'rep' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
-                title="Login as Alex Rep (SALES_REP)"
-              >
-                Sales Rep
-              </button>
-              <button
-                onClick={() => handleSwitchPersona('manager@dealflow.com')}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentRole === 'manager' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
-                title="Login as Morgan Manager (SALES_MANAGER)"
-              >
-                Manager
-              </button>
-              <button
-                onClick={() => handleSwitchPersona('finance@dealflow.com')}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentRole === 'finance' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
-                title="Login as Fiona Finance (FINANCE)"
-              >
-                Finance
-              </button>
-              <button
-                onClick={() => handleSwitchPersona('admin@dealflow.com')}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentRole === 'admin' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
-                title="Login as System Admin (ADMIN)"
-              >
-                Admin
-              </button>
-            </div>
+
 
             {/* CREATE QUOTE BUTTON */}
             <button

@@ -73,22 +73,7 @@ export default function ApprovalsPage() {
     });
   }, [pendingQuotes, activeTab, searchQuery]);
 
-  // Quick Persona Switch for testing
-  const handleSwitchPersona = async (targetEmail) => {
-    try {
-      const res = await login(targetEmail, '123456');
-      if (res && res.success) {
-        showToast(`Switched persona to ${res.user?.fullName} (${res.user?.role})`, 'info');
-      } else {
-        const res2 = await login(targetEmail, 'password123');
-        if (res2 && res2.success) {
-          showToast(`Switched persona to ${res2.user?.fullName} (${res2.user?.role})`, 'info');
-        }
-      }
-    } catch (e) {
-      console.warn('Persona switch error:', e);
-    }
-  };
+
 
   // Governance Actions
   const handleAction = async (quote, actionType, customNote = '') => {
@@ -176,28 +161,7 @@ export default function ApprovalsPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Quick role switcher */}
-            <div className="flex items-center bg-gray-100 p-1 rounded-md border border-gray-200">
-              <span className="text-xs font-medium text-gray-500 px-2">Role:</span>
-              <button
-                onClick={() => handleSwitchPersona('manager@dealflow.com')}
-                className={`px-2.5 py-1 text-xs font-medium rounded transition cursor-pointer ${currentRole === 'manager' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
-              >
-                Manager
-              </button>
-              <button
-                onClick={() => handleSwitchPersona('finance@dealflow.com')}
-                className={`px-2.5 py-1 text-xs font-medium rounded transition cursor-pointer ${currentRole === 'finance' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
-              >
-                Finance
-              </button>
-              <button
-                onClick={() => handleSwitchPersona('admin@dealflow.com')}
-                className={`px-2.5 py-1 text-xs font-medium rounded transition cursor-pointer ${currentRole === 'admin' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
-              >
-                Admin
-              </button>
-            </div>
+
 
             <Link
               href="/quotations"
