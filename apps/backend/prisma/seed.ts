@@ -1,4 +1,4 @@
-import { PrismaClient, Role, CustomerTier, ProductCategory, RecurringInterval, RiskLevel } from '@prisma/client';
+import { PrismaClient, Role, CustomerTier, ProductCategory, RecurringInterval, RiskLevel, ApprovalAction, ApprovalStage, QuotationStatus } from '@prisma/client';
 import * as argon2 from 'argon2';
 
 const prisma = new PrismaClient();
@@ -367,6 +367,262 @@ async function main() {
   });
 
   console.log('✅ Subscription Plan Templates seeded.');
+
+  // 10. Seed Realistic Quotations across Stages (B1, B2, B3)
+  // Quote 1: DRAFT (LOW Risk) for Acme Gold
+  const q1 = await prisma.quotation.create({
+    data: {
+      quoteNumber: 'Q-1001',
+      customerId: acme.id,
+      salesRepId: rep.id,
+      status: QuotationStatus.DRAFT,
+      blendedRiskScore: RiskLevel.LOW,
+      subtotalAmount: 6900.0,
+      totalDiscountAmount: 708.0,
+      orderDiscountPercent: 0.0,
+      totalAmount: 6192.0,
+      totalCost: 4450.0,
+      totalMarginPercent: 28.13,
+      portalToken: 'portal-acme-q1001-demo-token',
+    },
+  });
+
+  await prisma.quotationLine.createMany({
+    data: [
+      {
+        quotationId: q1.id,
+        productId: laptop.id,
+        category: ProductCategory.HARDWARE,
+        quantity: 5,
+        unitCost: 800.0,
+        unitPrice: 1200.0,
+        discountPercent: 10.0,
+        allowedLimitPercent: 15.0,
+        isOverLimit: false,
+        overLimitPoints: 0.0,
+        lineTotal: 5400.0,
+        lineCostTotal: 4000.0,
+        lineMarginPercent: 25.93,
+      },
+      {
+        quotationId: q1.id,
+        productId: docking.id,
+        category: ProductCategory.HARDWARE,
+        quantity: 5,
+        unitCost: 90.0,
+        unitPrice: 180.0,
+        discountPercent: 12.0,
+        allowedLimitPercent: 15.0,
+        isOverLimit: false,
+        overLimitPoints: 0.0,
+        lineTotal: 792.0,
+        lineCostTotal: 450.0,
+        lineMarginPercent: 43.18,
+      },
+    ],
+  });
+
+  // Quote 2: PENDING_APPROVAL (MEDIUM Risk, +4pt deviation) for Beta Silver
+  const q2 = await prisma.quotation.create({
+    data: {
+      quoteNumber: 'Q-1002',
+      customerId: beta.id,
+      salesRepId: rep.id,
+      status: QuotationStatus.PENDING_APPROVAL,
+      blendedRiskScore: RiskLevel.MEDIUM,
+      subtotalAmount: 12450.0,
+      totalDiscountAmount: 1716.0,
+      orderDiscountPercent: 0.0,
+      totalAmount: 10734.0,
+      totalCost: 8200.0,
+      totalMarginPercent: 23.61,
+      portalToken: 'portal-beta-q1002-demo-token',
+    },
+  });
+
+  await prisma.quotationLine.createMany({
+    data: [
+      {
+        quotationId: q2.id,
+        productId: laptop.id,
+        category: ProductCategory.HARDWARE,
+        quantity: 10,
+        unitCost: 800.0,
+        unitPrice: 1200.0,
+        discountPercent: 14.0, // Silver tier limit is 10% -> 4% over limit!
+        allowedLimitPercent: 10.0,
+        isOverLimit: true,
+        overLimitPoints: 4.0,
+        lineTotal: 10320.0,
+        lineCostTotal: 8000.0,
+        lineMarginPercent: 22.48,
+      },
+      {
+        quotationId: q2.id,
+        productId: mouse.id,
+        category: ProductCategory.HARDWARE,
+        quantity: 10,
+        unitCost: 20.0,
+        unitPrice: 45.0,
+        discountPercent: 8.0,
+        allowedLimitPercent: 10.0,
+        isOverLimit: false,
+        overLimitPoints: 0.0,
+        lineTotal: 414.0,
+        lineCostTotal: 200.0,
+        lineMarginPercent: 51.69,
+      },
+    ],
+  });
+
+  const appReqQ2 = await prisma.approvalRequest.create({
+    data: {
+      quotationId: q2.id,
+      currentStage: ApprovalStage.SALES_MANAGER,
+      blendedRiskLevel: RiskLevel.MEDIUM,
+      worstLineDeviation: 4.0,
+      flagReasonSummary: 'Sales Manager Approval Required: Max line discount deviation +4.0pt on Hardware',
+      isCompleted: false,
+    },
+  });
+
+  await prisma.approvalAuditLog.create({
+    data: {
+      approvalRequestId: appReqQ2.id,
+      userId: rep.id,
+      action: ApprovalAction.SUBMITTED,
+      note: 'Competitive deal against Dell. Requesting 14% discount exception on laptops.',
+    },
+  });
+
+  // Quote 3: PENDING_APPROVAL (HIGH Risk, +9pt deviation) for Delta Bronze
+  const q3 = await prisma.quotation.create({
+    data: {
+      quoteNumber: 'Q-1003',
+      customerId: delta.id,
+      salesRepId: rep.id,
+      status: QuotationStatus.PENDING_APPROVAL,
+      blendedRiskScore: RiskLevel.HIGH,
+      subtotalAmount: 28500.0,
+      totalDiscountAmount: 3810.0,
+      orderDiscountPercent: 0.0,
+      totalAmount: 24690.0,
+      totalCost: 19500.0,
+      totalMarginPercent: 21.02,
+      portalToken: 'portal-delta-q1003-demo-token',
+    },
+  });
+
+  await prisma.quotationLine.createMany({
+    data: [
+      {
+        quotationId: q3.id,
+        productId: laptop.id,
+        category: ProductCategory.HARDWARE,
+        quantity: 20,
+        unitCost: 800.0,
+        unitPrice: 1200.0,
+        discountPercent: 14.0, // Bronze tier limit is 5% -> 9% over limit!
+        allowedLimitPercent: 5.0,
+        isOverLimit: true,
+        overLimitPoints: 9.0,
+        lineTotal: 20640.0,
+        lineCostTotal: 16000.0,
+        lineMarginPercent: 22.48,
+      },
+      {
+        quotationId: q3.id,
+        productId: setupService.id,
+        category: ProductCategory.SERVICES,
+        quantity: 10,
+        unitCost: 350.0,
+        unitPrice: 450.0,
+        discountPercent: 10.0, // Bronze limit 5% -> 5% over limit!
+        allowedLimitPercent: 5.0,
+        isOverLimit: true,
+        overLimitPoints: 5.0,
+        lineTotal: 4050.0,
+        lineCostTotal: 3500.0,
+        lineMarginPercent: 13.58,
+      },
+    ],
+  });
+
+  const appReqQ3 = await prisma.approvalRequest.create({
+    data: {
+      quotationId: q3.id,
+      currentStage: ApprovalStage.SALES_MANAGER,
+      blendedRiskLevel: RiskLevel.HIGH,
+      worstLineDeviation: 9.0,
+      flagReasonSummary: 'Two-Tier Approval Required (Sales Manager -> Finance): Max line discount deviation +9.0pt',
+      isCompleted: false,
+    },
+  });
+
+  await prisma.approvalAuditLog.create({
+    data: {
+      approvalRequestId: appReqQ3.id,
+      userId: rep.id,
+      action: ApprovalAction.SUBMITTED,
+      note: 'Large enterprise pilot. Significant volume discount requested by customer.',
+    },
+  });
+
+  // Quote 4: UNDER_NEGOTIATION (Sent to Customer, counter proposal received)
+  const q4 = await prisma.quotation.create({
+    data: {
+      quoteNumber: 'Q-1004',
+      customerId: acme.id,
+      salesRepId: rep.id,
+      status: QuotationStatus.UNDER_NEGOTIATION,
+      blendedRiskScore: RiskLevel.LOW,
+      subtotalAmount: 1104.0,
+      totalDiscountAmount: 88.32,
+      orderDiscountPercent: 0.0,
+      totalAmount: 1015.68,
+      totalCost: 600.0,
+      totalMarginPercent: 40.93,
+      portalToken: 'portal-acme-q1004-negotiate-token',
+      counterDiscountProposed: 12.0,
+    },
+  });
+
+  await prisma.quotationLine.createMany({
+    data: [
+      {
+        quotationId: q4.id,
+        productId: carePlan.id,
+        category: ProductCategory.SUBSCRIPTION,
+        quantity: 12,
+        unitCost: 15.0,
+        unitPrice: 46.0,
+        discountPercent: 8.0,
+        allowedLimitPercent: 15.0,
+        isOverLimit: false,
+        overLimitPoints: 0.0,
+        lineTotal: 507.84,
+        lineCostTotal: 180.0,
+        lineMarginPercent: 64.55,
+      },
+      {
+        quotationId: q4.id,
+        productId: supportSla.id,
+        category: ProductCategory.SUBSCRIPTION,
+        quantity: 2,
+        unitCost: 120.0,
+        unitPrice: 300.0,
+        discountPercent: 8.0,
+        allowedLimitPercent: 15.0,
+        isOverLimit: false,
+        overLimitPoints: 0.0,
+        lineTotal: 552.0,
+        lineCostTotal: 240.0,
+        lineMarginPercent: 56.52,
+      },
+    ],
+  });
+
+  console.log('✅ Realistic quotations (Q-1001..Q-1004) and approval requests seeded.');
 
   console.log('🎉 DealFlow360 seed complete!');
 }
