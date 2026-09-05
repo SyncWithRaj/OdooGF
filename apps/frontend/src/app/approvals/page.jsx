@@ -5,16 +5,16 @@ import Link from 'next/link';
 import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { useAuth } from '@/context/AuthContext';
-import { quotationsService } from '@/services/quotationsService';
 import { apiClient } from '@/services/apiClient';
 
 export default function ApprovalsPage() {
   const { user, login } = useAuth();
-  const currentRole = (user?.role || 'manager').toLowerCase();
+  const roleMap = { SALES_MANAGER: 'manager', FINANCE: 'finance', ADMIN: 'admin' };
+  const currentRole = roleMap[user?.role] || (user?.role || 'manager').toLowerCase();
 
   const [quotations, setQuotations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('all'); // all | manager | finance
+  const [activeTab, setActiveTab] = useState(currentRole === 'finance' ? 'finance' : currentRole === 'manager' ? 'manager' : 'all');
   const [searchQuery, setSearchQuery] = useState('');
   const [processingId, setProcessingId] = useState(null);
   const [notification, setNotification] = useState(null);
@@ -26,14 +26,44 @@ export default function ApprovalsPage() {
     setTimeout(() => setNotification(null), 4000);
   };
 
-  // Load live quotations from PostgreSQL
+  // Load approval queue from backend (auto-filters by user role)
   const loadApprovals = async () => {
     setLoading(true);
     try {
-      const data = await quotationsService.getQuotations();
-      setQuotations(data);
+      // Fetch the real approval queue — backend filters by role automatically
+      const queue = await apiClient.getApprovalsQueue();
+      // Flatten ApprovalRequest → quote-like shape for the table
+      const flattened = queue.map((ar) => {
+        const q = ar.quotation || {};
+        return {
+          id: q.id,
+          quoteNumber: q.quoteNumber,
+          status: q.status,
+          customerName: q.customer?.name || q.customer?.companyName || 'Direct Client',
+          customerEmail: q.customer?.email || '',
+          customerTier: q.customer?.tier || 'BRONZE',
+          salesRepName: q.salesRep?.fullName || q.salesRep?.email || 'Direct Sales Rep',
+          totalAmount: q.totalAmount,
+          totalDiscountAmount: q.totalDiscountAmount,
+          orderDiscountPercent: q.orderDiscountPercent,
+          counterDiscountProposed: q.counterDiscountProposed,
+          requestedDeliveryDate: q.requestedDeliveryDate,
+          portalToken: q.portalToken,
+          totalMarginPercent: q.totalMarginPercent,
+          blendedRiskScore: q.blendedRiskScore || ar.blendedRiskLevel,
+          currentStage: ar.currentStage, // source of truth from ApprovalRequest
+          flagReasonSummary: ar.flagReasonSummary,
+          approvalRequests: [{ id: ar.id, currentStage: ar.currentStage, blendedRiskLevel: ar.blendedRiskLevel }],
+          customer: q.customer,
+          salesRep: q.salesRep,
+          lines: q.lines,
+          auditLogs: ar.auditLogs,
+          notes: q.notes,
+        };
+      });
+      setQuotations(flattened);
     } catch (err) {
-      console.error('Failed to load pending quotations:', err);
+      console.error('Failed to load approval queue:', err);
       showToast('Error loading approvals queue.', 'error');
     } finally {
       setLoading(false);
@@ -44,38 +74,30 @@ export default function ApprovalsPage() {
     loadApprovals();
   }, [user?.role]);
 
-  // Filter only quotations needing approval
-  const pendingQuotes = useMemo(() => {
-    return quotations.filter((q) => q.status === 'PENDING_APPROVAL');
-  }, [quotations]);
+  // All items from queue are already pending (no extra filter needed)
+  const pendingQuotes = quotations;
 
   const managerPending = useMemo(() => {
-    return pendingQuotes.filter((q) => {
-      const stage = q.currentStage || q.approvalRequests?.[0]?.currentStage || (q.blendedRiskScore === 'HIGH' ? 'FINANCE' : 'SALES_MANAGER');
-      return stage === 'SALES_MANAGER';
-    });
+    return pendingQuotes.filter((q) => q.currentStage === 'SALES_MANAGER');
   }, [pendingQuotes]);
 
   const financePending = useMemo(() => {
-    return pendingQuotes.filter((q) => {
-      const stage = q.currentStage || q.approvalRequests?.[0]?.currentStage || (q.blendedRiskScore === 'HIGH' ? 'FINANCE' : 'SALES_MANAGER');
-      return stage === 'FINANCE';
-    });
+    return pendingQuotes.filter((q) => q.currentStage === 'FINANCE');
   }, [pendingQuotes]);
 
   // Filtered quotes based on tab and search
   const displayedQuotes = useMemo(() => {
     return pendingQuotes.filter((q) => {
-      const stage = q.currentStage || q.approvalRequests?.[0]?.currentStage || (q.blendedRiskScore === 'HIGH' ? 'FINANCE' : 'SALES_MANAGER');
-      if (activeTab === 'manager' && stage !== 'SALES_MANAGER') return false;
-      if (activeTab === 'finance' && stage !== 'FINANCE') return false;
+      if (activeTab === 'manager' && q.currentStage !== 'SALES_MANAGER') return false;
+      if (activeTab === 'finance' && q.currentStage !== 'FINANCE') return false;
 
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
-        const matchesNumber = q.quoteNumber?.toLowerCase().includes(query);
-        const matchesCustomer = (q.customerName || q.customer?.name || q.customer?.companyName || '')?.toLowerCase().includes(query);
-        const matchesRep = (q.salesRepName || q.salesRep?.fullName || '')?.toLowerCase().includes(query);
-        return matchesNumber || matchesCustomer || matchesRep;
+        return (
+          q.quoteNumber?.toLowerCase().includes(query) ||
+          q.customerName?.toLowerCase().includes(query) ||
+          q.salesRepName?.toLowerCase().includes(query)
+        );
       }
       return true;
     });
@@ -264,9 +286,8 @@ export default function ApprovalsPage() {
                 <tbody className="divide-y divide-gray-100 text-gray-700">
                   {displayedQuotes.map((quote) => {
                     const isProcessing = processingId === quote.id;
-                    const stage = quote.currentStage || quote.approvalRequests?.[0]?.currentStage || (quote.blendedRiskScore === 'HIGH' ? 'FINANCE' : 'SALES_MANAGER');
-                    const isManagerStage = stage === 'SALES_MANAGER';
-                    const isFinanceStage = stage === 'FINANCE';
+                    const isManagerStage = quote.currentStage === 'SALES_MANAGER';
+                    const isFinanceStage = quote.currentStage === 'FINANCE';
                     const canApprove =
                       currentRole === 'admin' ||
                       (isManagerStage && currentRole === 'manager') ||
@@ -326,6 +347,11 @@ export default function ApprovalsPage() {
                         <td className="py-3 px-4 text-right font-medium text-amber-700">
                           {quote.orderDiscountPercent}%
                           <span className="block text-[10px] text-gray-400">-${quote.totalDiscountAmount}</span>
+                          {quote.counterDiscountProposed > 0 && (
+                            <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                              💬 Counter: {quote.counterDiscountProposed}%
+                            </span>
+                          )}
                         </td>
 
                         {/* Total Amount */}
@@ -436,6 +462,24 @@ export default function ApprovalsPage() {
                     <span className="font-semibold text-gray-900">{selectedQuote.totalMarginPercent}%</span>
                   </div>
                 </div>
+
+                {/* Active Customer Counter-Proposal Notice */}
+                {selectedQuote.counterDiscountProposed > 0 && (
+                  <div className="p-3.5 bg-purple-50 rounded-lg border border-purple-200 text-xs text-purple-950 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold flex items-center gap-1.5 text-purple-900">
+                        <span className="w-2 h-2 rounded-full bg-purple-600 animate-pulse"></span>
+                        ⚡ Red-Dashed Loop: Customer Counter-Proposal
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold text-[10px]">
+                        +{selectedQuote.counterDiscountProposed}% Concession Requested
+                      </span>
+                    </div>
+                    <p className="text-purple-800">
+                      Customer requested an additional discount of <strong>{selectedQuote.counterDiscountProposed}%</strong> (Delivery: {selectedQuote.requestedDeliveryDate ? new Date(selectedQuote.requestedDeliveryDate).toLocaleDateString() : 'Standard'}). Approving will advance the quote back to <strong>SENT_TO_CUSTOMER</strong> with the approved concession.
+                    </p>
+                  </div>
+                )}
 
                 {/* Line Items Table */}
                 {selectedQuote.lines && selectedQuote.lines.length > 0 && (
