@@ -57,9 +57,17 @@ export default function TopHeader({ onToggleSidebar, isCollapsed = false }) {
               className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl hover:bg-slate-100 transition cursor-pointer"
             >
               {/* User Avatar Circle */}
-              <div className="w-8 h-8 rounded-full bg-[#E0F7F6] text-teal-800 border border-teal-200 flex items-center justify-center font-bold text-xs shadow-2xs">
-                {user?.name?.[0]?.toUpperCase() || 'U'}
-              </div>
+              {user?.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt={user?.name || 'User'}
+                  className="w-8 h-8 rounded-full object-cover border border-slate-200 shadow-2xs"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-[#E0F7F6] text-teal-800 border border-teal-200 flex items-center justify-center font-bold text-xs shadow-2xs">
+                  {user?.name?.[0]?.toUpperCase() || 'U'}
+                </div>
+              )}
               <div className="hidden sm:block text-left">
                 <span className="text-xs font-semibold text-slate-900 block leading-tight">{user?.name}</span>
                 <span className="text-[10px] text-slate-400 capitalize">{user?.role}</span>
