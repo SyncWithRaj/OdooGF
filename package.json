@@ -16,6 +16,6 @@
     "studio": "pnpm --filter backend prisma studio"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.2.4"
   }
 }
