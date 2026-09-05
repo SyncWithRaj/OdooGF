@@ -25,6 +25,20 @@ export default function ProductsPage() {
     skuSuffix: '',
   });
 
+  const [newProduct, setNewProduct] = useState({
+    sku: '',
+    name: '',
+    description: '',
+    category: 'HARDWARE',
+    unit: 'Each',
+    baseCost: 100,
+    basePrice: 150,
+    taxPercent: 15,
+    isSubscription: false,
+    recurringInterval: 'MONTHLY',
+    minMarginThreshold: 20,
+  });
+
   const showToast = (message, type = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 4000);
