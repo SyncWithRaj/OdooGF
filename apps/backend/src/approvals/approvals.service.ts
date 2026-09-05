@@ -34,8 +34,11 @@ export class ApprovalsService {
       where.isCompleted = false;
     }
 
+    // LOW risk is auto-approved — never show in any queue
     if (query.riskLevel) {
       where.blendedRiskLevel = query.riskLevel;
+    } else {
+      where.blendedRiskLevel = { in: [RiskLevel.MEDIUM, RiskLevel.HIGH] };
     }
 
     // Role-based routing filter
@@ -47,7 +50,7 @@ export class ApprovalsService {
       } else if (currentUser.role === Role.FINANCE) {
         where.currentStage = ApprovalStage.FINANCE;
       }
-      // ADMIN sees all stages if not filtered
+      // ADMIN sees all active stages if not filtered
     }
 
     return this.prisma.approvalRequest.findMany({
