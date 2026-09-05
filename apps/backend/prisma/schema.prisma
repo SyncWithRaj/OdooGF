@@ -1,3 +1,8 @@
+// ==============================================================================
+// DealFlow360 - Complete Prisma Schema for PostgreSQL
+// Self-Governing Sales Operations & CPQ Platform
+// ==============================================================================
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -7,9 +12,529 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// ------------------------------------------------------------------------------
+// 1. ENUMS
+// ------------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  SALES_REP
+  SALES_MANAGER
+  FINANCE
+  CUSTOMER
+}
+
+enum CustomerTier {
+  BRONZE
+  SILVER
+  GOLD
+}
+
+enum ProductCategory {
+  HARDWARE
+  SERVICES
+  SUBSCRIPTION
+}
+
+enum RecurringInterval {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum QuotationStatus {
+  DRAFT
+  PENDING_APPROVAL
+  SENT_TO_CUSTOMER
+  UNDER_NEGOTIATION
+  CONFIRMED
+  SPLIT_PENDING
+  FULFILLED
+  CANCELLED
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ApprovalStage {
+  SALES_MANAGER
+  FINANCE
+  APPROVED
+  REJECTED
+  RETURNED
+}
+
+enum ApprovalAction {
+  SUBMITTED
+  APPROVED
+  RETURNED_FOR_REVISION
+  REJECTED
+  RESUBMITTED
+}
+
+enum FulfillmentStatus {
+  SPLIT_PENDING
+  CONFIRMED
+  PARTIALLY_SHIPPED
+  SHIPPED
+  BACKORDER
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+}
+
+enum InvoiceType {
+  ONE_TIME
+  RECURRING
+}
+
+enum InvoiceStatus {
+  UNPAID
+  PAID
+  OVERDUE
+}
+
+enum HealthIssueType {
+  STALLED_DEAL
+  DISCOUNT_ANOMALY
+  DELIVERY_SLIPPAGE
+}
+
+// ------------------------------------------------------------------------------
+// 2. USER & AUTHENTICATION (Screen 1)
+// ------------------------------------------------------------------------------
+
 model User {
+  id               String    @id @default(uuid())
+  email            String    @unique
+  passwordHash     String
+  refreshTokenHash String?
+  fullName         String
+  role             Role      @default(SALES_REP)
+  teamName         String?   @default("Direct Sales")
+  isEmailVerified  Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Relationships
+  quotationsAsRep    Quotation[]          @relation("RepQuotations")
+  approvalLogs       ApprovalAuditLog[]
+  dealAlertsAssigned DealHealthAlert[]
+  customersManaged   Customer[]           @relation("ManagedCustomers")
+}
+
+model OtpVerification {
   id        String   @id @default(uuid())
-  email     String   @unique
-  name      String?
+  email     String
+  otp       String
+  type      String   // "SIGNUP", "PASSWORD_RESET"
+  payload   String?  // JSON string storing pending signup/reset data
+  expiresAt DateTime
   createdAt DateTime @default(now())
+
+  @@index([email, type])
+}
+
+// ------------------------------------------------------------------------------
+// 3. CUSTOMER MASTER & TIERS (Screen 1, 4, 11)
+// ------------------------------------------------------------------------------
+
+model Customer {
+  id               String       @id @default(uuid())
+  name             String
+  email            String       @unique
+  phone            String?
+  companyName      String?
+  tier             CustomerTier @default(BRONZE)
+  assignedRepId    String?
+  assignedRep      User?        @relation("ManagedCustomers", fields: [assignedRepId], references: [id])
+  historicalAvgDisc Float       @default(8.0)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  quotations       Quotation[]
+  subscriptions    Subscription[]
+  invoices         Invoice[]
+}
+
+// ------------------------------------------------------------------------------
+// 4. PRODUCT CATALOG, VARIANTS & PRICELISTS (Screens 16 & 17)
+// ------------------------------------------------------------------------------
+
+model Product {
+  id                 String          @id @default(uuid())
+  sku                String          @unique
+  name               String
+  description        String?
+  category           ProductCategory
+  unit               String          @default("Each")
+  baseCost           Float           // Internal cost needed for Real-time Margin % calculation
+  basePrice          Float           // Selling Price
+  taxPercent         Float           @default(18.0)
+  
+  // Subscription flags
+  isSubscription     Boolean         @default(false)
+  recurringInterval  RecurringInterval?
+  
+  // Upsell / Promotion flags
+  isPromoted         Boolean         @default(false)
+  minMarginThreshold Float           @default(20.0)
+  
+  isActive           Boolean         @default(true)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  // Relationships
+  variants           ProductVariant[]
+  warehouseStocks    WarehouseStock[]
+  quotationLines     QuotationLine[]
+  priceRules         PriceListRule[]
+  
+  // Upsell pairings
+  recommendedPairings ProductCoPurchaseRule[] @relation("BaseProductPairings")
+  pairedInRules       ProductCoPurchaseRule[] @relation("RecommendedProductPairings")
+}
+
+model ProductVariant {
+  id         String   @id @default(uuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  attribute  String   // e.g. "Color", "RAM", "Storage"
+  value      String   // e.g. "Black", "16GB", "512GB"
+  extraPrice Float    @default(0.0)
+  skuSuffix  String?
+  createdAt  DateTime @default(now())
+
+  quotationLines QuotationLine[]
+}
+
+model PriceListRule {
+  id              String       @id @default(uuid())
+  productId       String
+  product         Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customerTier    CustomerTier
+  currency        String       @default("USD")
+  priceRuleDesc   String?
+  discountPercent Float        @default(0.0)
+}
+
+// ------------------------------------------------------------------------------
+// 5. DISCOUNT GOVERNANCE CONFIGURATION (Screen 18)
+// ------------------------------------------------------------------------------
+
+model TierDiscountCeiling {
+  id          String       @id @default(uuid())
+  tier        CustomerTier @unique
+  maxDiscount Float        // Bronze: 5%, Silver: 10%, Gold: 15%
+}
+
+model CategoryDiscountCeiling {
+  id          String          @id @default(uuid())
+  category    ProductCategory @unique
+  maxDiscount Float           // Hardware: 15%, Services: 10%, Subscription: 15%
+}
+
+model ApprovalChainMatrix {
+  id                      String    @id @default(uuid())
+  riskLevel               RiskLevel @unique
+  description             String
+  requiresManagerApproval Boolean   @default(false)
+  requiresFinanceApproval Boolean   @default(false)
+}
+
+// ------------------------------------------------------------------------------
+// 6. WAREHOUSES & STOCK (Screens 7 & 8)
+// ------------------------------------------------------------------------------
+
+model Warehouse {
+  id                 String   @id @default(uuid())
+  name               String   @unique // e.g. "Main Warehouse", "East Depot"
+  location           String
+  shippingCostWeight Float    @default(1.0)
+  createdAt          DateTime @default(now())
+
+  warehouseStocks    WarehouseStock[]
+  splitShipments     FulfillmentSplitItem[]
+}
+
+model WarehouseStock {
+  id          String    @id @default(uuid())
+  warehouseId String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  inStock           Int      @default(0)
+  reserved          Int      @default(0)
+  available         Int      @default(0)
+  minStockLevel     Int      @default(10) // Replenishment alert trigger point
+  reorderQuantity   Int      @default(50) // Quantity to replenish when below threshold
+  updatedAt         DateTime @updatedAt
+
+  @@unique([warehouseId, productId])
+}
+
+// ------------------------------------------------------------------------------
+// 7. QUOTATIONS & CPQ ENGINE (Screens 2, 3, 4, 11)
+// ------------------------------------------------------------------------------
+
+model Quotation {
+  id                      String          @id @default(uuid())
+  quoteNumber             String          @unique // e.g. "Q-1042"
+  customerId              String
+  customer                Customer        @relation(fields: [customerId], references: [id])
+  salesRepId              String
+  salesRep                User            @relation("RepQuotations", fields: [salesRepId], references: [id])
+  
+  status                  QuotationStatus @default(DRAFT)
+  blendedRiskScore        RiskLevel       @default(LOW)
+  
+  // Financial Totals
+  subtotalAmount          Float           @default(0.0)
+  totalDiscountAmount     Float           @default(0.0)
+  orderDiscountPercent    Float           @default(0.0)
+  totalTaxAmount          Float           @default(0.0)
+  totalAmount             Float           @default(0.0)
+  totalCost               Float           @default(0.0)
+  totalMarginPercent      Float           @default(0.0)
+  
+  // Customer Portal & Negotiation (Screen 11)
+  portalToken             String          @unique @default(uuid())
+  counterDiscountProposed  Float?
+  requestedDeliveryDate   DateTime?
+  customerTermsConfirmed  Boolean         @default(false)
+
+  // Deal Health Tracking (Screen 14)
+  lastActivityAt          DateTime        @default(now())
+  isStalled               Boolean         @default(false)
+  
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+
+  // Relationships
+  lines                   QuotationLine[]
+  comments                QuotationComment[]
+  approvalRequests        ApprovalRequest[]
+  fulfillmentOrder        FulfillmentOrder?
+  subscriptions           Subscription[]
+  invoices                Invoice[]
+  dealHealthAlerts        DealHealthAlert[]
+}
+
+model QuotationLine {
+  id                  String          @id @default(uuid())
+  quotationId         String
+  quotation           Quotation       @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  productId           String
+  product             Product         @relation(fields: [productId], references: [id])
+  variantId           String?
+  variant             ProductVariant? @relation(fields: [variantId], references: [id])
+  
+  category            ProductCategory
+  quantity            Int             @default(1)
+  unitCost            Float
+  unitPrice           Float
+  
+  // Line-level discount logic
+  discountPercent     Float           @default(0.0)
+  allowedLimitPercent Float           @default(0.0)
+  isOverLimit         Boolean         @default(false)
+  overLimitPoints     Float           @default(0.0)
+  
+  // Computed values
+  lineTotal           Float           @default(0.0)
+  lineCostTotal       Float           @default(0.0)
+  lineMarginPercent   Float           @default(0.0)
+
+  createdAt           DateTime        @default(now())
+  comments            QuotationComment[]
+}
+
+model QuotationComment {
+  id              String         @id @default(uuid())
+  quotationId     String
+  quotation       Quotation      @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  quotationLineId String?
+  quotationLine   QuotationLine? @relation(fields: [quotationLineId], references: [id], onDelete: SetNull)
+  authorRole      Role
+  authorName      String
+  message         String
+  createdAt       DateTime       @default(now())
+}
+
+// ------------------------------------------------------------------------------
+// 8. APPROVAL GOVERNANCE & AUDIT TRAIL (Screens 5 & 6)
+// ------------------------------------------------------------------------------
+
+model ApprovalRequest {
+  id                 String         @id @default(uuid())
+  quotationId        String
+  quotation          Quotation      @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  currentStage       ApprovalStage  @default(SALES_MANAGER)
+  blendedRiskLevel   RiskLevel      @default(MEDIUM)
+  worstLineDeviation Float          @default(0.0)
+  flagReasonSummary  String?
+  isCompleted        Boolean        @default(false)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  auditLogs          ApprovalAuditLog[]
+}
+
+model ApprovalAuditLog {
+  id                String          @id @default(uuid())
+  approvalRequestId String
+  approvalRequest   ApprovalRequest @relation(fields: [approvalRequestId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User            @relation(fields: [userId], references: [id])
+  action            ApprovalAction
+  note              String?
+  createdAt         DateTime        @default(now())
+}
+
+// ------------------------------------------------------------------------------
+// 9. FULFILLMENT & MULTI-WAREHOUSE SPLIT (Screens 7 & 8)
+// ------------------------------------------------------------------------------
+
+model FulfillmentOrder {
+  id                 String            @id @default(uuid())
+  quotationId        String            @unique
+  quotation          Quotation         @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  status             FulfillmentStatus @default(SPLIT_PENDING)
+  totalShipments     Int               @default(1)
+  estimatedCostTotal Float             @default(0.0)
+  hasBackorder       Boolean           @default(false)
+  isManualOverride   Boolean           @default(false)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  splitItems         FulfillmentSplitItem[]
+}
+
+model FulfillmentSplitItem {
+  id                 String           @id @default(uuid())
+  fulfillmentOrderId String
+  fulfillmentOrder   FulfillmentOrder @relation(fields: [fulfillmentOrderId], references: [id], onDelete: Cascade)
+  warehouseId        String
+  warehouse          Warehouse        @relation(fields: [warehouseId], references: [id])
+  productId          String
+  quantityFulfilled  Int              @default(0)
+  quantityBackordered Int             @default(0)
+  estimatedShipCost  Float            @default(0.0)
+  createdAt          DateTime         @default(now())
+}
+
+// ------------------------------------------------------------------------------
+// 10. SUBSCRIPTIONS & HYBRID BILLING (Screens 9 & 10)
+// ------------------------------------------------------------------------------
+
+model Subscription {
+  id                 String             @id @default(uuid())
+  customerId         String
+  customer           Customer           @relation(fields: [customerId], references: [id])
+  quotationId        String
+  quotation          Quotation          @relation(fields: [quotationId], references: [id])
+  planName           String
+  cycle              RecurringInterval  @default(MONTHLY)
+  amount             Float
+  status             SubscriptionStatus @default(ACTIVE)
+  startDate          DateTime           @default(now())
+  nextBillingDate    DateTime
+  endDate            DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  prorationLogs      SubscriptionProrationLog[]
+  invoices           Invoice[]
+}
+
+model SubscriptionProrationLog {
+  id                  String       @id @default(uuid())
+  subscriptionId      String
+  subscription        Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  changeDate          DateTime     @default(now())
+  oldQuantity         Int
+  newQuantity         Int
+  oldRecurringAmount  Float
+  newRecurringAmount  Float
+  proratedDeltaAmount Float
+  reason              String?
+}
+
+// ------------------------------------------------------------------------------
+// 11. INVOICES & PAYMENTS (Screens 12 & 13)
+// ------------------------------------------------------------------------------
+
+model Invoice {
+  id              String        @id @default(uuid())
+  invoiceNumber   String        @unique
+  quotationId     String
+  quotation       Quotation     @relation(fields: [quotationId], references: [id])
+  customerId      String
+  customer        Customer      @relation(fields: [customerId], references: [id])
+  subscriptionId  String?
+  subscription    Subscription? @relation(fields: [subscriptionId], references: [id])
+  
+  invoiceType     InvoiceType   @default(ONE_TIME)
+  amount          Float
+  status          InvoiceStatus @default(UNPAID)
+  dueDate         DateTime
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  payments        Payment[]
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  invoiceId     String
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount        Float
+  paymentMethod String   @default("Bank Transfer")
+  reference     String?
+  paidAt        DateTime @default(now())
+}
+
+// ------------------------------------------------------------------------------
+// 12. DEAL HEALTH & ANOMALIES (Screen 14)
+// ------------------------------------------------------------------------------
+
+model DealHealthAlert {
+  id          String          @id @default(uuid())
+  quotationId String
+  quotation   Quotation       @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  issueType   HealthIssueType
+  description String
+  isEscalated Boolean         @default(false)
+  isResolved  Boolean         @default(false)
+  assignedToId String?
+  assignedTo  User?           @relation(fields: [assignedToId], references: [id])
+  flaggedAt   DateTime        @default(now())
+  resolvedAt  DateTime?
+}
+
+// ------------------------------------------------------------------------------
+// 13. AI RECOMMENDATION & UPSELL RULES (Screen 4)
+// ------------------------------------------------------------------------------
+
+model ProductCoPurchaseRule {
+  id                   String   @id @default(uuid())
+  baseProductId        String
+  baseProduct          Product  @relation("BaseProductPairings", fields: [baseProductId], references: [id], onDelete: Cascade)
+  recommendedProductId String
+  recommendedProduct   Product  @relation("RecommendedProductPairings", fields: [recommendedProductId], references: [id], onDelete: Cascade)
+  
+  coPurchaseScore      Float    @default(0.85)
+  marginDeltaBoost     Float    @default(18.0)
+  promotionTag         String?
+  createdAt            DateTime @default(now())
+
+  @@unique([baseProductId, recommendedProductId])
 }
