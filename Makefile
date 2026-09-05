@@ -22,7 +22,10 @@ down:
 
 # Database & Prisma
 studio:
-	pnpm --filter backend prisma studio
+	pnpm --filter backend studio
+
+seed:
+	pnpm --filter backend seed
 
 db-push:
 	pnpm --filter backend prisma db push
