@@ -3,131 +3,171 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext(null);
-const STORAGE_KEY_SESSION = 'dealflow_user';
-const STORAGE_KEY_ACCOUNTS = 'dealflow_accounts';
+const STORAGE_KEY = 'dealflow_user';
+const TOKEN_KEY = 'dealflow_token';
+const REFRESH_KEY = 'dealflow_refresh_token';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 // The 5 roles from the spec
 export const ROLES = ['rep', 'manager', 'finance', 'admin', 'customer'];
-
-// Starter accounts for demo testing
-const DEFAULT_ACCOUNTS = [
-  {
-    id: 'usr_rep_1',
-    name: 'Sales Rep',
-    email: 'rep@company.com',
-    password: 'password123',
-    role: 'rep',
-  },
-  {
-    id: 'usr_admin_1',
-    name: 'Admin User',
-    email: 'admin@company.com',
-    password: 'password123',
-    role: 'admin',
-  },
-];
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Helper to load accounts from localStorage
-  const getAccounts = () => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY_ACCOUNTS);
-      if (stored) {
-        return JSON.parse(stored);
-      }
-      localStorage.setItem(STORAGE_KEY_ACCOUNTS, JSON.stringify(DEFAULT_ACCOUNTS));
-      return DEFAULT_ACCOUNTS;
-    } catch (e) {
-      console.error('Failed to load accounts:', e);
-      return DEFAULT_ACCOUNTS;
-    }
+  // Normalize role string from backend enum (e.g. SALES_REP -> rep)
+  const normalizeRole = (role) => {
+    if (!role) return 'customer';
+    const r = role.toLowerCase();
+    if (r === 'sales_rep') return 'rep';
+    if (r === 'sales_manager') return 'manager';
+    return r;
   };
 
-  // Restore active user session on mount
+  // On first load, validate the saved session against the real backend /api/auth/me
   useEffect(() => {
-    try {
-      const savedSession = localStorage.getItem(STORAGE_KEY_SESSION);
-      if (savedSession && savedSession !== 'undefined') {
-        setUser(JSON.parse(savedSession));
+    const restoreSession = async () => {
+      const savedUser = localStorage.getItem(STORAGE_KEY);
+      const token = localStorage.getItem(TOKEN_KEY);
+
+      if (!token || !savedUser) {
+        setLoading(false);
+        return;
       }
-    } catch (e) {
-      console.error('Failed to load user session:', e);
-      try { localStorage.removeItem(STORAGE_KEY_SESSION); } catch {}
-    } finally {
-      setLoading(false);
-    }
+
+      try {
+        const res = await fetch(`${API_URL}/api/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const restored = {
+            id: data.user.id,
+            email: data.user.email,
+            name: data.user.fullName,
+            role: normalizeRole(data.user.role),
+            teamName: data.user.teamName,
+          };
+          setUser(restored);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(restored));
+        } else {
+          // Token expired or invalid -> clear local storage
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem(REFRESH_KEY);
+          setUser(null);
+        }
+      } catch (err) {
+        console.error('Failed to verify session with backend:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    restoreSession();
   }, []);
 
-  // Save active user session
-  const saveSession = (u) => {
-    const sessionData = {
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      role: u.role || 'customer',
-    };
-    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(sessionData));
-    setUser(sessionData);
-    return { success: true, user: sessionData };
+  const saveSession = (u, accessToken, refreshToken) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
+    if (accessToken) localStorage.setItem(TOKEN_KEY, accessToken);
+    if (refreshToken) localStorage.setItem(REFRESH_KEY, refreshToken);
+    setUser(u);
+    return { success: true, user: u };
   };
 
-  // Login — MUST MATCH EMAIL AND PASSWORD
+  // Real Backend Login with Argon2 verification
   const login = async (email, password) => {
-    const normalizedEmail = email.trim().toLowerCase();
-    const accounts = getAccounts();
+    const res = await fetch(`${API_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim(), password }),
+    });
 
-    const account = accounts.find(
-      (a) => a.email.toLowerCase() === normalizedEmail
-    );
+    const data = await res.json();
 
-    if (!account) {
-      throw new Error('Account does not exist. Please sign up.');
+    if (!res.ok) {
+      const message = Array.isArray(data.message) ? data.message.join(', ') : data.message;
+      throw new Error(message || 'Invalid email or password');
     }
 
-    if (account.password !== password) {
-      throw new Error('Incorrect password. Please try again.');
-    }
-
-    return saveSession(account);
-  };
-
-  // Register — checks uniqueness and saves { name, email, password, role }
-  const register = async (name, email, password) => {
-    const normalizedEmail = email.trim().toLowerCase();
-    const accounts = getAccounts();
-
-    const existing = accounts.find(
-      (a) => a.email.toLowerCase() === normalizedEmail
-    );
-
-    if (existing) {
-      throw new Error('An account with this email already exists. Please sign in.');
-    }
-
-    const newAccount = {
-      id: 'usr_' + Date.now(),
-      name: name.trim(),
-      email: normalizedEmail,
-      password: password,
-      role: 'customer',
-      createdAt: new Date().toISOString(),
+    const sessionUser = {
+      id: data.user.id,
+      email: data.user.email,
+      name: data.user.fullName,
+      role: normalizeRole(data.user.role),
+      teamName: data.user.teamName,
     };
 
-    const updatedAccounts = [...accounts, newAccount];
-    try {
-      localStorage.setItem(STORAGE_KEY_ACCOUNTS, JSON.stringify(updatedAccounts));
-    } catch (e) {
-      console.error('Failed to save account:', e);
-    }
-
-    return saveSession(newAccount);
+    return saveSession(sessionUser, data.accessToken, data.refreshToken);
   };
 
-  const logout = () => {
-    localStorage.removeItem(STORAGE_KEY_SESSION);
+  // Step 1: Initiate signup (dispatches 6-digit OTP email)
+  const initiateSignup = async (fullName, email, password, confirmPassword) => {
+    const res = await fetch(`${API_URL}/api/auth/signup/initiate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fullName: fullName.trim(),
+        email: email.trim(),
+        password,
+        confirmPassword,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      const message = Array.isArray(data.message) ? data.message.join(', ') : data.message;
+      throw new Error(message || 'Signup initiation failed');
+    }
+
+    return data;
+  };
+
+  // Step 2: Verify OTP and create Customer account
+  const verifySignup = async (email, otp) => {
+    const res = await fetch(`${API_URL}/api/auth/signup/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email.trim(),
+        otp: otp.trim(),
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      const message = Array.isArray(data.message) ? data.message.join(', ') : data.message;
+      throw new Error(message || 'Invalid or expired OTP verification code');
+    }
+
+    const sessionUser = {
+      id: data.user.id,
+      email: data.user.email,
+      name: data.user.fullName,
+      role: normalizeRole(data.user.role),
+      teamName: null,
+    };
+
+    return saveSession(sessionUser, data.accessToken, data.refreshToken);
+  };
+
+  const logout = async () => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token) {
+      try {
+        await fetch(`${API_URL}/api/auth/logout`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch {}
+    }
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_KEY);
     setUser(null);
   };
 
