@@ -24,6 +24,7 @@ export default function QuotationsPage() {
   const [selectedQuoteIds, setSelectedQuoteIds] = useState([]);
   const [sortField, setSortField] = useState('date');
   const [sortDirection, setSortDirection] = useState('desc');
+  const [showFilters, setShowFilters] = useState(false);
 
   // Backend live master data
   const [customers, setCustomers] = useState([]);
@@ -128,12 +129,15 @@ export default function QuotationsPage() {
 
   // Filtered Quotations
   const filteredQuotations = useMemo(() => {
-    return quotations.filter((q) => {
-      // Tab filter
+    const filtered = quotations.filter((q) => {
+      // Segmented Tab filter matching user aspects
       if (activeTab === 'drafts' && q.status !== 'DRAFT') return false;
+      if (activeTab === 'pending' && q.status !== 'PENDING_APPROVAL') return false;
+      if (activeTab === 'approved' && q.status !== 'APPROVED') return false;
+      if (activeTab === 'confirmed' && q.status !== 'CONFIRMED') return false;
+      if (activeTab === 'cancelled' && q.status !== 'REJECTED') return false;
       if (activeTab === 'manager' && (q.status !== 'PENDING_APPROVAL' || q.currentStage !== 'SALES_MANAGER')) return false;
       if (activeTab === 'finance' && (q.status !== 'PENDING_APPROVAL' || q.currentStage !== 'FINANCE')) return false;
-      if (activeTab === 'confirmed' && q.status !== 'CONFIRMED') return false;
 
       // Status dropdown filter
       if (statusFilter !== 'ALL' && q.status !== statusFilter) return false;
@@ -483,201 +487,226 @@ export default function QuotationsPage() {
           </div>
         )}
 
-        {/* TOP BAR: HEADER & ROLE PERSONA QUICK-SWITCHER */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+        {/* TOP BAR: HEADER & CREATE QUOTATION BUTTON MATCHING SCREENSHOT */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Quotations</h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Manage client proposals, pricing policies, and approval workflows.
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Quotations</h1>
+            <p className="text-xs text-slate-500 mt-1">
+              Commercial proposals, pricing governance, and order approvals
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {/* PERSONA SWITCHER */}
-            <div className="flex items-center bg-gray-100 p-1 rounded-lg border border-gray-200">
-              <span className="text-xs font-medium text-gray-500 px-2">Role:</span>
-              <button
-                onClick={() => handleSwitchPersona('rep@dealflow.com')}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentRole === 'rep' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
-                title="Login as Alex Rep (SALES_REP)"
-              >
-                Sales Rep
-              </button>
-              <button
-                onClick={() => handleSwitchPersona('manager@dealflow.com')}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentRole === 'manager' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
-                title="Login as Morgan Manager (SALES_MANAGER)"
-              >
-                Manager
-              </button>
-              <button
-                onClick={() => handleSwitchPersona('finance@dealflow.com')}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentRole === 'finance' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
-                title="Login as Fiona Finance (FINANCE)"
-              >
-                Finance
-              </button>
-              <button
-                onClick={() => handleSwitchPersona('admin@dealflow.com')}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentRole === 'admin' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
-                title="Login as System Admin (ADMIN)"
-              >
-                Admin
-              </button>
+          <div className="flex items-center gap-3">
+            {/* Quick Role Persona Switcher */}
+            <div className="hidden lg:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80">
+              <span className="text-[10px] font-bold text-slate-400 px-2 uppercase tracking-wider">Role:</span>
+              {['rep', 'manager', 'finance', 'admin'].map((r) => (
+                <button
+                  key={r}
+                  onClick={() => handleSwitchPersona(`${r}@dealflow.com`)}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-lg transition capitalize cursor-pointer ${
+                    currentRole === r ? 'bg-white text-slate-900 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {r}
+                </button>
+              ))}
             </div>
 
-            {/* CREATE QUOTE BUTTON */}
+            {/* Create Quotation Button */}
             <button
               onClick={handleOpenCreateModal}
-              className="h-10 px-4 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm transition cursor-pointer shadow-sm flex items-center gap-2"
+              className="h-9 px-4 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-semibold text-xs transition cursor-pointer shadow-xs flex items-center gap-2 active:scale-95"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
               </svg>
-              <span>New Quotation</span>
+              <span>Create Quotation</span>
             </button>
           </div>
         </div>
 
-        {/* KPI METRIC CARDS */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="p-5 rounded-lg bg-white border border-gray-200 shadow-xs">
-            <div className="flex items-center justify-between text-xs font-medium text-gray-500 mb-1">
-              <span>Pipeline Value</span>
-              <span className="text-emerald-700 font-semibold">Live</span>
-            </div>
-            <div className="text-2xl font-semibold text-gray-900 tracking-tight">
+        {/* METRICS ROW (Slim & Modern) */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 mb-5">
+          <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+            <div className="text-[11px] font-medium text-slate-500 mb-0.5">Pipeline Value</div>
+            <div className="text-xl font-bold text-slate-900 tracking-tight">
               ${metrics.totalPipeline.toLocaleString()}
             </div>
-            <div className="text-xs text-gray-500 mt-1">
-              {quotations.length} total active proposals
-            </div>
+            <div className="text-[11px] text-slate-400 mt-0.5">{quotations.length} active proposals</div>
           </div>
-
-          <div className="p-5 rounded-lg bg-white border border-gray-200 shadow-xs">
-            <div className="flex items-center justify-between text-xs font-medium text-gray-500 mb-1">
-              <span>Manager Approvals (L1)</span>
-              {metrics.pendingManagerCount > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
-                  {metrics.pendingManagerCount} Pending
-                </span>
-              )}
-            </div>
-            <div className="text-2xl font-semibold text-amber-700 tracking-tight">
-              {metrics.pendingManagerCount}
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              Medium risk deals requiring sign-off
-            </div>
-          </div>
-
-          <div className="p-5 rounded-lg bg-white border border-gray-200 shadow-xs">
-            <div className="flex items-center justify-between text-xs font-medium text-gray-500 mb-1">
-              <span>Finance Controller (L2)</span>
-              {metrics.pendingFinanceCount > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-800 border border-rose-200">
-                  {metrics.pendingFinanceCount} Urgent
-                </span>
-              )}
-            </div>
-            <div className="text-2xl font-semibold text-rose-700 tracking-tight">
-              {metrics.pendingFinanceCount}
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              High risk or margin breaches
-            </div>
-          </div>
-
-          <div className="p-5 rounded-lg bg-white border border-gray-200 shadow-xs">
-            <div className="flex items-center justify-between text-xs font-medium text-gray-500 mb-1">
-              <span>Average Margin</span>
-              <span className="text-gray-500 font-normal">Target &gt; 25%</span>
-            </div>
-            <div className="text-2xl font-semibold text-gray-900 tracking-tight">
-              {metrics.avgMargin}%
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              {metrics.confirmedCount} orders confirmed
-            </div>
-          </div>
-        </div>
-
-        {/* ROLE TABS & FILTERS BAR */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-2 mb-6 rounded-lg bg-white border border-gray-200 shadow-xs">
-          {/* TABS */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
-            <button
-              onClick={() => setActiveTab('all')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition cursor-pointer ${activeTab === 'all' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
-              All Quotes ({quotations.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('drafts')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition cursor-pointer ${activeTab === 'drafts' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
-              Drafts ({metrics.draftsCount})
-            </button>
-            <button
-              onClick={() => setActiveTab('manager')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition cursor-pointer ${activeTab === 'manager' ? 'bg-amber-700 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
+          <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+            <div className="flex items-center justify-between text-[11px] font-medium text-slate-500 mb-0.5">
               <span>Manager Approvals</span>
               {metrics.pendingManagerCount > 0 && (
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-medium ${activeTab === 'manager' ? 'bg-white/30 text-white' : 'bg-amber-100 text-amber-800'}`}>
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
                   {metrics.pendingManagerCount}
                 </span>
               )}
-            </button>
-            <button
-              onClick={() => setActiveTab('finance')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition cursor-pointer ${activeTab === 'finance' ? 'bg-rose-700 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
+            </div>
+            <div className="text-xl font-bold text-amber-700 tracking-tight">
+              {metrics.pendingManagerCount}
+            </div>
+            <div className="text-[11px] text-slate-400 mt-0.5">Medium risk deals</div>
+          </div>
+          <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+            <div className="flex items-center justify-between text-[11px] font-medium text-slate-500 mb-0.5">
               <span>Finance Controller</span>
               {metrics.pendingFinanceCount > 0 && (
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-medium ${activeTab === 'finance' ? 'bg-white/30 text-white' : 'bg-rose-100 text-rose-800'}`}>
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
                   {metrics.pendingFinanceCount}
                 </span>
               )}
-            </button>
-            <button
-              onClick={() => setActiveTab('confirmed')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition cursor-pointer ${activeTab === 'confirmed' ? 'bg-blue-700 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
-              Confirmed ({metrics.confirmedCount})
-            </button>
-          </div>
-
-          {/* SEARCH & FILTERS */}
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 md:w-56">
-              <svg className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search quote, client, rep..."
-                className="w-full h-9 pl-9 pr-3 rounded-md text-xs bg-white border border-gray-200 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-200"
-              />
             </div>
-
-            <select
-              value={riskFilter}
-              onChange={(e) => setRiskFilter(e.target.value)}
-              className="h-9 px-3 rounded-md text-xs bg-white border border-gray-200 font-medium text-gray-700 focus:outline-none focus:border-gray-400"
-            >
-              <option value="ALL">All Risks</option>
-              <option value="LOW">Low Risk</option>
-              <option value="MEDIUM">Medium Risk</option>
-              <option value="HIGH">High Risk</option>
-            </select>
+            <div className="text-xl font-bold text-rose-700 tracking-tight">
+              {metrics.pendingFinanceCount}
+            </div>
+            <div className="text-[11px] text-slate-400 mt-0.5">High risk deals</div>
+          </div>
+          <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+            <div className="text-[11px] font-medium text-slate-500 mb-0.5">Average Margin</div>
+            <div className="text-xl font-bold text-slate-900 tracking-tight">
+              {metrics.avgMargin}%
+            </div>
+            <div className="text-[11px] text-slate-400 mt-0.5">{metrics.confirmedCount} orders confirmed</div>
           </div>
         </div>
 
-        {/* QUOTATIONS LIST TABLE MATCHING TARGET DESIGN */}
-        <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden mb-8">
+        {/* UNIFIED TABLE CARD WITH EMBEDDED SEGMENTED TABS & FILTERS MATCHING TARGET DESIGN */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden mb-8">
+          {/* Card Header Toolbar: Segmented Tabs + Filters + Search + Columns */}
+          <div className="p-3 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-3 bg-white">
+            {/* Left: Segmented Tabs + Filters Button */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Segmented Filter Pills */}
+              <div className="bg-slate-100/90 p-1 rounded-xl flex items-center gap-1 border border-slate-200/60">
+                {[
+                  { key: 'all', label: 'All' },
+                  { key: 'pending', label: 'Pending', count: metrics.pendingManagerCount + metrics.pendingFinanceCount },
+                  { key: 'approved', label: 'Shipped' },
+                  { key: 'confirmed', label: 'Delivered' },
+                  { key: 'drafts', label: 'Drafts', count: metrics.draftsCount },
+                  { key: 'cancelled', label: 'Cancelled' },
+                ].map((tab) => {
+                  const isActive = activeTab === tab.key;
+                  return (
+                    <button
+                      key={tab.key}
+                      onClick={() => setActiveTab(tab.key)}
+                      className={`px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer select-none ${
+                        isActive
+                          ? 'bg-white text-slate-900 font-semibold shadow-xs border border-slate-200/80'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {tab.label}
+                      {tab.count > 0 && (
+                        <span className={`ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                          isActive ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'
+                        }`}>
+                          {tab.count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Filters Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setShowFilters(!showFilters)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition shadow-2xs cursor-pointer ${
+                  showFilters || riskFilter !== 'ALL' || statusFilter !== 'ALL'
+                    ? 'border-slate-900 bg-slate-900 text-white'
+                    : 'border-slate-200/80 bg-white text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                <span>Filters</span>
+                {(riskFilter !== 'ALL' || statusFilter !== 'ALL') && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                )}
+              </button>
+            </div>
+
+            {/* Right: Search Input + Columns Button */}
+            <div className="flex items-center gap-2">
+              <div className="relative w-48 sm:w-56">
+                <svg className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Filter quotations..."
+                  className="w-full h-8 pl-8 pr-3 rounded-xl text-xs bg-slate-50/80 border border-slate-200/70 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-slate-400 transition"
+                />
+              </div>
+
+              <button
+                type="button"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200/80 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 transition shadow-2xs select-none cursor-pointer"
+              >
+                <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                </svg>
+                <span>Columns</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Expandable Filter Options */}
+          {showFilters && (
+            <div className="px-4 py-3 bg-slate-50/80 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in duration-150">
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-slate-600">Risk Policy:</span>
+                  <select
+                    value={riskFilter}
+                    onChange={(e) => setRiskFilter(e.target.value)}
+                    className="h-7 px-2 rounded-lg bg-white border border-slate-200 text-xs font-medium text-slate-700 focus:outline-none focus:border-slate-400"
+                  >
+                    <option value="ALL">All Risk Levels</option>
+                    <option value="LOW">Low Risk</option>
+                    <option value="MEDIUM">Medium Risk (Manager L1)</option>
+                    <option value="HIGH">High Risk (Finance L2)</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-slate-600">Approval Stage:</span>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="h-7 px-2 rounded-lg bg-white border border-slate-200 text-xs font-medium text-slate-700 focus:outline-none focus:border-slate-400"
+                  >
+                    <option value="ALL">All Statuses</option>
+                    <option value="DRAFT">Draft</option>
+                    <option value="PENDING_APPROVAL">Pending Approval</option>
+                    <option value="APPROVED">Shipped (Approved)</option>
+                    <option value="CONFIRMED">Delivered (Confirmed)</option>
+                    <option value="REJECTED">Cancelled</option>
+                  </select>
+                </div>
+
+                {(riskFilter !== 'ALL' || statusFilter !== 'ALL') && (
+                  <button
+                    onClick={() => {
+                      setRiskFilter('ALL');
+                      setStatusFilter('ALL');
+                    }}
+                    className="text-slate-500 hover:text-slate-800 text-xs underline cursor-pointer"
+                  >
+                    Reset filters
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
