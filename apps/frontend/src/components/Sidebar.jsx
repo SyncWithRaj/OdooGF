@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -7,6 +8,27 @@ import { useAuth } from '@/context/AuthContext';
 export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggleCollapse }) {
   const { user } = useAuth();
   const pathname = usePathname();
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(null);
+
+  useEffect(() => {
+    let isCancelled = false;
+    async function fetchPendingCount() {
+      try {
+        const res = await fetch('/api/quotations');
+        if (res.ok) {
+          const data = await res.json();
+          const pending = (data.quotations || []).filter((q) => q.status === 'PENDING_APPROVAL');
+          if (!isCancelled) setPendingApprovalsCount(pending.length);
+        }
+      } catch (e) {
+        // silent fallback
+      }
+    }
+    fetchPendingCount();
+    return () => {
+      isCancelled = true;
+    };
+  }, [pathname]);
 
   // Grouped navigation menus matching DealFlow360 architecture
   const navSections = [
@@ -87,7 +109,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
           label: 'Approvals',
           href: '/approvals',
           roles: ['manager', 'finance', 'admin'],
-          badge: '3',
+          badge:
+            pendingApprovalsCount !== null
+              ? pendingApprovalsCount > 0
+                ? String(pendingApprovalsCount)
+                : null
+              : '3',
           icon: (
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />

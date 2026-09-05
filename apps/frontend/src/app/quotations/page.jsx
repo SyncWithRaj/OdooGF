@@ -419,168 +419,163 @@ export default function QuotationsPage() {
         {/* TOP BAR: HEADER & ROLE PERSONA QUICK-SWITCHER */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
           <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">CPQ Quotations & Governance</h1>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                Live Backend Synced
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 mt-1">
-              Multi-tier pricing, dynamic discount validation, real-time margin risk scoring, and multi-stage approval routing.
+            <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Quotations</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Manage client proposals, pricing policies, and approval workflows.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
             {/* PERSONA SWITCHER */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80">
-              <span className="text-[11px] font-semibold text-slate-500 px-2 uppercase tracking-wider">Role Preview:</span>
+            <div className="flex items-center bg-gray-100 p-1 rounded-lg border border-gray-200">
+              <span className="text-xs font-medium text-gray-500 px-2">Role:</span>
               <button
                 onClick={() => handleSwitchPersona('rep@dealflow.com')}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition ${currentRole === 'rep' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentRole === 'rep' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
                 title="Login as Alex Rep (SALES_REP)"
               >
-                💼 Sales Rep
+                Sales Rep
               </button>
               <button
                 onClick={() => handleSwitchPersona('manager@dealflow.com')}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition ${currentRole === 'manager' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentRole === 'manager' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
                 title="Login as Morgan Manager (SALES_MANAGER)"
               >
-                👔 Manager
+                Manager
               </button>
               <button
                 onClick={() => handleSwitchPersona('finance@dealflow.com')}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition ${currentRole === 'finance' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentRole === 'finance' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
                 title="Login as Fiona Finance (FINANCE)"
               >
-                📊 Finance
+                Finance
               </button>
               <button
                 onClick={() => handleSwitchPersona('admin@dealflow.com')}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition ${currentRole === 'admin' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer ${currentRole === 'admin' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
                 title="Login as System Admin (ADMIN)"
               >
-                🛡️ Admin
+                Admin
               </button>
             </div>
 
             {/* CREATE QUOTE BUTTON */}
             <button
               onClick={handleOpenCreateModal}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-semibold text-xs shadow-sm transition active:scale-95"
+              className="h-10 px-4 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm transition cursor-pointer shadow-sm flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
               </svg>
-              <span>+ Create Quotation</span>
+              <span>New Quotation</span>
             </button>
           </div>
         </div>
 
         {/* KPI METRIC CARDS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
-            <div className="flex items-center justify-between text-xs font-medium text-slate-500 mb-1">
+          <div className="p-5 rounded-lg bg-white border border-gray-200 shadow-xs">
+            <div className="flex items-center justify-between text-xs font-medium text-gray-500 mb-1">
               <span>Pipeline Value</span>
-              <span className="text-emerald-600 font-bold">Live</span>
+              <span className="text-emerald-700 font-semibold">Live</span>
             </div>
-            <div className="text-2xl font-black text-slate-900 tracking-tight">
+            <div className="text-2xl font-semibold text-gray-900 tracking-tight">
               ${metrics.totalPipeline.toLocaleString()}
             </div>
-            <div className="text-[11px] text-slate-400 mt-1">
+            <div className="text-xs text-gray-500 mt-1">
               {quotations.length} total active proposals
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
-            <div className="flex items-center justify-between text-xs font-medium text-slate-500 mb-1">
+          <div className="p-5 rounded-lg bg-white border border-gray-200 shadow-xs">
+            <div className="flex items-center justify-between text-xs font-medium text-gray-500 mb-1">
               <span>Manager Approvals (L1)</span>
               {metrics.pendingManagerCount > 0 && (
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
                   {metrics.pendingManagerCount} Pending
                 </span>
               )}
             </div>
-            <div className="text-2xl font-black text-amber-600 tracking-tight">
+            <div className="text-2xl font-semibold text-amber-700 tracking-tight">
               {metrics.pendingManagerCount}
             </div>
-            <div className="text-[11px] text-slate-400 mt-1">
+            <div className="text-xs text-gray-500 mt-1">
               Medium risk deals requiring sign-off
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
-            <div className="flex items-center justify-between text-xs font-medium text-slate-500 mb-1">
+          <div className="p-5 rounded-lg bg-white border border-gray-200 shadow-xs">
+            <div className="flex items-center justify-between text-xs font-medium text-gray-500 mb-1">
               <span>Finance Controller (L2)</span>
               {metrics.pendingFinanceCount > 0 && (
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-800 border border-rose-200">
                   {metrics.pendingFinanceCount} Urgent
                 </span>
               )}
             </div>
-            <div className="text-2xl font-black text-rose-600 tracking-tight">
+            <div className="text-2xl font-semibold text-rose-700 tracking-tight">
               {metrics.pendingFinanceCount}
             </div>
-            <div className="text-[11px] text-slate-400 mt-1">
+            <div className="text-xs text-gray-500 mt-1">
               High risk or margin breaches
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
-            <div className="flex items-center justify-between text-xs font-medium text-slate-500 mb-1">
+          <div className="p-5 rounded-lg bg-white border border-gray-200 shadow-xs">
+            <div className="flex items-center justify-between text-xs font-medium text-gray-500 mb-1">
               <span>Average Margin</span>
-              <span className="text-indigo-600 font-semibold">Target &gt; 25%</span>
+              <span className="text-gray-500 font-normal">Target &gt; 25%</span>
             </div>
-            <div className="text-2xl font-black text-slate-900 tracking-tight">
+            <div className="text-2xl font-semibold text-gray-900 tracking-tight">
               {metrics.avgMargin}%
             </div>
-            <div className="text-[11px] text-slate-400 mt-1">
+            <div className="text-xs text-gray-500 mt-1">
               {metrics.confirmedCount} orders confirmed
             </div>
           </div>
         </div>
 
         {/* ROLE TABS & FILTERS BAR */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-3 mb-6 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-2 mb-6 rounded-lg bg-white border border-gray-200 shadow-xs">
           {/* TABS */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
             <button
               onClick={() => setActiveTab('all')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${activeTab === 'all' ? 'bg-slate-950 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition cursor-pointer ${activeTab === 'all' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
             >
               All Quotes ({quotations.length})
             </button>
             <button
               onClick={() => setActiveTab('drafts')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${activeTab === 'drafts' ? 'bg-slate-950 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition cursor-pointer ${activeTab === 'drafts' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
             >
               Drafts ({metrics.draftsCount})
             </button>
             <button
               onClick={() => setActiveTab('manager')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${activeTab === 'manager' ? 'bg-amber-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition cursor-pointer ${activeTab === 'manager' ? 'bg-amber-700 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
             >
               <span>Manager Approvals</span>
               {metrics.pendingManagerCount > 0 && (
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${activeTab === 'manager' ? 'bg-white/30 text-white' : 'bg-amber-100 text-amber-800'}`}>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-medium ${activeTab === 'manager' ? 'bg-white/30 text-white' : 'bg-amber-100 text-amber-800'}`}>
                   {metrics.pendingManagerCount}
                 </span>
               )}
             </button>
             <button
               onClick={() => setActiveTab('finance')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${activeTab === 'finance' ? 'bg-rose-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition cursor-pointer ${activeTab === 'finance' ? 'bg-rose-700 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
             >
-              <span>Finance Controller Review</span>
+              <span>Finance Controller</span>
               {metrics.pendingFinanceCount > 0 && (
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${activeTab === 'finance' ? 'bg-white/30 text-white' : 'bg-rose-100 text-rose-800'}`}>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-medium ${activeTab === 'finance' ? 'bg-white/30 text-white' : 'bg-rose-100 text-rose-800'}`}>
                   {metrics.pendingFinanceCount}
                 </span>
               )}
             </button>
             <button
               onClick={() => setActiveTab('confirmed')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${activeTab === 'confirmed' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition cursor-pointer ${activeTab === 'confirmed' ? 'bg-blue-700 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
             >
               Confirmed ({metrics.confirmedCount})
             </button>
@@ -589,7 +584,7 @@ export default function QuotationsPage() {
           {/* SEARCH & FILTERS */}
           <div className="flex items-center gap-2">
             <div className="relative flex-1 md:w-56">
-              <svg className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <input
@@ -597,14 +592,14 @@ export default function QuotationsPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search quote, client, rep..."
-                className="w-full pl-9 pr-3 py-1.5 rounded-xl text-xs bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400"
+                className="w-full h-9 pl-9 pr-3 rounded-md text-xs bg-white border border-gray-200 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-200"
               />
             </div>
 
             <select
               value={riskFilter}
               onChange={(e) => setRiskFilter(e.target.value)}
-              className="px-2.5 py-1.5 rounded-xl text-xs bg-slate-50 border border-slate-200 font-medium text-slate-700 focus:outline-none"
+              className="h-9 px-3 rounded-md text-xs bg-white border border-gray-200 font-medium text-gray-700 focus:outline-none focus:border-gray-400"
             >
               <option value="ALL">All Risks</option>
               <option value="LOW">Low Risk</option>
@@ -615,23 +610,23 @@ export default function QuotationsPage() {
         </div>
 
         {/* QUOTATIONS LIST TABLE */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden mb-8">
+        <div className="bg-white rounded-lg border border-gray-200 shadow-xs overflow-hidden mb-8">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Quote #</th>
-                  <th className="py-3.5 px-4">Customer &amp; Tier</th>
-                  <th className="py-3.5 px-4">Sales Rep</th>
-                  <th className="py-3.5 px-4">Status &amp; Stage</th>
-                  <th className="py-3.5 px-4">Governance Risk</th>
-                  <th className="py-3.5 px-4 text-right">Discount</th>
-                  <th className="py-3.5 px-4 text-right">Net Value</th>
-                  <th className="py-3.5 px-4 text-right">Margin %</th>
-                  <th className="py-3.5 px-4 text-center">Actions</th>
+                <tr className="bg-gray-50/80 border-b border-gray-200 text-[11px] font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="py-3 px-4">Quote #</th>
+                  <th className="py-3 px-4">Customer &amp; Tier</th>
+                  <th className="py-3 px-4">Sales Rep</th>
+                  <th className="py-3 px-4">Status &amp; Stage</th>
+                  <th className="py-3 px-4">Risk Level</th>
+                  <th className="py-3 px-4 text-right">Discount</th>
+                  <th className="py-3 px-4 text-right">Net Value</th>
+                  <th className="py-3 px-4 text-right">Margin %</th>
+                  <th className="py-3 px-4 text-center">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+              <tbody className="divide-y divide-gray-100 text-xs text-gray-700">
                 {filteredQuotations.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="py-12 text-center text-slate-400 font-medium">
@@ -642,27 +637,27 @@ export default function QuotationsPage() {
                   filteredQuotations.map((quote) => (
                     <tr
                       key={quote.id}
-                      className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
+                      className="hover:bg-gray-50/70 transition-colors group cursor-pointer"
                       onClick={() => handleOpenDetailDrawer(quote)}
                     >
-                      <td className="py-3 px-4 font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                      <td className="py-3 px-4 font-semibold text-gray-900 group-hover:text-emerald-700 transition-colors">
                         {quote.quoteNumber}
                       </td>
                       <td className="py-3 px-4">
-                        <div className="font-semibold text-slate-900">{quote.customerName}</div>
+                        <div className="font-medium text-gray-900">{quote.customerName}</div>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           {getTierBadge(quote.customerTier)}
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        <span className="font-medium text-slate-800">{quote.salesRepName}</span>
+                        <span className="text-gray-700 font-medium">{quote.salesRepName}</span>
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex flex-col gap-1 items-start">
                           {getStatusBadge(quote.status)}
                           {quote.status === 'PENDING_APPROVAL' && (
-                            <span className="text-[10px] text-slate-500 font-medium">
-                              Stage: <span className="font-bold text-slate-700">{quote.currentStage}</span>
+                            <span className="text-[10px] text-gray-500 font-medium">
+                              Stage: <span className="font-semibold text-gray-700">{quote.currentStage}</span>
                             </span>
                           )}
                         </div>
@@ -670,24 +665,24 @@ export default function QuotationsPage() {
                       <td className="py-3 px-4">
                         {getRiskBadge(quote.blendedRiskScore)}
                       </td>
-                      <td className="py-3 px-4 text-right font-medium text-slate-600">
+                      <td className="py-3 px-4 text-right font-medium text-gray-600">
                         {quote.orderDiscountPercent}%
-                        <span className="block text-[10px] text-slate-400">-${quote.totalDiscountAmount}</span>
+                        <span className="block text-[10px] text-gray-400">-${quote.totalDiscountAmount}</span>
                       </td>
-                      <td className="py-3 px-4 text-right font-bold text-slate-900">
+                      <td className="py-3 px-4 text-right font-semibold text-gray-900">
                         ${quote.totalAmount?.toLocaleString()}
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <span className={`inline-block font-bold ${quote.totalMarginPercent < 20 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                        <span className={`inline-block font-semibold ${quote.totalMarginPercent < 20 ? 'text-rose-600' : 'text-emerald-700'}`}>
                           {quote.totalMarginPercent}%
                         </span>
                       </td>
                       <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-center gap-1.5">
+                        <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => handleOpenDetailDrawer(quote)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition"
-                            title="Inspect CPQ Quote"
+                            className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
+                            title="Inspect Quotation"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -699,8 +694,8 @@ export default function QuotationsPage() {
                               setSelectedQuote(quote);
                               setIsPreviewModalOpen(true);
                             }}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition"
-                            title="Preview Customer Proposal & E-Signature"
+                            className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
+                            title="Preview Customer Proposal"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -717,20 +712,24 @@ export default function QuotationsPage() {
         </div>
 
         {/* ========================================================================= */}
-        {/* CREATE QUOTATION MODAL (Step 1 from zero with live backend connections)    */}
+        {/* ========================================================================= */}
+        {/* CREATE QUOTATION MODAL (Clean, classic web login page style)              */}
         {/* ========================================================================= */}
         {isCreateModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[92vh] overflow-hidden shadow-2xl border border-slate-200 flex flex-col">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-xs animate-in fade-in duration-150">
+            <div className="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-xl border border-gray-200 flex flex-col">
               {/* MODAL HEADER */}
-              <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">New DealFlow360 Quotation</h2>
-                  <p className="text-xs text-slate-500">Live CPQ product catalog, customer tier limits, and automated margin risk routing.</p>
+                  <h2 className="text-lg font-semibold text-gray-900 tracking-tight">New Quotation</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Prepare a proposal with automated policy compliance and margin calculation.
+                  </p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition"
+                  className="p-1.5 text-gray-400 hover:text-gray-700 rounded-md hover:bg-gray-100 transition cursor-pointer"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -739,89 +738,87 @@ export default function QuotationsPage() {
               </div>
 
               {/* MODAL BODY */}
-              <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              <div className="p-6 overflow-y-auto space-y-5 flex-1">
                 {/* 1. CUSTOMER SELECTION */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                    1. Select Live Customer (from PostgreSQL)
-                  </label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
-                    <div>
-                      <span className="text-[11px] font-semibold text-slate-500 block mb-1">Customer Account:</span>
-                      <select
-                        value={newQuoteCustomer?.id || ''}
-                        onChange={(e) => {
-                          const c = customers.find((cust) => cust.id === e.target.value);
-                          if (c) setNewQuoteCustomer(c);
-                        }}
-                        className="w-full px-3 py-2 rounded-xl text-xs font-semibold bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-                      >
-                        {customers.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name} ({c.email}) - {c.tier}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="flex flex-col justify-center">
-                      <span className="text-[11px] font-semibold text-slate-500 block mb-1">Customer Tier &amp; Policy:</span>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label htmlFor="quoteCustomer" className="block text-sm font-medium text-gray-900">
+                      Customer Account
+                    </label>
+                    {newQuoteCustomer && (
                       <div className="flex items-center gap-2">
-                        {newQuoteCustomer && getTierBadge(newQuoteCustomer.tier)}
-                        <span className="text-xs text-slate-600 font-medium">
-                          Ceiling: {newQuoteCustomer?.tier === 'GOLD' ? '15%' : newQuoteCustomer?.tier === 'SILVER' ? '10%' : '5%'} standard discount
+                        <span className="text-xs text-gray-500">Tier policy:</span>
+                        {getTierBadge(newQuoteCustomer.tier)}
+                        <span className="text-xs text-gray-500">
+                          (Max {newQuoteCustomer?.tier === 'GOLD' ? '15%' : newQuoteCustomer?.tier === 'SILVER' ? '10%' : '5%'} discount)
                         </span>
                       </div>
-                    </div>
+                    )}
                   </div>
+                  <select
+                    id="quoteCustomer"
+                    value={newQuoteCustomer?.id || ''}
+                    onChange={(e) => {
+                      const c = customers.find((cust) => cust.id === e.target.value);
+                      if (c) setNewQuoteCustomer(c);
+                    }}
+                    className="w-full h-10 px-3.5 rounded-md bg-white border border-gray-200 text-gray-900 text-sm focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-200 transition"
+                  >
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.email}) — {c.tier} Tier
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* 2. PRODUCT LINE ITEMS */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      2. Configure Order Line Items
+                    <label className="block text-sm font-medium text-gray-900">
+                      Line Items
                     </label>
                     <button
+                      type="button"
                       onClick={handleAddLine}
-                      className="px-3 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold transition flex items-center gap-1"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-2.5 py-1.5 rounded-md transition cursor-pointer"
                     >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                       </svg>
-                      Add Line Item
+                      Add Item
                     </button>
                   </div>
 
-                  <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white">
+                  <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
-                        <tr className="bg-slate-50/75 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase">
-                          <th className="py-2.5 px-3">Product (Catalog)</th>
-                          <th className="py-2.5 px-2 w-20">Qty</th>
-                          <th className="py-2.5 px-3 w-28 text-right">Unit Price</th>
-                          <th className="py-2.5 px-3 w-28 text-right">Discount %</th>
-                          <th className="py-2.5 px-3 w-32 text-center">Governance</th>
-                          <th className="py-2.5 px-3 w-28 text-right">Line Total</th>
-                          <th className="py-2.5 px-2 w-10 text-center"></th>
+                        <tr className="bg-gray-50/80 border-b border-gray-200 text-[11px] font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="py-2.5 px-3">Product</th>
+                          <th className="py-2.5 px-2 w-16 text-center">Qty</th>
+                          <th className="py-2.5 px-3 w-24 text-right">Price</th>
+                          <th className="py-2.5 px-3 w-28 text-right">Discount</th>
+                          <th className="py-2.5 px-3 w-28 text-center">Policy</th>
+                          <th className="py-2.5 px-3 w-24 text-right">Total</th>
+                          <th className="py-2.5 px-2 w-8 text-center"></th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
+                      <tbody className="divide-y divide-gray-100 text-gray-900">
                         {newQuoteLines.map((line, idx) => {
                           const evalLine = blendedEvaluation?.lines?.[idx] || line;
                           const lineRev = (line.quantity * line.unitPrice * (1 - line.discountPercent / 100)).toFixed(2);
 
                           return (
-                            <tr key={idx} className="hover:bg-slate-50/50">
+                            <tr key={idx} className="hover:bg-gray-50/50">
                               <td className="py-2 px-3">
                                 <select
                                   value={line.productId}
                                   onChange={(e) => handleUpdateLine(idx, 'productId', e.target.value)}
-                                  className="w-full px-2 py-1.5 rounded-lg text-xs bg-slate-50 border border-slate-200 font-medium focus:outline-none"
+                                  className="w-full h-8 px-2 rounded-md text-xs bg-white border border-gray-200 text-gray-900 font-medium focus:outline-none focus:border-gray-400"
                                 >
                                   {products.map((p) => (
                                     <option key={p.id} value={p.id}>
-                                      {p.name} (${p.basePrice} - {p.category})
+                                      {p.name} (${p.basePrice})
                                     </option>
                                   ))}
                                 </select>
@@ -832,14 +829,14 @@ export default function QuotationsPage() {
                                   min="1"
                                   value={line.quantity}
                                   onChange={(e) => handleUpdateLine(idx, 'quantity', e.target.value)}
-                                  className="w-full px-2 py-1.5 rounded-lg text-xs bg-slate-50 border border-slate-200 text-center font-bold focus:outline-none"
+                                  className="w-full h-8 px-2 rounded-md text-xs bg-white border border-gray-200 text-center font-medium focus:outline-none focus:border-gray-400"
                                 />
                               </td>
-                              <td className="py-2 px-3 text-right font-semibold">
+                              <td className="py-2 px-3 text-right font-medium text-gray-700">
                                 ${line.unitPrice}
                               </td>
                               <td className="py-2 px-3 text-right">
-                                <div className="flex items-center justify-end gap-1">
+                                <div className="inline-flex items-center justify-end gap-1">
                                   <input
                                     type="number"
                                     min="0"
@@ -847,30 +844,32 @@ export default function QuotationsPage() {
                                     step="0.5"
                                     value={line.discountPercent}
                                     onChange={(e) => handleUpdateLine(idx, 'discountPercent', e.target.value)}
-                                    className="w-16 px-2 py-1.5 rounded-lg text-xs bg-slate-50 border border-slate-200 text-right font-bold focus:outline-none"
+                                    className="w-14 h-8 px-2 rounded-md text-xs bg-white border border-gray-200 text-right font-medium focus:outline-none focus:border-gray-400"
                                   />
-                                  <span className="text-slate-500 font-bold">%</span>
+                                  <span className="text-gray-400 text-xs">%</span>
                                 </div>
                               </td>
                               <td className="py-2 px-3 text-center">
                                 {evalLine.isOverLimit ? (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                                    OVER (+{evalLine.overLimitPoints}pt)
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-rose-50 text-rose-700 border border-rose-200">
+                                    +{evalLine.overLimitPoints}% Over
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                    OK (Within {evalLine.allowedLimit || 5}%)
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    Within {evalLine.allowedLimit || 5}%
                                   </span>
                                 )}
                               </td>
-                              <td className="py-2 px-3 text-right font-bold text-slate-900">
+                              <td className="py-2 px-3 text-right font-semibold text-gray-900">
                                 ${lineRev}
                               </td>
                               <td className="py-2 px-2 text-center">
                                 {newQuoteLines.length > 1 && (
                                   <button
+                                    type="button"
                                     onClick={() => handleRemoveLine(idx)}
-                                    className="text-slate-400 hover:text-rose-600 transition p-1"
+                                    className="text-gray-400 hover:text-rose-600 transition p-1 rounded hover:bg-gray-100 cursor-pointer"
+                                    title="Remove item"
                                   >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -886,77 +885,105 @@ export default function QuotationsPage() {
                   </div>
                 </div>
 
-                {/* 3. REAL-TIME BLENDED RISK & GOVERNANCE SUMMARY */}
+                {/* 3. ORDER FINANCIAL SUMMARY & RISK ASSESSMENT (Clean light card) */}
                 {blendedEvaluation && (
-                  <div className="p-4 rounded-2xl bg-slate-900 text-white shadow-lg space-y-3">
-                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <div className="p-4 rounded-lg bg-gray-50 border border-gray-200 space-y-3">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                          Backend Blended Governance Engine
+                        <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                          Financial Summary
                         </span>
                         {isCalculatingRisk && (
-                          <span className="text-[10px] text-indigo-400 animate-pulse font-medium">Computing...</span>
+                          <span className="text-[11px] text-gray-400 animate-pulse">Calculating...</span>
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-slate-400">Blended Risk:</span>
-                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-black ${blendedEvaluation.blendedRiskScore === 'HIGH' ? 'bg-rose-500 text-white' : blendedEvaluation.blendedRiskScore === 'MEDIUM' ? 'bg-amber-500 text-slate-950' : 'bg-emerald-500 text-slate-950'}`}>
-                          {blendedEvaluation.blendedRiskScore} RISK
+                        <span className="text-xs text-gray-500">Risk Assessment:</span>
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                            blendedEvaluation.blendedRiskScore === 'HIGH'
+                              ? 'bg-rose-50 text-rose-700 border-rose-200'
+                              : blendedEvaluation.blendedRiskScore === 'MEDIUM'
+                              ? 'bg-amber-50 text-amber-700 border-amber-200'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          }`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              blendedEvaluation.blendedRiskScore === 'HIGH'
+                                ? 'bg-rose-500'
+                                : blendedEvaluation.blendedRiskScore === 'MEDIUM'
+                                ? 'bg-amber-500'
+                                : 'bg-emerald-500'
+                            }`}
+                          />
+                          {blendedEvaluation.blendedRiskScore === 'LOW'
+                            ? 'Low Risk (Auto-Approve)'
+                            : blendedEvaluation.blendedRiskScore === 'MEDIUM'
+                            ? 'Medium Risk (Manager Approval)'
+                            : 'High Risk (Finance Review)'}
                         </span>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                      <div>
-                        <span className="text-slate-400 block text-[11px]">Gross Subtotal:</span>
-                        <span className="text-base font-bold text-white">${blendedEvaluation.financials.totalSubtotal}</span>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                      <div className="bg-white p-3 rounded-md border border-gray-200">
+                        <span className="text-xs text-gray-500 block">Subtotal</span>
+                        <span className="text-base font-semibold text-gray-900">${blendedEvaluation.financials.totalSubtotal}</span>
                       </div>
-                      <div>
-                        <span className="text-slate-400 block text-[11px]">Total Discount:</span>
-                        <span className="text-base font-bold text-amber-400">-${blendedEvaluation.financials.totalDiscountAmount}</span>
+                      <div className="bg-white p-3 rounded-md border border-gray-200">
+                        <span className="text-xs text-gray-500 block">Total Discount</span>
+                        <span className="text-base font-semibold text-amber-700">-${blendedEvaluation.financials.totalDiscountAmount}</span>
                       </div>
-                      <div>
-                        <span className="text-slate-400 block text-[11px]">Net Order Value:</span>
-                        <span className="text-base font-bold text-emerald-400">${blendedEvaluation.financials.totalRevenue}</span>
+                      <div className="bg-white p-3 rounded-md border border-gray-200">
+                        <span className="text-xs text-gray-500 block">Net Order Value</span>
+                        <span className="text-base font-semibold text-emerald-700">${blendedEvaluation.financials.totalRevenue}</span>
                       </div>
-                      <div>
-                        <span className="text-slate-400 block text-[11px]">Blended Margin:</span>
-                        <span className={`text-base font-bold ${blendedEvaluation.financials.totalMarginPercent < 20 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                      <div className="bg-white p-3 rounded-md border border-gray-200">
+                        <span className="text-xs text-gray-500 block">Gross Margin</span>
+                        <span
+                          className={`text-base font-semibold ${
+                            blendedEvaluation.financials.totalMarginPercent < 20 ? 'text-rose-600' : 'text-gray-900'
+                          }`}
+                        >
                           {blendedEvaluation.financials.totalMarginPercent}%
                         </span>
                       </div>
                     </div>
 
-                    <div className="text-[11px] p-2.5 rounded-xl bg-slate-800/80 text-slate-300 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-indigo-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span>{blendedEvaluation.flagReasonSummary}</span>
-                    </div>
+                    {blendedEvaluation.flagReasonSummary && (
+                      <div className="text-xs p-2.5 rounded-md bg-white border border-gray-200 text-gray-600 flex items-center gap-2">
+                        <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>{blendedEvaluation.flagReasonSummary}</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {/* 4. NOTES */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Proposal Notes / Commercial Context
+                  <label htmlFor="quoteNotes" className="block text-sm font-medium text-gray-900 mb-1.5">
+                    Notes <span className="text-gray-400 font-normal">(optional)</span>
                   </label>
                   <textarea
+                    id="quoteNotes"
                     rows={2}
                     value={newQuoteNotes}
                     onChange={(e) => setNewQuoteNotes(e.target.value)}
-                    placeholder="Enter customer negotiations, SLA requirements, or delivery schedule..."
-                    className="w-full p-3 rounded-xl text-xs bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                    placeholder="Enter customer notes, SLA agreements, or delivery terms..."
+                    className="w-full p-3 rounded-md bg-white border border-gray-200 text-gray-900 placeholder:text-gray-400 text-sm focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-200 transition"
                   />
                 </div>
               </div>
 
               {/* MODAL FOOTER */}
-              <div className="p-4 border-t border-slate-100 flex items-center justify-end gap-3 bg-slate-50/50">
+              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-3 bg-gray-50/50">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-200 transition"
+                  className="px-4 h-10 rounded-md bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 font-medium text-sm transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-gray-200"
                 >
                   Cancel
                 </button>
@@ -964,7 +991,7 @@ export default function QuotationsPage() {
                   type="button"
                   disabled={isSubmittingAction}
                   onClick={() => handleSaveQuotation('DRAFT')}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-900 bg-white border border-slate-300 hover:bg-slate-50 transition"
+                  className="px-4 h-10 rounded-md bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 font-medium text-sm transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-gray-200 disabled:opacity-50"
                 >
                   Save as Draft
                 </button>
@@ -972,7 +999,7 @@ export default function QuotationsPage() {
                   type="button"
                   disabled={isSubmittingAction}
                   onClick={() => handleSaveQuotation('PENDING_APPROVAL')}
-                  className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-slate-950 hover:bg-slate-800 transition shadow-sm flex items-center gap-2"
+                  className="px-5 h-10 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm transition cursor-pointer shadow-sm disabled:opacity-50 flex items-center gap-2"
                 >
                   {isSubmittingAction ? 'Submitting...' : 'Submit for Approval'}
                 </button>
@@ -985,25 +1012,26 @@ export default function QuotationsPage() {
         {/* QUOTATION DETAIL & GOVERNANCE APPROVAL DRAWER                             */}
         {/* ========================================================================= */}
         {isDetailDrawerOpen && selectedQuote && (
-          <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="absolute inset-y-0 right-0 max-w-2xl w-full bg-white shadow-2xl flex flex-col border-l border-slate-200">
+          <div className="fixed inset-0 z-50 overflow-hidden bg-gray-900/40 backdrop-blur-xs animate-in fade-in duration-150">
+            <div className="absolute inset-y-0 right-0 max-w-2xl w-full bg-white shadow-xl flex flex-col border-l border-gray-200">
               {/* DRAWER HEADER */}
-              <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-white">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
+                    <h2 className="text-xl font-semibold text-gray-900 tracking-tight">
                       {selectedQuote.quoteNumber}
                     </h2>
                     {getStatusBadge(selectedQuote.status)}
                     {getRiskBadge(selectedQuote.blendedRiskScore)}
                   </div>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Customer: <span className="font-semibold text-slate-800">{selectedQuote.customerName}</span> ({selectedQuote.customerTier} Tier)
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Customer: <span className="font-medium text-gray-800">{selectedQuote.customerName}</span> ({selectedQuote.customerTier} Tier)
                   </p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setIsDetailDrawerOpen(false)}
-                  className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-200 transition"
+                  className="p-1.5 text-gray-400 hover:text-gray-700 rounded-md hover:bg-gray-100 transition cursor-pointer"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -1012,24 +1040,24 @@ export default function QuotationsPage() {
               </div>
 
               {/* DRAWER BODY */}
-              <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              <div className="p-6 overflow-y-auto space-y-5 flex-1">
                 {/* FINANCIAL OVERVIEW */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 rounded-lg bg-gray-50 border border-gray-200">
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Subtotal</span>
-                    <span className="text-sm font-bold text-slate-900">${selectedQuote.subtotalAmount?.toLocaleString()}</span>
+                    <span className="text-xs text-gray-500 block">Subtotal</span>
+                    <span className="text-sm font-semibold text-gray-900">${selectedQuote.subtotalAmount?.toLocaleString()}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Discount ({selectedQuote.orderDiscountPercent}%)</span>
-                    <span className="text-sm font-bold text-amber-600">-${selectedQuote.totalDiscountAmount}</span>
+                    <span className="text-xs text-gray-500 block">Discount ({selectedQuote.orderDiscountPercent}%)</span>
+                    <span className="text-sm font-semibold text-amber-700">-${selectedQuote.totalDiscountAmount}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Final Value</span>
-                    <span className="text-base font-black text-slate-900">${selectedQuote.totalAmount?.toLocaleString()}</span>
+                    <span className="text-xs text-gray-500 block">Final Value</span>
+                    <span className="text-base font-semibold text-emerald-700">${selectedQuote.totalAmount?.toLocaleString()}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Gross Margin</span>
-                    <span className={`text-base font-black ${selectedQuote.totalMarginPercent < 20 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                    <span className="text-xs text-gray-500 block">Gross Margin</span>
+                    <span className={`text-base font-semibold ${selectedQuote.totalMarginPercent < 20 ? 'text-rose-600' : 'text-gray-900'}`}>
                       {selectedQuote.totalMarginPercent}%
                     </span>
                   </div>
@@ -1037,12 +1065,12 @@ export default function QuotationsPage() {
 
                 {/* GOVERNANCE ROUTING BANNER */}
                 {selectedQuote.flagReasonSummary && (
-                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
+                  <div className="p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
                     <svg className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                     <div>
-                      <span className="font-bold block">Governance Policy Routing:</span>
+                      <span className="font-semibold block">Governance Policy Routing:</span>
                       <span>{selectedQuote.flagReasonSummary}</span>
                     </div>
                   </div>
@@ -1050,40 +1078,40 @@ export default function QuotationsPage() {
 
                 {/* LINE ITEMS */}
                 <div>
-                  <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Order Line Items</h3>
-                  <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+                  <h3 className="text-sm font-medium text-gray-900 mb-2">Order Line Items</h3>
+                  <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase border-b border-slate-200">
+                      <thead className="bg-gray-50/80 text-[11px] font-medium text-gray-500 uppercase border-b border-gray-200">
                         <tr>
-                          <th className="py-2 px-3">Product</th>
-                          <th className="py-2 px-2 text-center">Qty</th>
-                          <th className="py-2 px-3 text-right">Price</th>
-                          <th className="py-2 px-3 text-right">Disc %</th>
-                          <th className="py-2 px-3 text-right">Margin %</th>
-                          <th className="py-2 px-3 text-right">Total</th>
+                          <th className="py-2.5 px-3">Product</th>
+                          <th className="py-2.5 px-2 text-center">Qty</th>
+                          <th className="py-2.5 px-3 text-right">Price</th>
+                          <th className="py-2.5 px-3 text-right">Disc %</th>
+                          <th className="py-2.5 px-3 text-right">Margin %</th>
+                          <th className="py-2.5 px-3 text-right">Total</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
+                      <tbody className="divide-y divide-gray-100 text-gray-900">
                         {selectedQuote.lines?.map((line, idx) => (
-                          <tr key={idx}>
+                          <tr key={idx} className="hover:bg-gray-50/50">
                             <td className="py-2.5 px-3">
-                              <span className="font-semibold text-slate-900 block">{line.productName}</span>
-                              <span className="text-[10px] text-slate-400">{line.category}</span>
+                              <span className="font-medium text-gray-900 block">{line.productName}</span>
+                              <span className="text-[10px] text-gray-400">{line.category}</span>
                             </td>
-                            <td className="py-2.5 px-2 text-center font-bold">{line.quantity}</td>
+                            <td className="py-2.5 px-2 text-center font-medium">{line.quantity}</td>
                             <td className="py-2.5 px-3 text-right">${line.unitPrice}</td>
                             <td className="py-2.5 px-3 text-right">
-                              <span className={`font-semibold ${line.isOverLimit ? 'text-rose-600' : 'text-slate-700'}`}>
+                              <span className={`font-medium ${line.isOverLimit ? 'text-rose-600' : 'text-gray-700'}`}>
                                 {line.discountPercent}%
                               </span>
                               {line.isOverLimit && (
-                                <span className="block text-[9px] font-bold text-rose-500">OVER (+{line.overLimitPoints}pt)</span>
+                                <span className="block text-[9px] font-semibold text-rose-500">OVER (+{line.overLimitPoints}pt)</span>
                               )}
                             </td>
-                            <td className="py-2.5 px-3 text-right font-medium text-slate-600">
+                            <td className="py-2.5 px-3 text-right font-medium text-gray-600">
                               {line.lineMarginPercent}%
                             </td>
-                            <td className="py-2.5 px-3 text-right font-bold text-slate-900">
+                            <td className="py-2.5 px-3 text-right font-semibold text-gray-900">
                               ${line.lineRevenue || (line.quantity * line.unitPrice * (1 - line.discountPercent / 100)).toFixed(2)}
                             </td>
                           </tr>
@@ -1094,13 +1122,13 @@ export default function QuotationsPage() {
                 </div>
 
                 {/* ROLE ACTIONS SECTION */}
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <div className="p-4 rounded-lg bg-gray-50 border border-gray-200 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                      Role Governance Actions ({currentRole.toUpperCase()})
+                    <span className="text-xs font-semibold text-gray-800 uppercase tracking-wide">
+                      Governance Actions ({currentRole.toUpperCase()})
                     </span>
-                    <span className="text-[11px] font-medium text-slate-500">
-                      Stage: <span className="font-bold text-slate-800">{selectedQuote.currentStage}</span>
+                    <span className="text-xs text-gray-500">
+                      Stage: <span className="font-semibold text-gray-800">{selectedQuote.currentStage}</span>
                     </span>
                   </div>
 
@@ -1109,8 +1137,8 @@ export default function QuotationsPage() {
                     type="text"
                     value={actionComment}
                     onChange={(e) => setActionComment(e.target.value)}
-                    placeholder="Enter approval note, conditions, or revision request comments..."
-                    className="w-full px-3 py-2 rounded-xl text-xs bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                    placeholder="Enter approval notes, conditions, or revision requests..."
+                    className="w-full h-9 px-3 rounded-md text-xs bg-white border border-gray-200 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-200"
                   />
 
                   {/* BUTTONS GATED BY ROLE AND STATUS */}
@@ -1118,9 +1146,10 @@ export default function QuotationsPage() {
                     {/* SALES REP ACTIONS */}
                     {selectedQuote.status === 'DRAFT' && (
                       <button
+                        type="button"
                         onClick={() => handlePerformAction('SUBMIT')}
                         disabled={isSubmittingAction}
-                        className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-950 text-white hover:bg-slate-800 transition shadow-xs"
+                        className="h-9 px-4 rounded-md text-xs font-medium bg-gray-900 text-white hover:bg-black transition cursor-pointer shadow-xs"
                       >
                         Submit for Governance Approval
                       </button>
@@ -1130,23 +1159,26 @@ export default function QuotationsPage() {
                     {(currentRole === 'manager' || currentRole === 'admin') && selectedQuote.status === 'PENDING_APPROVAL' && selectedQuote.currentStage === 'SALES_MANAGER' && (
                       <>
                         <button
+                          type="button"
                           onClick={() => handlePerformAction('APPROVE')}
                           disabled={isSubmittingAction}
-                          className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-xs"
+                          className="h-9 px-4 rounded-md text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition cursor-pointer shadow-xs"
                         >
                           ✓ Approve Quotation (Manager L1)
                         </button>
                         <button
+                          type="button"
                           onClick={() => handlePerformAction('RETURN')}
                           disabled={isSubmittingAction}
-                          className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 text-white hover:bg-amber-600 transition shadow-xs"
+                          className="h-9 px-4 rounded-md text-xs font-medium bg-amber-600 text-white hover:bg-amber-700 transition cursor-pointer shadow-xs"
                         >
                           Request Revision
                         </button>
                         <button
+                          type="button"
                           onClick={() => handlePerformAction('REJECT')}
                           disabled={isSubmittingAction}
-                          className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 text-white hover:bg-rose-700 transition shadow-xs"
+                          className="h-9 px-4 rounded-md text-xs font-medium bg-rose-600 text-white hover:bg-rose-700 transition cursor-pointer shadow-xs"
                         >
                           Reject Deal
                         </button>
@@ -1157,23 +1189,26 @@ export default function QuotationsPage() {
                     {(currentRole === 'finance' || currentRole === 'admin') && selectedQuote.status === 'PENDING_APPROVAL' && selectedQuote.currentStage === 'FINANCE' && (
                       <>
                         <button
+                          type="button"
                           onClick={() => handlePerformAction('APPROVE')}
                           disabled={isSubmittingAction}
-                          className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-xs"
+                          className="h-9 px-4 rounded-md text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition cursor-pointer shadow-xs"
                         >
-                          ✓ Approve Financial Terms (Finance L2)
+                          ✓ Approve Terms (Finance L2)
                         </button>
                         <button
+                          type="button"
                           onClick={() => handlePerformAction('RETURN')}
                           disabled={isSubmittingAction}
-                          className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 text-white hover:bg-amber-600 transition shadow-xs"
+                          className="h-9 px-4 rounded-md text-xs font-medium bg-amber-600 text-white hover:bg-amber-700 transition cursor-pointer shadow-xs"
                         >
                           Return for Price Adjustment
                         </button>
                         <button
+                          type="button"
                           onClick={() => handlePerformAction('REJECT')}
                           disabled={isSubmittingAction}
-                          className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 text-white hover:bg-rose-700 transition shadow-xs"
+                          className="h-9 px-4 rounded-md text-xs font-medium bg-rose-600 text-white hover:bg-rose-700 transition cursor-pointer shadow-xs"
                         >
                           Reject Deal
                         </button>
@@ -1183,9 +1218,10 @@ export default function QuotationsPage() {
                     {/* CONFIRM ORDER ACTION (When Approved) */}
                     {selectedQuote.status === 'APPROVED' && (
                       <button
+                        type="button"
                         onClick={() => handlePerformAction('CONFIRM')}
                         disabled={isSubmittingAction}
-                        className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 transition shadow-xs flex items-center gap-1.5"
+                        className="h-9 px-4 rounded-md text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 transition cursor-pointer shadow-xs flex items-center gap-1.5"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1197,9 +1233,10 @@ export default function QuotationsPage() {
                     {/* ADMIN OVERRIDE */}
                     {currentRole === 'admin' && selectedQuote.status !== 'APPROVED' && selectedQuote.status !== 'CONFIRMED' && (
                       <button
+                        type="button"
                         onClick={() => handlePerformAction('APPROVE')}
                         disabled={isSubmittingAction}
-                        className="px-3 py-2 rounded-xl text-xs font-bold bg-purple-600 text-white hover:bg-purple-700 transition shadow-xs"
+                        className="h-9 px-3 rounded-md text-xs font-medium bg-purple-600 text-white hover:bg-purple-700 transition cursor-pointer shadow-xs"
                       >
                         ⚡ Admin Override Approve
                       </button>
@@ -1209,21 +1246,21 @@ export default function QuotationsPage() {
 
                 {/* AUDIT TRAIL TIMELINE */}
                 <div>
-                  <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Governance Audit Trail</h3>
-                  <div className="space-y-3 relative before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+                  <h3 className="text-sm font-medium text-gray-900 mb-3">Audit Trail</h3>
+                  <div className="space-y-3 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200">
                     {selectedQuote.auditLogs?.map((log, idx) => (
-                      <div key={idx} className="relative flex items-start gap-3 pl-2">
-                        <span className="w-3.5 h-3.5 rounded-full bg-slate-900 border-2 border-white shadow-xs shrink-0 mt-1"></span>
-                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-xs flex-1">
+                      <div key={idx} className="relative flex items-start gap-3 pl-1">
+                        <span className="w-2.5 h-2.5 rounded-full bg-gray-900 border-2 border-white shadow-xs shrink-0 mt-1"></span>
+                        <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 text-xs flex-1">
                           <div className="flex items-center justify-between mb-1">
-                            <span className="font-bold text-slate-900">
-                              {log.actorName} <span className="text-[10px] text-slate-500 font-normal">({log.actorRole})</span>
+                            <span className="font-semibold text-gray-900">
+                              {log.actorName} <span className="text-[10px] text-gray-500 font-normal">({log.actorRole})</span>
                             </span>
-                            <span className="text-[10px] text-slate-400">
+                            <span className="text-[10px] text-gray-400">
                               {new Date(log.timestamp).toLocaleDateString()} {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
-                          <p className="text-slate-600 font-medium">{log.comment}</p>
+                          <p className="text-gray-600 font-normal">{log.comment}</p>
                         </div>
                       </div>
                     ))}
@@ -1232,19 +1269,21 @@ export default function QuotationsPage() {
               </div>
 
               {/* DRAWER FOOTER */}
-              <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+              <div className="px-6 py-4 border-t border-gray-200 bg-gray-50/50 flex items-center justify-between">
                 <button
+                  type="button"
                   onClick={() => setIsPreviewModalOpen(true)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 transition flex items-center gap-1.5"
+                  className="h-9 px-4 rounded-md text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 transition cursor-pointer flex items-center gap-1.5"
                 >
-                  <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                   </svg>
                   Client Proposal View
                 </button>
                 <button
+                  type="button"
                   onClick={() => setIsDetailDrawerOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-200 transition"
+                  className="h-9 px-4 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-100 transition cursor-pointer"
                 >
                   Close
                 </button>
@@ -1257,21 +1296,22 @@ export default function QuotationsPage() {
         {/* CUSTOMER PROPOSAL / E-SIGNATURE PREVIEW MODAL                             */}
         {/* ========================================================================= */}
         {isPreviewModalOpen && selectedQuote && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[92vh] overflow-hidden shadow-2xl border border-slate-200 flex flex-col">
-              <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-950 text-white">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center font-black text-white text-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-xs animate-in fade-in duration-150">
+            <div className="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-xl border border-gray-200 flex flex-col">
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-white text-gray-900">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-md bg-emerald-600 flex items-center justify-center font-bold text-white text-xs">
                     DF
                   </div>
                   <div>
-                    <h2 className="text-base font-bold">DealFlow360 Official Proposal</h2>
-                    <p className="text-[11px] text-slate-400">Proposal #{selectedQuote.quoteNumber}</p>
+                    <h2 className="text-base font-semibold text-gray-900">Proposal #{selectedQuote.quoteNumber}</h2>
+                    <p className="text-xs text-gray-500">Commercial Proposal &amp; Terms</p>
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setIsPreviewModalOpen(false)}
-                  className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition"
+                  className="p-1.5 text-gray-400 hover:text-gray-700 rounded-md hover:bg-gray-100 transition cursor-pointer"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -1279,46 +1319,46 @@ export default function QuotationsPage() {
                 </button>
               </div>
 
-              <div className="p-8 overflow-y-auto space-y-6 flex-1 text-slate-800 font-sans text-xs">
+              <div className="p-8 overflow-y-auto space-y-6 flex-1 text-gray-800 text-xs">
                 {/* PROPOSAL HEADER */}
-                <div className="flex justify-between items-start border-b border-slate-100 pb-6">
+                <div className="flex justify-between items-start border-b border-gray-200 pb-6">
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Prepared For:</span>
-                    <h3 className="text-base font-bold text-slate-900">{selectedQuote.customerName}</h3>
-                    <p className="text-slate-500">{selectedQuote.customerEmail}</p>
-                    <p className="text-slate-500 mt-1">Tier: <span className="font-semibold text-slate-700">{selectedQuote.customerTier}</span></p>
+                    <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block mb-1">Prepared For:</span>
+                    <h3 className="text-base font-semibold text-gray-900">{selectedQuote.customerName}</h3>
+                    <p className="text-gray-500">{selectedQuote.customerEmail}</p>
+                    <p className="text-gray-500 mt-1">Tier: <span className="font-medium text-gray-700">{selectedQuote.customerTier}</span></p>
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Quotation Ref:</span>
-                    <p className="font-mono font-bold text-slate-900 text-sm">{selectedQuote.quoteNumber}</p>
-                    <p className="text-slate-500">Date: {new Date(selectedQuote.createdAt).toLocaleDateString()}</p>
-                    <p className="text-slate-500">Rep: {selectedQuote.salesRepName}</p>
+                    <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block mb-1">Quotation Ref:</span>
+                    <p className="font-mono font-semibold text-gray-900 text-sm">{selectedQuote.quoteNumber}</p>
+                    <p className="text-gray-500">Date: {new Date(selectedQuote.createdAt).toLocaleDateString()}</p>
+                    <p className="text-gray-500">Rep: {selectedQuote.salesRepName}</p>
                   </div>
                 </div>
 
                 {/* LINE ITEMS */}
-                <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
                   <table className="w-full text-left">
-                    <thead className="bg-slate-50 text-[11px] font-bold text-slate-600 uppercase border-b border-slate-200">
+                    <thead className="bg-gray-50/80 text-[11px] font-medium text-gray-500 uppercase border-b border-gray-200">
                       <tr>
-                        <th className="py-3 px-4">Item &amp; Description</th>
-                        <th className="py-3 px-3 text-center">Qty</th>
-                        <th className="py-3 px-4 text-right">Unit Price</th>
-                        <th className="py-3 px-4 text-right">Discount</th>
-                        <th className="py-3 px-4 text-right">Amount</th>
+                        <th className="py-2.5 px-4">Item &amp; Description</th>
+                        <th className="py-2.5 px-3 text-center">Qty</th>
+                        <th className="py-2.5 px-4 text-right">Unit Price</th>
+                        <th className="py-2.5 px-4 text-right">Discount</th>
+                        <th className="py-2.5 px-4 text-right">Amount</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-gray-100">
                       {selectedQuote.lines?.map((line, idx) => (
                         <tr key={idx}>
                           <td className="py-3 px-4">
-                            <span className="font-bold text-slate-900 block">{line.productName}</span>
-                            <span className="text-[11px] text-slate-500">{line.category} Category</span>
+                            <span className="font-medium text-gray-900 block">{line.productName}</span>
+                            <span className="text-[11px] text-gray-500">{line.category} Category</span>
                           </td>
-                          <td className="py-3 px-3 text-center font-bold">{line.quantity}</td>
+                          <td className="py-3 px-3 text-center font-medium">{line.quantity}</td>
                           <td className="py-3 px-4 text-right">${line.unitPrice}</td>
-                          <td className="py-3 px-4 text-right text-amber-600 font-semibold">{line.discountPercent}%</td>
-                          <td className="py-3 px-4 text-right font-bold text-slate-900">
+                          <td className="py-3 px-4 text-right text-amber-700 font-medium">{line.discountPercent}%</td>
+                          <td className="py-3 px-4 text-right font-semibold text-gray-900">
                             ${line.lineRevenue || (line.quantity * line.unitPrice * (1 - line.discountPercent / 100)).toFixed(2)}
                           </td>
                         </tr>
@@ -1329,50 +1369,52 @@ export default function QuotationsPage() {
 
                 {/* TOTALS */}
                 <div className="flex justify-end">
-                  <div className="w-64 space-y-2 p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
-                    <div className="flex justify-between text-slate-600">
+                  <div className="w-64 space-y-2 p-4 rounded-lg bg-gray-50 border border-gray-200">
+                    <div className="flex justify-between text-gray-600">
                       <span>Subtotal:</span>
-                      <span className="font-semibold text-slate-900">${selectedQuote.subtotalAmount?.toLocaleString()}</span>
+                      <span className="font-medium text-gray-900">${selectedQuote.subtotalAmount?.toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between text-slate-600">
+                    <div className="flex justify-between text-gray-600">
                       <span>Total Savings:</span>
-                      <span className="font-semibold text-amber-600">-${selectedQuote.totalDiscountAmount?.toLocaleString()}</span>
+                      <span className="font-medium text-amber-700">-${selectedQuote.totalDiscountAmount?.toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between text-sm font-black text-slate-950 border-t border-slate-200 pt-2">
+                    <div className="flex justify-between text-sm font-semibold text-gray-900 border-t border-gray-200 pt-2">
                       <span>Total Payable:</span>
-                      <span>${selectedQuote.totalAmount?.toLocaleString()} USD</span>
+                      <span className="text-emerald-700">${selectedQuote.totalAmount?.toLocaleString()} USD</span>
                     </div>
                   </div>
                 </div>
 
                 {/* E-SIGNATURE SECTION */}
-                <div className="border border-dashed border-slate-300 rounded-2xl p-5 bg-slate-50/50 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="border border-dashed border-gray-300 rounded-lg p-5 bg-gray-50/50 flex flex-col md:flex-row items-center justify-between gap-4">
                   <div>
-                    <span className="text-xs font-bold text-slate-800 block">Commercial Acceptance &amp; E-Signature</span>
-                    <p className="text-[11px] text-slate-500 mt-0.5">By signing or confirming this document, the customer agrees to DealFlow360 commercial SLA terms.</p>
+                    <span className="text-xs font-semibold text-gray-800 block">Commercial Acceptance &amp; E-Signature</span>
+                    <p className="text-[11px] text-gray-500 mt-0.5">By signing or confirming this document, the customer agrees to DealFlow360 commercial terms.</p>
                   </div>
                   <div className="text-right">
-                    <div className="h-10 px-4 border-b border-slate-400 flex items-center justify-center font-mono text-xs italic text-slate-600">
+                    <div className="h-10 px-4 border-b border-gray-400 flex items-center justify-center font-mono text-xs italic text-gray-600">
                       {selectedQuote.status === 'CONFIRMED' ? `${selectedQuote.customerName} (Verified E-Sign)` : 'Awaiting Customer E-Sign'}
                     </div>
-                    <span className="text-[10px] text-slate-400 block mt-1">Authorized Customer Signature</span>
+                    <span className="text-[10px] text-gray-400 block mt-1">Authorized Customer Signature</span>
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50">
+              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50/50">
                 <button
+                  type="button"
                   onClick={() => window.print()}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 transition flex items-center gap-1.5"
+                  className="h-9 px-4 rounded-md text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 transition cursor-pointer flex items-center gap-1.5"
                 >
-                  <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                   </svg>
                   Print / Download PDF
                 </button>
                 <button
+                  type="button"
                   onClick={() => setIsPreviewModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-900 bg-slate-200 hover:bg-slate-300 transition"
+                  className="h-9 px-4 rounded-md text-xs font-medium text-gray-700 bg-white border border-gray-200 hover:bg-gray-100 transition cursor-pointer"
                 >
                   Close Preview
                 </button>
