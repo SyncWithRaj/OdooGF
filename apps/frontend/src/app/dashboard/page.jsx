@@ -1,43 +1,85 @@
 'use client';
 
+import { useState } from 'react';
 import Navbar from '@/components/Navbar';
 import RequireRole from '@/components/RequireRole';
 import { useAuth } from '@/context/AuthContext';
+import AdminDashboard from '@/components/dashboard/AdminDashboard';
+import ManagerDashboard from '@/components/dashboard/ManagerDashboard';
+import RepDashboard from '@/components/dashboard/RepDashboard';
+import { ShieldCheck, UserCheck, Briefcase } from 'lucide-react';
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  // Allow toggling view to preview different roles in development/evaluations
+  const [activeRoleView, setActiveRoleView] = useState(user?.role || 'admin');
+
+  // Sync if user logs in with different role
+  const effectiveRole = activeRoleView || user?.role || 'admin';
 
   return (
     <RequireRole roles={['rep', 'manager', 'finance', 'admin']}>
       <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col">
         <Navbar />
-        <main className="max-w-7xl w-full mx-auto px-6 py-8 flex-1">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-2xl font-bold text-white">Sales Operations Dashboard</h1>
-              <p className="text-xs text-slate-400 mt-1">
-                Welcome back, <span className="text-emerald-400 font-semibold">{user?.name}</span> ({user?.role})
-              </p>
-            </div>
-            <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
-              Live Session Active
-            </span>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {[
-              { label: 'Active Quotes', value: '12', change: '+2 this week' },
-              { label: 'Pending Approvals', value: '3', change: 'Requires attention' },
-              { label: 'Won Deals', value: '$48,500', change: '+14% MoM' },
-              { label: 'Pipeline Value', value: '$124,000', change: '8 opportunities' },
-            ].map((stat) => (
-              <div key={stat.label} className="p-5 rounded-xl bg-slate-900/60 border border-slate-800">
-                <p className="text-xs text-slate-400 font-medium">{stat.label}</p>
-                <p className="text-2xl font-extrabold text-white mt-2">{stat.value}</p>
-                <p className="text-xs text-emerald-400 mt-1">{stat.change}</p>
-              </div>
-            ))}
+        {/* Global Role Perspective Switcher Banner */}
+        <div className="bg-slate-900/90 border-b border-slate-800 px-6 py-2.5">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-slate-400">
+              <span className="font-semibold text-white">Signed in as:</span>
+              <span className="text-emerald-400 font-bold">{user?.name || user?.email || 'User'}</span>
+              <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 capitalize font-medium">
+                Real Role: {user?.role}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
+              <span className="text-slate-400 font-medium px-2">Perspective:</span>
+              <button
+                type="button"
+                onClick={() => setActiveRoleView('admin')}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-semibold transition cursor-pointer ${
+                  effectiveRole === 'admin'
+                    ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveRoleView('manager')}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-semibold transition cursor-pointer ${
+                  effectiveRole === 'manager'
+                    ? 'bg-blue-500 text-slate-950 shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <UserCheck className="w-3.5 h-3.5" />
+                Sales Manager
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveRoleView('rep')}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-semibold transition cursor-pointer ${
+                  effectiveRole === 'rep'
+                    ? 'bg-purple-500 text-slate-950 shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Briefcase className="w-3.5 h-3.5" />
+                Sales Rep
+              </button>
+            </div>
           </div>
+        </div>
+
+        {/* Dynamic Dashboard View */}
+        <main className="max-w-7xl w-full mx-auto px-6 py-8 flex-1">
+          {effectiveRole === 'admin' && <AdminDashboard />}
+          {effectiveRole === 'manager' && <ManagerDashboard />}
+          {effectiveRole === 'rep' && <RepDashboard user={user} />}
         </main>
       </div>
     </RequireRole>

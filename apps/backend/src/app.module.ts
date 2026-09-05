@@ -9,6 +9,7 @@ import { ProductsModule } from './products/products.module';
 import { CustomersModule } from './customers/customers.module';
 import { WarehousesModule } from './warehouses/warehouses.module';
 import { DiscountRulesModule } from './discount-rules/discount-rules.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { DiscountRulesModule } from './discount-rules/discount-rules.module';
     CustomersModule,
     WarehousesModule,
     DiscountRulesModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
