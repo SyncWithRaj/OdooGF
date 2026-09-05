@@ -915,4 +915,173 @@ export class QuotationsService {
       orderBy: { createdAt: 'asc' },
     });
   }
+
+  // ----------------------------------------------------------------------------
+  // QUOTATION GOVERNANCE & LIFECYCLE DIRECT ACTIONS
+  // ----------------------------------------------------------------------------
+  async updateQuotationStatus(id: string, status: QuotationStatus) {
+    const quotation = await this.prisma.quotation.findUnique({ where: { id } });
+    if (!quotation) {
+      throw new NotFoundException(`Quotation with ID '${id}' not found`);
+    }
+    await this.prisma.quotation.update({
+      where: { id },
+      data: {
+        status,
+        lastActivityAt: new Date(),
+      },
+    });
+    return this.getQuotationById(id);
+  }
+
+  async approveQuotation(
+    id: string,
+    currentUser: { id: string; fullName: string; role: Role },
+    note?: string,
+  ) {
+    const quotation = await this.prisma.quotation.findUnique({
+      where: { id },
+      include: {
+        approvalRequests: {
+          where: { isCompleted: false },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+    if (!quotation) {
+      throw new NotFoundException(`Quotation with ID '${id}' not found`);
+    }
+
+    const activeApproval = quotation.approvalRequests?.[0];
+    if (activeApproval) {
+      if (
+        activeApproval.currentStage === ApprovalStage.SALES_MANAGER &&
+        activeApproval.blendedRiskLevel === RiskLevel.HIGH
+      ) {
+        await this.prisma.approvalRequest.update({
+          where: { id: activeApproval.id },
+          data: { currentStage: ApprovalStage.FINANCE },
+        });
+        await this.prisma.approvalAuditLog.create({
+          data: {
+            approvalRequestId: activeApproval.id,
+            userId: currentUser.id,
+            action: ApprovalAction.APPROVED,
+            note:
+              note ||
+              `Approved by Sales Manager (${currentUser.fullName}). Escalated to Finance Controller.`,
+          },
+        });
+        return {
+          success: true,
+          status: 'ESCALATED_TO_FINANCE',
+          message: 'Approved at L1 — escalated to Finance Controller.',
+          quotation: await this.getQuotationById(id),
+        };
+      } else {
+        await this.prisma.approvalRequest.update({
+          where: { id: activeApproval.id },
+          data: { currentStage: ApprovalStage.APPROVED, isCompleted: true },
+        });
+        await this.prisma.approvalAuditLog.create({
+          data: {
+            approvalRequestId: activeApproval.id,
+            userId: currentUser.id,
+            action: ApprovalAction.APPROVED,
+            note: note || `Approved by ${currentUser.fullName} (${currentUser.role}).`,
+          },
+        });
+      }
+    }
+
+    await this.prisma.quotation.update({
+      where: { id },
+      data: {
+        status: QuotationStatus.SENT_TO_CUSTOMER,
+        lastActivityAt: new Date(),
+      },
+    });
+
+    return {
+      success: true,
+      status: 'FULLY_APPROVED',
+      message: 'Quotation fully approved and sent to customer.',
+      quotation: await this.getQuotationById(id),
+    };
+  }
+
+  async rejectQuotation(
+    id: string,
+    currentUser: { id: string; fullName: string; role: Role },
+    reason?: string,
+  ) {
+    const quotation = await this.prisma.quotation.findUnique({
+      where: { id },
+      include: {
+        approvalRequests: {
+          where: { isCompleted: false },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+    if (!quotation) {
+      throw new NotFoundException(`Quotation with ID '${id}' not found`);
+    }
+
+    const activeApproval = quotation.approvalRequests?.[0];
+    if (activeApproval) {
+      await this.prisma.approvalRequest.update({
+        where: { id: activeApproval.id },
+        data: { currentStage: ApprovalStage.REJECTED, isCompleted: true },
+      });
+      await this.prisma.approvalAuditLog.create({
+        data: {
+          approvalRequestId: activeApproval.id,
+          userId: currentUser.id,
+          action: ApprovalAction.REJECTED,
+          note: reason || `Rejected by ${currentUser.fullName} (${currentUser.role}).`,
+        },
+      });
+    }
+
+    await this.prisma.quotation.update({
+      where: { id },
+      data: {
+        status: QuotationStatus.CANCELLED,
+        lastActivityAt: new Date(),
+      },
+    });
+
+    return {
+      success: true,
+      status: 'REJECTED',
+      message: 'Quotation rejected.',
+      quotation: await this.getQuotationById(id),
+    };
+  }
+
+  async confirmQuotation(id: string) {
+    const quotation = await this.prisma.quotation.findUnique({ where: { id } });
+    if (!quotation) {
+      throw new NotFoundException(`Quotation with ID '${id}' not found`);
+    }
+
+    await this.prisma.quotation.update({
+      where: { id },
+      data: {
+        status: QuotationStatus.CONFIRMED,
+        customerTermsConfirmed: true,
+        lastActivityAt: new Date(),
+      },
+    });
+
+    return {
+      success: true,
+      status: 'CONFIRMED',
+      message: 'Quotation confirmed into active order.',
+      quotation: await this.getQuotationById(id),
+    };
+  }
 }
