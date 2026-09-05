@@ -23,7 +23,7 @@ export class InvoicesController {
   constructor(private readonly invoicesService: InvoicesService) {}
 
   @Post('generate-from-quotation/:quotationId')
-  @Roles(Role.ADMIN, Role.SALES_MANAGER, Role.FINANCE)
+  @Roles(Role.ADMIN, Role.SALES_MANAGER, Role.FINANCE, Role.SALES_REP)
   @ApiOperation({ summary: 'Generate split invoices (One-Time and Recurring) from confirmed quote' })
   @ApiResponse({ status: 201, description: 'Split invoices and subscription contracts generated' })
   async generateFromQuote(@Param('quotationId') quotationId: string) {
@@ -47,7 +47,7 @@ export class InvoicesController {
   }
 
   @Post(':id/pay')
-  @Roles(Role.ADMIN, Role.FINANCE, Role.CUSTOMER)
+  @Roles(Role.ADMIN, Role.FINANCE, Role.CUSTOMER, Role.SALES_REP, Role.SALES_MANAGER)
   @ApiOperation({ summary: 'Record payment for invoice (marks PAID when balance cleared)' })
   @ApiResponse({ status: 200, description: 'Payment recorded' })
   async payInvoice(
