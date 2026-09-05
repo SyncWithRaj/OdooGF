@@ -247,7 +247,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
         } ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
         {/* Top Brand & Navigation */}
-        <div className="flex-1 overflow-y-auto px-2 py-4 no-scrollbar flex flex-col">
+        <div className={`flex-1 ${isCollapsed ? 'overflow-visible' : 'overflow-y-auto'} px-2 py-4 no-scrollbar flex flex-col`}>
           {/* Brand Header */}
           <div className={`flex items-center mb-5 ${isCollapsed ? 'justify-center px-1' : 'justify-between px-2'}`}>
             <Link href="/" className="flex items-center gap-2.5 group">
