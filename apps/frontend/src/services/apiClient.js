@@ -67,7 +67,16 @@ async function getValidToken() {
     }
   }
 
-  // Auto-acquire valid token from backend for seamless developer & client demo flow
+  // Only auto-acquire token if no user is already signed in
+  if (typeof window !== 'undefined') {
+    const savedUserStr = localStorage.getItem('dealflow_user');
+    if (savedUserStr) {
+      // User is logged in; do not overwrite their session with admin!
+      return null;
+    }
+  }
+
+  // Auto-acquire valid token from backend for developer / guest flow
   try {
     const res = await fetch(`${API_URL}/api/auth/login`, {
       method: 'POST',
@@ -91,6 +100,21 @@ async function getValidToken() {
     console.warn('Could not auto-login to backend:', err.message);
   }
   return null;
+}
+
+async function parseResponseSafe(response) {
+  if (response.status === 204 || response.headers.get('content-length') === '0') {
+    return { success: true };
+  }
+  const text = await response.text().catch(() => '');
+  if (!text || !text.trim()) {
+    return { success: true };
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { success: true, message: text };
+  }
 }
 
 async function apiRequest(endpoint, options = {}) {
@@ -121,22 +145,25 @@ async function apiRequest(endpoint, options = {}) {
       headers.Authorization = `Bearer ${newToken}`;
       const retryResponse = await fetch(url, { ...options, headers });
       if (!retryResponse.ok) {
-        const errorData = await retryResponse.json().catch(() => ({}));
-        throw new Error(errorData.message || `Request failed with status ${retryResponse.status}`);
+        const errorData = await parseResponseSafe(retryResponse);
+        const message = Array.isArray(errorData?.message)
+          ? errorData.message.join(', ')
+          : errorData?.message || `Request failed with status ${retryResponse.status}`;
+        throw new Error(message);
       }
-      return retryResponse.json();
+      return parseResponseSafe(retryResponse);
     }
   }
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const message = Array.isArray(errorData.message)
+    const errorData = await parseResponseSafe(response);
+    const message = Array.isArray(errorData?.message)
       ? errorData.message.join(', ')
-      : errorData.message || `Request failed with status ${response.status}`;
+      : errorData?.message || `Request failed with status ${response.status}`;
     throw new Error(message);
   }
 
-  return response.json();
+  return parseResponseSafe(response);
 }
 
 export const apiClient = {
@@ -533,7 +560,7 @@ export const apiClient = {
   async submitQuotation(id, note = '') {
     return apiRequest(`/api/quotations/${id}/submit`, {
       method: 'POST',
-      body: JSON.stringify({ note }),
+      body: JSON.stringify({ notes: note || undefined }),
     });
   },
 
@@ -557,8 +584,15 @@ export const apiClient = {
     });
   },
 
+  async updateQuotationStatus(id, status) {
+    return apiRequest(`/api/quotations/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  },
+
   async upsellQuotation(id, lineData) {
-    return apiRequest(`/api/quotations/${id}/upsell`, {
+    return apiRequest(`/api/quotations/${id}/lines/upsell`, {
       method: 'POST',
       body: JSON.stringify(lineData),
     });
