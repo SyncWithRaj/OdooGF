@@ -309,6 +309,11 @@ export async function PATCH(request) {
       nextStatus = 'CONFIRMED';
       nextStage = 'APPROVED';
       approvalAction = 'APPROVED';
+    } else if (action === 'UPDATE_STATUS') {
+      const { newStatus } = await request.clone().json().catch(() => ({}));
+      if (newStatus) {
+        nextStatus = newStatus;
+      }
     }
 
     // Update Quotation in DB

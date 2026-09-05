@@ -218,4 +218,25 @@ export const quotationsService = {
     const data = await res.json();
     return data.quotation;
   },
+
+  // 12. Update pipeline stage / status
+  async updateQuotationStatus(id, newStatus, currentUser) {
+    const res = await fetch('/api/quotations', {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        id,
+        action: 'UPDATE_STATUS',
+        newStatus,
+        currentUser,
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to update quotation stage: ${res.statusText}`);
+    }
+    const data = await res.json();
+    return data.quotation;
+  },
 };
+
