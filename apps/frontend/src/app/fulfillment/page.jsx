@@ -5,6 +5,7 @@ import Link from 'next/link';
 import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { apiClient } from '@/services/apiClient';
+import { toast } from 'react-toastify';
 
 export default function FulfillmentPage() {
   const [warehouses, setWarehouses] = useState([]);
@@ -13,15 +14,19 @@ export default function FulfillmentPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
-  const [notification, setNotification] = useState(null);
   const [processingId, setProcessingId] = useState(null);
 
   // Selected Order for Split Inspection Drawer / Modal
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   const showToast = (message, type = 'success') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 4000);
+    if (type === 'error') {
+      toast.error(message);
+    } else if (type === 'info') {
+      toast.info(message);
+    } else {
+      toast.success(message);
+    }
   };
 
   const loadData = async () => {
@@ -123,48 +128,27 @@ export default function FulfillmentPage() {
   return (
     <RequireRole roles={['rep', 'manager', 'finance', 'admin']}>
       <AppLayout>
-        {/* Flash Toast */}
-        {notification && (
-          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-sm font-medium border border-slate-700 animate-in fade-in slide-in-from-bottom-4">
-            <span className={`w-2.5 h-2.5 rounded-full ${notification.type === 'error' ? 'bg-rose-500' : 'bg-emerald-400'}`}></span>
-            <span>{notification.message}</span>
-          </div>
-        )}
-
         {/* Header Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Order Fulfillment &amp; Logistics</h1>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Order Fulfillment &amp; Warehouse Dispatch</h1>
             <p className="text-xs text-slate-500 mt-1">
-              Multi-depot delivery dispatch, automated inventory partitioning, and backorder consolidation.
+              Multi-depot inventory allocation, split-shipment optimization, and tracking orchestration.
             </p>
-          </div>
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <Link
-              href="/warehouses"
-              className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-xs transition shadow-2xs flex items-center gap-1.5"
-            >
-              Warehouse Facilities &rarr;
-            </Link>
           </div>
         </div>
 
-        {/* Aggregate KPI Metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5 mb-6">
+        {/* Inventory Velocity Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 mb-6">
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Active Orders</p>
-            <p className="text-xl font-black text-slate-900 mt-1">{totalOrders}</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Partitioned shipments</p>
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Active Warehouses</p>
+            <p className="text-xl font-black text-slate-900 mt-1">{warehouses.length}</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Distributed multi-regional nodes</p>
           </div>
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Backordered</p>
-            <p className="text-xl font-black text-amber-600 mt-1">{backorderCount}</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Awaiting depot replenishment</p>
-          </div>
-          <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Physical Stock</p>
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total On Hand</p>
             <p className="text-xl font-black text-blue-600 mt-1">{totalInStock}</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Across {warehouses.length} hubs</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Across all facilities</p>
           </div>
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Reserved</p>
@@ -173,31 +157,31 @@ export default function FulfillmentPage() {
           </div>
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Ready to Ship</p>
-            <p className="text-xl font-black text-emerald-600 mt-1">{totalAvailable}</p>
+            <p className="text-xl font-black text-zinc-900 mt-1">{totalAvailable}</p>
             <p className="text-[10px] text-slate-400 mt-0.5">Immediately dispatchable</p>
           </div>
         </div>
 
         {/* Ready to Auto-Split Banner (if any approved quotes ready) */}
         {readyToSplitQuotes.length > 0 && (
-          <div className="mb-6 p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="mb-6 p-4 rounded-2xl bg-zinc-50 border border-zinc-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
             <div>
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
-                <h3 className="text-xs font-bold text-emerald-950 uppercase tracking-wider">
+                <span className="w-2 h-2 rounded-full bg-zinc-900 animate-pulse" />
+                <h3 className="text-xs font-bold text-zinc-950 uppercase tracking-wider">
                   Orders Awaiting Multi-Warehouse Split ({readyToSplitQuotes.length})
                 </h3>
               </div>
-              <p className="text-xs text-emerald-800 mt-1">
+              <p className="text-xs text-zinc-600 mt-1">
                 {readyToSplitQuotes.map((q) => `${q.quoteNumber} (${q.customer?.name || 'Client'})`).slice(0, 3).join(', ')}
               </p>
             </div>
             <button
               onClick={() => handleAutoSplit(readyToSplitQuotes[0].id)}
               disabled={processingId === readyToSplitQuotes[0].id}
-              className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-xs transition whitespace-nowrap cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-black text-white font-bold text-xs shadow-xs transition whitespace-nowrap cursor-pointer"
             >
-              {processingId === readyToSplitQuotes[0].id ? 'Partitioning...' : `⚡ Auto-Split ${readyToSplitQuotes[0].quoteNumber}`}
+              {processingId === readyToSplitQuotes[0].id ? 'Partitioning...' : `Auto-Split ${readyToSplitQuotes[0].quoteNumber}`}
             </button>
           </div>
         )}
@@ -273,7 +257,7 @@ export default function FulfillmentPage() {
                         </td>
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-zinc-100 text-zinc-900 border border-zinc-200">
                               {totalFulfilled} Fulfilled
                             </span>
                             {totalBackordered > 0 && (
@@ -293,7 +277,7 @@ export default function FulfillmentPage() {
                           <span
                             className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                               order.status === 'FULFILLED'
-                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                ? 'bg-zinc-900 border-zinc-900 text-white'
                                 : order.status === 'BACKORDER' || order.hasBackorder
                                 ? 'bg-amber-50 border-amber-200 text-amber-700'
                                 : 'bg-blue-50 border-blue-200 text-blue-700'
@@ -315,7 +299,7 @@ export default function FulfillmentPage() {
                               type="button"
                               onClick={() => handleDispatch(order.id)}
                               disabled={processingId === order.id}
-                              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] shadow-2xs transition cursor-pointer"
+                              className="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-black text-white font-semibold text-[11px] shadow-2xs transition cursor-pointer"
                             >
                               {processingId === order.id ? 'Dispatching...' : 'Dispatch'}
                             </button>
@@ -352,7 +336,7 @@ export default function FulfillmentPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-xs">
                   <span className="text-slate-500">In Stock: <strong className="text-slate-900">{w.totalInStock}</strong></span>
-                  <span className="text-emerald-600 font-semibold">{w.totalAvailable} Available</span>
+                  <span className="text-zinc-900 font-semibold">{w.totalAvailable} Available</span>
                   <Link
                     href="/warehouses"
                     className="px-2.5 py-1 rounded-lg border border-slate-200 text-[11px] text-slate-700 hover:bg-slate-50 font-medium"
@@ -375,7 +359,9 @@ export default function FulfillmentPage() {
                   <p className="text-xs text-slate-500 font-mono mt-0.5">Quotation {selectedOrder.quotation?.quoteNumber || 'Order'}</p>
                 </div>
                 <button onClick={() => setSelectedOrder(null)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
-                  ✕
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
 
@@ -387,7 +373,7 @@ export default function FulfillmentPage() {
                       <span className="font-mono text-[10px] text-slate-500">{item.warehouse?.name || 'Warehouse Depot'}</span>
                     </div>
                     <div className="flex items-center justify-between text-slate-600">
-                      <span>Fulfilled: <strong className="text-emerald-700">{item.quantityFulfilled} units</strong></span>
+                      <span>Fulfilled: <strong className="text-zinc-900">{item.quantityFulfilled} units</strong></span>
                       <span>Backordered: <strong className="text-amber-700">{item.quantityBackordered} units</strong></span>
                       <span>Est. Ship: <strong>${item.estimatedShipCost || 0}</strong></span>
                     </div>
