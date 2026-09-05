@@ -144,6 +144,21 @@ export default function Sidebar({ isOpen, onClose }) {
         },
       ],
     },
+    {
+      group: 'Account',
+      items: [
+        {
+          label: 'User Profile',
+          href: '/profile',
+          roles: ['rep', 'manager', 'finance', 'admin', 'customer'],
+          icon: (
+            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          ),
+        },
+      ],
+    },
   ];
 
   const userRole = user?.role || 'guest';
@@ -166,24 +181,12 @@ export default function Sidebar({ isOpen, onClose }) {
       >
         {/* Top Header & Navigation */}
         <div className="flex-1 overflow-y-auto px-4 py-4 scrollbar-thin">
-          {/* Logo matching Shadcn screenshot */}
-          <div className="flex items-center justify-between pb-3.5 mb-3 border-b border-slate-100">
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="w-8 h-8 rounded-xl bg-slate-950 text-white flex items-center justify-center font-bold text-xs shadow-xs group-hover:scale-105 transition-transform">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h10M4 18h16" />
-                </svg>
-              </div>
-              <div>
-                <span className="font-bold text-sm tracking-tight text-slate-900 block leading-tight">Shadcn UI Kit</span>
-                <span className="text-[10px] text-slate-400 font-medium">DealFlow360 Ops</span>
-              </div>
-            </Link>
-
-            {/* Mobile Close Button */}
+          {/* Mobile Close Button */}
+          <div className="flex justify-end pb-2 lg:hidden">
             <button
               onClick={onClose}
-              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 lg:hidden"
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+              aria-label="Close navigation"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -259,24 +262,7 @@ export default function Sidebar({ isOpen, onClose }) {
           </div>
         </div>
 
-        {/* Bottom Card matching "Get This Template" in screenshot */}
-        <div className="p-3 border-t border-slate-100">
-          <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-200/70">
-            <h4 className="text-xs font-bold text-slate-900 mb-1">Get This Template</h4>
-            <p className="text-[11px] text-slate-500 leading-relaxed mb-3">
-              Download the full source code. Every dashboard you see in this demo is included.
-            </p>
-            <button
-              onClick={() => window.open('https://github.com', '_blank')}
-              className="w-full py-2 px-3 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-semibold text-xs transition shadow-xs flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              <span>Download Template</span>
-            </button>
-          </div>
-        </div>
+
       </aside>
     </>
   );

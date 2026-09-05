@@ -41,47 +41,8 @@ export default function TopHeader({ onToggleSidebar }) {
         </div>
       </div>
 
-      {/* Right side: Quick Links, Bell, Moon, Palette, User Avatar */}
+      {/* Right side: User Session & Avatar */}
       <div className="flex items-center gap-3">
-        {/* Download quick link */}
-        <button
-          onClick={() => window.open('https://github.com', '_blank')}
-          className="hidden sm:inline-block text-xs font-medium text-purple-600 hover:text-purple-800 hover:underline transition"
-        >
-          Download
-        </button>
-
-        {/* Notification Bell with Badge */}
-        <button
-          aria-label="View system notifications"
-          className="relative p-1.5 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition cursor-pointer"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-          </svg>
-          <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-rose-500 ring-2 ring-white" />
-        </button>
-
-        {/* Dark/Light Mode Toggle */}
-        <button
-          aria-label="Toggle display theme mode"
-          className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition cursor-pointer"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-          </svg>
-        </button>
-
-        {/* Theme Palette Icon */}
-        <button
-          aria-label="Customize theme colors and appearance"
-          className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition cursor-pointer"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21a4 4 0 01-4-4 4 4 0 014-4 2 2 0 012 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 012-2 4 4 0 014 4 4 4 0 01-4 4H7z" />
-          </svg>
-        </button>
-
         {/* User Session & Avatar */}
         {isAuthenticated ? (
           <div className="relative">
@@ -109,6 +70,13 @@ export default function TopHeader({ onToggleSidebar }) {
                     {user?.role}
                   </span>
                 </div>
+                <Link
+                  href="/profile"
+                  onClick={() => setProfileMenuOpen(false)}
+                  className="block px-3 py-1.5 rounded-lg text-xs text-slate-700 hover:bg-slate-100 font-medium"
+                >
+                  My Profile
+                </Link>
                 <Link
                   href={user?.role === 'customer' ? '/portal' : '/dashboard'}
                   onClick={() => setProfileMenuOpen(false)}
