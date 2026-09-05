@@ -94,7 +94,8 @@ export default function DealHealthPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Live Database Probe Mini Badge */}
             <div className={`px-3 py-1.5 rounded-full border text-xs font-medium flex items-center gap-2 ${
               isHealthy ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
             }`}>
@@ -262,7 +263,7 @@ export default function DealHealthPage() {
               {discountAnomalies.map((item, idx) => (
                 <div key={item.quotationId || idx} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-bold text-slate-900">{item.quoteNumber}</span>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200">
                         MEDIAN ANOMALY
@@ -315,7 +316,7 @@ export default function DealHealthPage() {
               {deliverySlippages.map((slip, idx) => (
                 <div key={slip.quotationId || idx} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-bold text-slate-900">{slip.quoteNumber}</span>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200">
                         SLIPPAGE: +{slip.slippageDays} DAY(S)

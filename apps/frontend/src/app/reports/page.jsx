@@ -18,7 +18,7 @@ export default function ReportsPage() {
     try {
       const [qList, invRes, uList] = await Promise.all([
         quotationsService.getQuotations().catch(() => []),
-        fetch('/api/invoices').then((r) => r.json()).then((d) => d.invoices || []).catch(() => []),
+        apiClient.getInvoices().catch(() => []),
         apiClient.getUsers().catch(() => []),
       ]);
       setQuotations(qList);
@@ -106,6 +106,24 @@ export default function ReportsPage() {
     };
   }, [quotations, invoices, users]);
 
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async (format = 'csv') => {
+    setExporting(true);
+    try {
+      await apiClient.downloadExport(format);
+    } catch (err) {
+      console.warn('Backend export failed, fallback to client-side generator:', err);
+      if (format === 'csv') {
+        handleExportCSV();
+      } else {
+        window.print();
+      }
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const handleExportCSV = () => {
     const csvRows = [
       ['DealFlow360 Executive BI Summary'],
@@ -144,7 +162,7 @@ export default function ReportsPage() {
               Real-time win/loss conversion rates, discount leakage alerts, and sales team performance ranking.
             </p>
           </div>
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center bg-white border border-slate-200 rounded-xl p-0.5 text-xs font-semibold">
               {['30D', '90D', 'ALL'].map((r) => (
                 <button
@@ -159,13 +177,34 @@ export default function ReportsPage() {
               ))}
             </div>
             <button
-              onClick={handleExportCSV}
-              className="px-4 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-semibold text-xs shadow-xs transition flex items-center gap-1.5"
+              onClick={() => handleExport('csv')}
+              disabled={exporting}
+              className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Export CSV Report
+              CSV
+            </button>
+            <button
+              onClick={() => handleExport('xls')}
+              disabled={exporting}
+              className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              XLS
+            </button>
+            <button
+              onClick={() => handleExport('pdf')}
+              disabled={exporting}
+              className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              PDF Report
             </button>
           </div>
         </div>
@@ -288,7 +327,7 @@ export default function ReportsPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600">
+            <table className="w-full text-left text-xs text-slate-600 min-w-[760px]">
               <thead className="bg-slate-50/75 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
                 <tr>
                   <th className="py-3 px-4 w-12 text-center">Rank</th>

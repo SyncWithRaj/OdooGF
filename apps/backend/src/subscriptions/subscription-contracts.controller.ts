@@ -15,6 +15,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import {
   AdjustQuantityDto,
   CancelSubscriptionDto,
+  CreateSubscriptionContractDto,
   SubscriptionContractQueryDto,
 } from './dto/subscription-contract.dto';
 import { SubscriptionsService } from './subscriptions.service';
@@ -32,6 +33,14 @@ export class SubscriptionContractsController {
   @ApiResponse({ status: 200, description: 'List of subscription contracts' })
   async getAll(@Query() query: SubscriptionContractQueryDto) {
     return this.subscriptionsService.getAllSubscriptions(query);
+  }
+
+  @Post()
+  @Roles(Role.ADMIN, Role.SALES_REP, Role.SALES_MANAGER, Role.FINANCE)
+  @ApiOperation({ summary: 'Create a new subscription contract' })
+  @ApiResponse({ status: 201, description: 'Subscription contract created' })
+  async createSubscription(@Body() dto: CreateSubscriptionContractDto) {
+    return this.subscriptionsService.createSubscriptionContract(dto);
   }
 
   @Get(':id')

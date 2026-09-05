@@ -73,157 +73,54 @@ export const quotationsService = {
     return data.blendedEvaluation;
   },
 
-  // 5. Fetch all quotations directly from PostgreSQL database
-  async getQuotations() {
-    const res = await fetch('/api/quotations', {
-      headers: getAuthHeaders(),
-      cache: 'no-store',
-    });
-    if (!res.ok) {
-      throw new Error(`Failed to fetch quotations from database: ${res.statusText}`);
-    }
-    const data = await res.json();
-    return data.quotations || [];
+  // 5. Fetch all quotations directly from NestJS backend
+  async getQuotations(params = {}) {
+    return apiClient.getQuotations(params);
   },
 
-  // 6. Create a new quotation directly in PostgreSQL database
+  // 6. Create a new quotation directly in NestJS backend
   async createQuotation(quoteData, currentUser) {
     const payload = {
       ...quoteData,
       salesRepId: currentUser?.id,
-      salesRepName: currentUser?.name,
     };
-
-    const res = await fetch('/api/quotations', {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      throw new Error(`Failed to save quotation in database: ${res.statusText}`);
-    }
-    const data = await res.json();
-    return data.quotation;
+    return apiClient.createQuotation(payload);
   },
 
-  // 7. Submit quotation for approval in PostgreSQL database
+  // 7. Submit quotation for approval in NestJS backend
   async submitForApproval(id, currentUser, note = '') {
-    const res = await fetch('/api/quotations', {
-      method: 'PATCH',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({
-        id,
-        action: 'SUBMIT',
-        note,
-        currentUser,
-      }),
-    });
-
-    if (!res.ok) {
-      throw new Error(`Failed to submit quotation in database: ${res.statusText}`);
-    }
-    const data = await res.json();
-    return data.quotation;
+    return apiClient.submitQuotation(id, note);
   },
 
-  // 8. Approve quotation in PostgreSQL database
+  // 8. Approve quotation in NestJS backend
   async approveQuotation(id, currentUser, note = '') {
-    const res = await fetch('/api/quotations', {
-      method: 'PATCH',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({
-        id,
-        action: 'APPROVE',
-        note,
-        currentUser,
-      }),
-    });
-
-    if (!res.ok) {
-      throw new Error(`Failed to approve quotation in database: ${res.statusText}`);
-    }
-    const data = await res.json();
-    return data.quotation;
+    return apiClient.approveQuotation(id, note);
   },
 
-  // 9. Reject quotation in PostgreSQL database
+  // 9. Reject quotation in NestJS backend
   async rejectQuotation(id, currentUser, note = '') {
-    const res = await fetch('/api/quotations', {
-      method: 'PATCH',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({
-        id,
-        action: 'REJECT',
-        note,
-        currentUser,
-      }),
-    });
-
-    if (!res.ok) {
-      throw new Error(`Failed to reject quotation in database: ${res.statusText}`);
-    }
-    const data = await res.json();
-    return data.quotation;
+    return apiClient.rejectQuotation(id, note);
   },
 
-  // 10. Return quotation for revision in PostgreSQL database
+  // 10. Return quotation for revision
   async returnForRevision(id, currentUser, note = '') {
-    const res = await fetch('/api/quotations', {
-      method: 'PATCH',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({
-        id,
-        action: 'RETURN',
-        note,
-        currentUser,
-      }),
-    });
-
-    if (!res.ok) {
-      throw new Error(`Failed to return quotation in database: ${res.statusText}`);
-    }
-    const data = await res.json();
-    return data.quotation;
+    return apiClient.rejectQuotation(id, note || 'Returned for revision');
   },
 
-  // 11. Confirm order in PostgreSQL database
+  // 11. Confirm order in NestJS backend
   async confirmOrder(id, currentUser) {
-    const res = await fetch('/api/quotations', {
-      method: 'PATCH',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({
-        id,
-        action: 'CONFIRM',
-        currentUser,
-      }),
-    });
-
-    if (!res.ok) {
-      throw new Error(`Failed to confirm order in database: ${res.statusText}`);
-    }
-    const data = await res.json();
-    return data.quotation;
+    return apiClient.confirmQuotation(id);
   },
 
   // 12. Update pipeline stage / status
   async updateQuotationStatus(id, newStatus, currentUser) {
-    const res = await fetch('/api/quotations', {
-      method: 'PATCH',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({
-        id,
-        action: 'UPDATE_STATUS',
-        newStatus,
-        currentUser,
-      }),
-    });
-
-    if (!res.ok) {
-      throw new Error(`Failed to update quotation stage: ${res.statusText}`);
+    if (newStatus === 'CONFIRMED') {
+      return apiClient.confirmQuotation(id);
     }
-    const data = await res.json();
-    return data.quotation;
+    if (newStatus === 'PENDING_APPROVAL') {
+      return apiClient.submitQuotation(id, 'Pipeline stage move');
+    }
+    return apiClient.getQuotation(id);
   },
 
   // 13. Fetch AI Recommendations for cart products

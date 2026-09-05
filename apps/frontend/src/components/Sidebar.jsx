@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { apiClient } from '@/services/apiClient';
 
 export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggleCollapse }) {
   const { user } = useAuth();
@@ -14,12 +15,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
     let isCancelled = false;
     async function fetchPendingCount() {
       try {
-        const res = await fetch('/api/quotations');
-        if (res.ok) {
-          const data = await res.json();
-          const pending = (data.quotations || []).filter((q) => q.status === 'PENDING_APPROVAL');
-          if (!isCancelled) setPendingApprovalsCount(pending.length);
-        }
+        const quotes = await apiClient.getQuotations();
+        const pending = (quotes || []).filter((q) => q.status === 'PENDING_APPROVAL');
+        if (!isCancelled) setPendingApprovalsCount(pending.length);
       } catch (e) {
         // silent fallback
       }
@@ -247,7 +245,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
         } ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
         {/* Top Brand & Navigation */}
-        <div className="flex-1 overflow-y-auto px-2 py-4 no-scrollbar flex flex-col">
+        <div className={`flex-1 ${isCollapsed ? 'overflow-visible' : 'overflow-y-auto'} px-2 py-4 no-scrollbar flex flex-col`}>
           {/* Brand Header */}
           <div className={`flex items-center mb-5 ${isCollapsed ? 'justify-center px-1' : 'justify-between px-2'}`}>
             <Link href="/" className="flex items-center gap-2.5 group">

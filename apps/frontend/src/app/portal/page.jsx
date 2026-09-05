@@ -29,19 +29,10 @@ export default function CustomerPortalPage() {
   const loadCustomerQuotes = async () => {
     setLoading(true);
     try {
-      const all = await quotationsService.getQuotations();
-      // Show quotes where customer matches or all active quotes for demo customer preview
-      const customerQuotes = all.filter(
-        (q) =>
-          !user ||
-          user.role !== 'customer' ||
-          q.customer?.email === user.email ||
-          q.customerId === user.id ||
-          true // Allow demo preview
-      );
-      setQuotations(customerQuotes);
-      if (customerQuotes.length > 0 && !selectedQuote) {
-        setSelectedQuote(customerQuotes[0]);
+      const customerQuotes = await apiClient.getPortalQuotes();
+      setQuotations(customerQuotes || []);
+      if (customerQuotes && customerQuotes.length > 0) {
+        setSelectedQuote((prev) => prev ? customerQuotes.find((q) => q.id === prev.id) || customerQuotes[0] : customerQuotes[0]);
       }
     } catch (err) {
       console.error(err);
@@ -60,7 +51,13 @@ export default function CustomerPortalPage() {
       return;
     }
     try {
-      await quotationsService.confirmOrder(quote.id, user);
+      if (quote.portalToken) {
+        await apiClient.acceptPortalQuote(quote.portalToken, {
+          acknowledgementNote: `Digitally signed by ${user?.name || user?.email || 'Customer'}`,
+        });
+      } else {
+        await quotationsService.confirmOrder(quote.id, user);
+      }
       showToast(`Quotation ${quote.quoteNumber} accepted and confirmed! Delivery order queued.`);
       await loadCustomerQuotes();
     } catch (err) {
@@ -73,7 +70,16 @@ export default function CustomerPortalPage() {
     if (!selectedQuote) return;
     setSubmitting(true);
     try {
-      await quotationsService.updateQuotationStatus(selectedQuote.id, 'UNDER_NEGOTIATION', user);
+      if (selectedQuote.portalToken) {
+        await apiClient.counterPortalQuote(selectedQuote.portalToken, {
+          counterDiscountProposed: Number(counterDiscount),
+          counterDiscountPercent: Number(counterDiscount),
+          requestedDeliveryDate: deliveryDate ? new Date(deliveryDate).toISOString() : undefined,
+          message: negotiateNotes || 'Customer requested counter terms',
+        });
+      } else {
+        await quotationsService.updateQuotationStatus(selectedQuote.id, 'UNDER_NEGOTIATION', user);
+      }
       showToast(`Counter-proposal of ${counterDiscount}% discount submitted to your Account Executive!`);
       setIsNegotiateModalOpen(false);
       await loadCustomerQuotes();
@@ -118,7 +124,7 @@ export default function CustomerPortalPage() {
       <AppLayout>
         {/* Flash Toast */}
         {notification && (
-          <div className="fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-sm font-medium border border-slate-700 animate-in fade-in">
+          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-sm font-medium border border-slate-700 animate-in fade-in slide-in-from-bottom-4">
             <span className={`w-2.5 h-2.5 rounded-full ${notification.type === 'error' ? 'bg-rose-500' : 'bg-emerald-400'}`}></span>
             <span>{notification.message}</span>
           </div>
@@ -212,7 +218,7 @@ export default function CustomerPortalPage() {
                       Issued to {selectedQuote.customer?.name} ({selectedQuote.customer?.companyName || 'Direct Client'})
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     {selectedQuote.status !== 'CONFIRMED' && (
                       <>
                         <button
@@ -350,7 +356,8 @@ export default function CustomerPortalPage() {
                 <div className="mb-6">
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Itemized Catalog Lines</h3>
                   <div className="border border-slate-200 rounded-xl overflow-hidden">
-                    <table className="w-full text-left text-xs text-slate-600">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs text-slate-600 min-w-[580px]">
                       <thead className="bg-slate-50 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200">
                         <tr>
                           <th className="py-2.5 px-3">Item Description</th>
@@ -388,6 +395,7 @@ export default function CustomerPortalPage() {
                         ))}
                       </tbody>
                     </table>
+                    </div>
                   </div>
                 </div>
 
@@ -429,7 +437,7 @@ export default function CustomerPortalPage() {
         {/* Modal: Customer Counter Proposal */}
         {isNegotiateModalOpen && selectedQuote && (
           <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-base font-bold text-slate-900">Submit Counter Proposal</h3>

@@ -10,6 +10,13 @@ import { RateLimit } from '../common/decorators/rate-limit.decorator';
 export class PortalController {
   constructor(private readonly portalService: PortalService) {}
 
+  @Get('quotes')
+  @ApiOperation({ summary: 'Customer view: list available quotes for portal preview (costs/margins masked)' })
+  @ApiResponse({ status: 200, description: 'List of quotations for portal' })
+  async getPortalQuotes() {
+    return this.portalService.getPortalQuotes();
+  }
+
   @Get('quote/:token')
   @ApiOperation({ summary: 'Customer view of quotation (Margin and costs securely masked)' })
   @ApiResponse({ status: 200, description: 'Customer quotation view' })

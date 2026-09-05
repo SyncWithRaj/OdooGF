@@ -18,6 +18,71 @@ export class PortalService {
   constructor(private readonly prisma: PrismaService) {}
 
   // ----------------------------------------------------------------------------
+  // GET LIST OF PORTAL QUOTATIONS (Cost & Margin Masked for Customer)
+  // ----------------------------------------------------------------------------
+  async getPortalQuotes() {
+    return this.prisma.quotation.findMany({
+      where: {
+        status: {
+          in: [
+            QuotationStatus.SENT_TO_CUSTOMER,
+            QuotationStatus.CONFIRMED,
+            QuotationStatus.FULFILLED,
+          ],
+        },
+      },
+      select: {
+        id: true,
+        quoteNumber: true,
+        portalToken: true,
+        status: true,
+        subtotalAmount: true,
+        totalDiscountAmount: true,
+        orderDiscountPercent: true,
+        totalAmount: true,
+        customerTermsConfirmed: true,
+        requestedDeliveryDate: true,
+        promisedDeliveryDate: true,
+        createdAt: true,
+        updatedAt: true,
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            companyName: true,
+            email: true,
+            tier: true,
+          },
+        },
+        lines: {
+          select: {
+            id: true,
+            productId: true,
+            product: {
+              select: {
+                id: true,
+                sku: true,
+                name: true,
+                description: true,
+                category: true,
+                isSubscription: true,
+                recurringInterval: true,
+              },
+            },
+            quantity: true,
+            unitPrice: true,
+            discountPercent: true,
+            lineTotal: true,
+          },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+  }
+
+  // ----------------------------------------------------------------------------
   // GET QUOTE BY PORTAL TOKEN (Cost & Margin Masked for Customer)
   // ----------------------------------------------------------------------------
   async getQuoteByToken(token: string) {

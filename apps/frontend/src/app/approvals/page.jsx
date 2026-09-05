@@ -6,6 +6,7 @@ import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { useAuth } from '@/context/AuthContext';
 import { quotationsService } from '@/services/quotationsService';
+import { apiClient } from '@/services/apiClient';
 
 export default function ApprovalsPage() {
   const { user, login } = useAuth();
@@ -49,24 +50,31 @@ export default function ApprovalsPage() {
   }, [quotations]);
 
   const managerPending = useMemo(() => {
-    return pendingQuotes.filter((q) => q.currentStage === 'SALES_MANAGER');
+    return pendingQuotes.filter((q) => {
+      const stage = q.currentStage || q.approvalRequests?.[0]?.currentStage || (q.blendedRiskScore === 'HIGH' ? 'FINANCE' : 'SALES_MANAGER');
+      return stage === 'SALES_MANAGER';
+    });
   }, [pendingQuotes]);
 
   const financePending = useMemo(() => {
-    return pendingQuotes.filter((q) => q.currentStage === 'FINANCE');
+    return pendingQuotes.filter((q) => {
+      const stage = q.currentStage || q.approvalRequests?.[0]?.currentStage || (q.blendedRiskScore === 'HIGH' ? 'FINANCE' : 'SALES_MANAGER');
+      return stage === 'FINANCE';
+    });
   }, [pendingQuotes]);
 
   // Filtered quotes based on tab and search
   const displayedQuotes = useMemo(() => {
     return pendingQuotes.filter((q) => {
-      if (activeTab === 'manager' && q.currentStage !== 'SALES_MANAGER') return false;
-      if (activeTab === 'finance' && q.currentStage !== 'FINANCE') return false;
+      const stage = q.currentStage || q.approvalRequests?.[0]?.currentStage || (q.blendedRiskScore === 'HIGH' ? 'FINANCE' : 'SALES_MANAGER');
+      if (activeTab === 'manager' && stage !== 'SALES_MANAGER') return false;
+      if (activeTab === 'finance' && stage !== 'FINANCE') return false;
 
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         const matchesNumber = q.quoteNumber?.toLowerCase().includes(query);
-        const matchesCustomer = q.customerName?.toLowerCase().includes(query);
-        const matchesRep = q.salesRepName?.toLowerCase().includes(query);
+        const matchesCustomer = (q.customerName || q.customer?.name || q.customer?.companyName || '')?.toLowerCase().includes(query);
+        const matchesRep = (q.salesRepName || q.salesRep?.fullName || '')?.toLowerCase().includes(query);
         return matchesNumber || matchesCustomer || matchesRep;
       }
       return true;
@@ -75,31 +83,46 @@ export default function ApprovalsPage() {
 
 
 
-  // Governance Actions
+  // Governance Actions — route through /api/approvals/:approvalRequestId/action
   const handleAction = async (quote, actionType, customNote = '') => {
     setProcessingId(quote.id);
     try {
+      // Find the active approval request ID for this quotation
+      const approvalRequestId = quote.approvalRequests?.[0]?.id;
+      if (!approvalRequestId) {
+        showToast('No active approval request found for this quotation.', 'error');
+        return;
+      }
+
+      // Map frontend action names to backend ApprovalAction enum values
+      const actionMap = {
+        APPROVE: 'APPROVED',
+        REJECT: 'REJECTED',
+        RETURN: 'RETURNED_FOR_REVISION',
+      };
+      const backendAction = actionMap[actionType];
+
+      const res = await apiClient.actionApproval(approvalRequestId, backendAction, customNote);
+
       if (actionType === 'APPROVE') {
-        const res = await quotationsService.approveQuotation(quote.id, user, customNote);
         showToast(
-          res.status === 'APPROVED'
-            ? `Quotation ${quote.quoteNumber} approved!`
-            : `Quotation ${quote.quoteNumber} approved at L1 and sent to Finance.`
+          res.status === 'ESCALATED_TO_FINANCE'
+            ? `Quotation ${quote.quoteNumber} approved at L1 — escalated to Finance for Tier-2 sign-off.`
+            : `Quotation ${quote.quoteNumber} fully approved & sent to customer!`
         );
       } else if (actionType === 'RETURN') {
-        await quotationsService.returnForRevision(quote.id, user, customNote);
         showToast(`Quotation ${quote.quoteNumber} returned for revision.`);
       } else if (actionType === 'REJECT') {
-        await quotationsService.rejectQuotation(quote.id, user, customNote);
         showToast(`Quotation ${quote.quoteNumber} rejected.`, 'info');
       }
+
       if (selectedQuote?.id === quote.id) {
         setSelectedQuote(null);
       }
       await loadApprovals();
     } catch (err) {
       console.error('Governance action failed:', err);
-      showToast('Action failed. Please try again.', 'error');
+      showToast(err?.message || 'Action failed. Please try again.', 'error');
     } finally {
       setProcessingId(null);
     }
@@ -136,7 +159,7 @@ export default function ApprovalsPage() {
       <AppLayout>
         {/* FLASH TOAST */}
         {notification && (
-          <div className="fixed top-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-md shadow-lg bg-gray-900 text-white text-xs font-medium border border-gray-800 animate-in fade-in slide-in-from-top-4">
+          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-xs font-medium border border-slate-700 animate-in fade-in slide-in-from-bottom-4">
             <span className={`w-2 h-2 rounded-full ${notification.type === 'error' ? 'bg-rose-500' : notification.type === 'info' ? 'bg-blue-500' : 'bg-emerald-400'}`}></span>
             <span>{notification.message}</span>
           </div>
@@ -145,7 +168,7 @@ export default function ApprovalsPage() {
         {/* HEADER */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl font-semibold text-gray-900 tracking-tight">Approvals</h1>
               <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${
                 pendingQuotes.length > 0
@@ -224,7 +247,7 @@ export default function ApprovalsPage() {
           /* SIMPLE CLASSIC TABLE VIEW */
           <div className="bg-white rounded-md border border-gray-200 shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="w-full text-left text-xs border-collapse min-w-[760px]">
                 <thead>
                   <tr className="bg-gray-50/80 border-b border-gray-200 text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     <th className="py-3 px-4">Quote</th>
@@ -241,8 +264,9 @@ export default function ApprovalsPage() {
                 <tbody className="divide-y divide-gray-100 text-gray-700">
                   {displayedQuotes.map((quote) => {
                     const isProcessing = processingId === quote.id;
-                    const isManagerStage = quote.currentStage === 'SALES_MANAGER';
-                    const isFinanceStage = quote.currentStage === 'FINANCE';
+                    const stage = quote.currentStage || quote.approvalRequests?.[0]?.currentStage || (quote.blendedRiskScore === 'HIGH' ? 'FINANCE' : 'SALES_MANAGER');
+                    const isManagerStage = stage === 'SALES_MANAGER';
+                    const isFinanceStage = stage === 'FINANCE';
                     const canApprove =
                       currentRole === 'admin' ||
                       (isManagerStage && currentRole === 'manager') ||
@@ -266,16 +290,20 @@ export default function ApprovalsPage() {
 
                         {/* Customer */}
                         <td className="py-3 px-4">
-                          <div className="font-medium text-gray-900">{quote.customerName}</div>
+                          <div className="font-medium text-gray-900">
+                            {quote.customerName || quote.customer?.name || quote.customer?.companyName || 'Direct Client'}
+                          </div>
                           <div className="flex items-center gap-1.5 mt-0.5">
-                            {getTierBadge(quote.customerTier)}
-                            <span className="text-[10px] text-gray-400 truncate max-w-[140px]">{quote.customerEmail}</span>
+                            {getTierBadge(quote.customerTier || quote.customer?.tier)}
+                            <span className="text-[10px] text-gray-400 truncate max-w-[140px]">
+                              {quote.customerEmail || quote.customer?.email}
+                            </span>
                           </div>
                         </td>
 
                         {/* Sales Rep */}
-                        <td className="py-3 px-4 text-gray-600">
-                          {quote.salesRepName}
+                        <td className="py-3 px-4 text-gray-700 font-medium">
+                          {quote.salesRepName || quote.salesRep?.fullName || quote.salesRep?.email || 'Direct Sales Rep'}
                         </td>
 
                         {/* Stage */}
@@ -367,46 +395,44 @@ export default function ApprovalsPage() {
               {/* Header */}
               <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h2 className="text-base font-semibold text-gray-900">
                       {selectedQuote.quoteNumber}
                     </h2>
-                    {getTierBadge(selectedQuote.customerTier)}
+                    {getTierBadge(selectedQuote.customerTier || selectedQuote.customer?.tier)}
                     {getRiskBadge(selectedQuote.blendedRiskScore)}
                   </div>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Customer: {selectedQuote.customerName} ({selectedQuote.customerEmail})
+                    Customer: {selectedQuote.customerName || selectedQuote.customer?.name || selectedQuote.customer?.companyName} ({selectedQuote.customerEmail || selectedQuote.customer?.email}) &bull; Rep: {selectedQuote.salesRepName || selectedQuote.salesRep?.fullName || 'Direct Sales Rep'}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSelectedQuote(null)}
-                  className="p-1.5 text-gray-400 hover:text-gray-700 rounded hover:bg-gray-100 transition cursor-pointer"
+                  className="text-gray-400 hover:text-gray-600 p-1 rounded"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  ✕
                 </button>
               </div>
 
               {/* Body */}
-              <div className="p-5 overflow-y-auto space-y-4 text-xs flex-1">
-                {/* Financial Summary */}
-                <div className="grid grid-cols-4 gap-3 p-3 rounded bg-gray-50 border border-gray-200 text-center">
+              <div className="p-5 overflow-y-auto space-y-4 flex-1">
+                {/* Financials */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-gray-50 rounded border border-gray-100 text-xs">
                   <div>
-                    <span className="text-gray-500 block text-[11px]">Subtotal</span>
-                    <span className="font-semibold text-gray-900">${selectedQuote.subtotalAmount?.toLocaleString()}</span>
+                    <span className="text-gray-500 block">Total Value</span>
+                    <span className="font-semibold text-gray-900">${selectedQuote.totalAmount?.toLocaleString()}</span>
                   </div>
                   <div>
-                    <span className="text-gray-500 block text-[11px]">Discount ({selectedQuote.orderDiscountPercent}%)</span>
-                    <span className="font-semibold text-amber-700">-${selectedQuote.totalDiscountAmount}</span>
+                    <span className="text-gray-500 block">Requested Discount</span>
+                    <span className="font-semibold text-amber-700">{selectedQuote.orderDiscountPercent}%</span>
                   </div>
                   <div>
-                    <span className="text-gray-500 block text-[11px]">Total</span>
-                    <span className="font-semibold text-emerald-700">${selectedQuote.totalAmount?.toLocaleString()}</span>
+                    <span className="text-gray-500 block">Total Concession</span>
+                    <span className="font-semibold text-gray-900">-${selectedQuote.totalDiscountAmount}</span>
                   </div>
                   <div>
-                    <span className="text-gray-500 block text-[11px]">Margin</span>
+                    <span className="text-gray-500 block">Total Margin</span>
                     <span className="font-semibold text-gray-900">{selectedQuote.totalMarginPercent}%</span>
                   </div>
                 </div>
@@ -414,30 +440,32 @@ export default function ApprovalsPage() {
                 {/* Line Items Table */}
                 {selectedQuote.lines && selectedQuote.lines.length > 0 && (
                   <div className="border border-gray-200 rounded overflow-hidden">
-                    <table className="w-full text-left">
-                      <thead className="bg-gray-50 text-[11px] font-medium text-gray-500 uppercase border-b border-gray-200">
-                        <tr>
-                          <th className="py-2 px-3">Product</th>
-                          <th className="py-2 px-2 text-center">Qty</th>
-                          <th className="py-2 px-3 text-right">Unit Price</th>
-                          <th className="py-2 px-3 text-right">Discount</th>
-                          <th className="py-2 px-3 text-right">Line Total</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100 text-gray-900">
-                        {selectedQuote.lines.map((l, i) => (
-                          <tr key={i}>
-                            <td className="py-2 px-3 font-medium">{l.productName}</td>
-                            <td className="py-2 px-2 text-center">{l.quantity}</td>
-                            <td className="py-2 px-3 text-right">${l.unitPrice}</td>
-                            <td className="py-2 px-3 text-right text-amber-700">{l.discountPercent}%</td>
-                            <td className="py-2 px-3 text-right font-semibold">
-                              ${l.lineRevenue || (l.quantity * l.unitPrice * (1 - l.discountPercent / 100)).toFixed(2)}
-                            </td>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left min-w-[500px]">
+                        <thead className="bg-gray-50 text-[11px] font-medium text-gray-500 uppercase border-b border-gray-200">
+                          <tr>
+                            <th className="py-2 px-3">Product</th>
+                            <th className="py-2 px-2 text-center">Qty</th>
+                            <th className="py-2 px-3 text-right">Unit Price</th>
+                            <th className="py-2 px-3 text-right">Discount</th>
+                            <th className="py-2 px-3 text-right">Line Total</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 text-gray-900">
+                          {selectedQuote.lines.map((l, i) => (
+                            <tr key={i}>
+                              <td className="py-2 px-3 font-medium">{l.productName}</td>
+                              <td className="py-2 px-2 text-center">{l.quantity}</td>
+                              <td className="py-2 px-3 text-right">${l.unitPrice}</td>
+                              <td className="py-2 px-3 text-right text-amber-700">{l.discountPercent}%</td>
+                              <td className="py-2 px-3 text-right font-semibold">
+                                ${l.lineRevenue || (l.quantity * l.unitPrice * (1 - l.discountPercent / 100)).toFixed(2)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
 
@@ -457,16 +485,16 @@ export default function ApprovalsPage() {
               </div>
 
               {/* Footer Actions */}
-              <div className="px-5 py-3 border-t border-gray-200 bg-gray-50/50 flex items-center justify-between">
+              <div className="px-5 py-3 border-t border-gray-200 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                 <button
                   type="button"
                   onClick={() => setSelectedQuote(null)}
-                  className="h-8 px-3 rounded text-xs font-medium text-gray-700 hover:bg-gray-100 transition cursor-pointer"
+                  className="h-8 px-3 rounded text-xs font-medium text-gray-700 hover:bg-gray-100 transition cursor-pointer self-start sm:self-auto"
                 >
                   Close
                 </button>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     disabled={processingId === selectedQuote.id}

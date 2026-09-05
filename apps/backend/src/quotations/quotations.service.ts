@@ -155,7 +155,7 @@ export class QuotationsService {
       ];
     }
 
-    return this.prisma.quotation.findMany({
+    const quotes = await this.prisma.quotation.findMany({
       where,
       include: {
         customer: true,
@@ -167,6 +167,18 @@ export class QuotationsService {
             role: true,
           },
         },
+        approvalRequests: {
+          where: { isCompleted: false },
+          select: {
+            id: true,
+            currentStage: true,
+            blendedRiskLevel: true,
+            worstLineDeviation: true,
+            flagReasonSummary: true,
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
         _count: {
           select: {
             lines: true,
@@ -176,6 +188,15 @@ export class QuotationsService {
       },
       orderBy: { updatedAt: 'desc' },
     });
+
+    return quotes.map((q: any) => ({
+      ...q,
+      customerName: q.customer?.name || q.customer?.companyName || 'Direct Client',
+      customerEmail: q.customer?.email || '',
+      customerTier: q.customer?.tier || 'BRONZE',
+      salesRepName: q.salesRep?.fullName || q.salesRep?.email || 'Direct Sales Rep',
+      currentStage: q.approvalRequests?.[0]?.currentStage || (q.blendedRiskScore === 'HIGH' ? 'FINANCE' : 'SALES_MANAGER'),
+    }));
   }
 
   async getQuotationById(id: string) {
@@ -229,7 +250,14 @@ export class QuotationsService {
       throw new NotFoundException(`Quotation with ID '${id}' not found`);
     }
 
-    return quote;
+    return {
+      ...quote,
+      customerName: (quote as any).customer?.name || (quote as any).customer?.companyName || 'Direct Client',
+      customerEmail: (quote as any).customer?.email || '',
+      customerTier: (quote as any).customer?.tier || 'BRONZE',
+      salesRepName: (quote as any).salesRep?.fullName || (quote as any).salesRep?.email || 'Direct Sales Rep',
+      currentStage: (quote as any).approvalRequests?.[0]?.currentStage || ((quote as any).blendedRiskScore === 'HIGH' ? 'FINANCE' : 'SALES_MANAGER'),
+    };
   }
 
   // ----------------------------------------------------------------------------

@@ -235,7 +235,7 @@ export default function WarehousesPage() {
       {/* Toast Notification */}
       {notification && (
         <div
-          className={`fixed top-4 right-4 z-50 px-4 py-2.5 rounded-xl text-xs font-semibold shadow-lg border transition-all duration-200 flex items-center gap-2 ${
+          className={`fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-xl text-xs font-semibold shadow-lg border transition-all duration-200 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-4 ${
             notification.type === 'error'
               ? 'bg-rose-50 border-rose-200 text-rose-700'
               : 'bg-emerald-50 border-emerald-200 text-emerald-800'
@@ -253,7 +253,7 @@ export default function WarehousesPage() {
             Real-time multi-depot inventory breakdown, physical stock adjustments, and replenishment rules.
           </p>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <button
             onClick={() => {
               setAdjustForm({
@@ -424,7 +424,7 @@ export default function WarehousesPage() {
 
         {/* Stock Breakdown Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-600">
+          <table className="w-full text-left text-xs text-slate-600 min-w-[800px]">
             <thead className="bg-slate-50/75 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
               <tr>
                 <th className="py-3 px-4">Product / SKU</th>
@@ -514,7 +514,7 @@ export default function WarehousesPage() {
       {/* Modal: Register Facility */}
       {isFacilityModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-200">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-bold text-slate-900">Register Warehouse Facility</h3>
               <button
@@ -585,7 +585,7 @@ export default function WarehousesPage() {
       {/* Modal: Adjust Physical Stock */}
       {isAdjustModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-200">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-bold text-slate-900">Adjust Physical Stock</h3>
               <button
@@ -689,7 +689,7 @@ export default function WarehousesPage() {
       {/* Modal: Configure Replenishment Threshold */}
       {isReplenishModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-200">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-bold text-slate-900">Set Replenishment Threshold</h3>
               <button
