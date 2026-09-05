@@ -72,6 +72,12 @@ export class PortalService {
       throw new NotFoundException('Quotation link is invalid or expired');
     }
 
+    if (quote.status === QuotationStatus.DRAFT) {
+      throw new BadRequestException(
+        'This quotation is currently in draft state and has not yet been released to the customer portal.',
+      );
+    }
+
     return {
       quoteNumber: quote.quoteNumber,
       status: quote.status,
@@ -114,6 +120,12 @@ export class PortalService {
 
     if (quote.status === QuotationStatus.CANCELLED) {
       throw new BadRequestException('This quotation has been cancelled');
+    }
+
+    if (quote.status === QuotationStatus.PENDING_APPROVAL) {
+      throw new BadRequestException(
+        'This quotation is currently pending internal management approval. Terms cannot be confirmed until management signs off.',
+      );
     }
 
     await this.prisma.quotation.update({

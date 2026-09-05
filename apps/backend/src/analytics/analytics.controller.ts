@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Post,
+  Query,
   Res,
   UseGuards,
 } from '@nestjs/common';
@@ -14,7 +15,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { AnalyticsService } from './analytics.service';
-import { NudgeRepDto } from './dto/analytics.dto';
+import { NudgeRepDto, ReportFilterDto } from './dto/analytics.dto';
 
 @ApiTags('Intelligence, Deal Health & Reports (Screens 2, 14, 15)')
 @ApiBearerAuth()
@@ -58,10 +59,10 @@ export class AnalyticsController {
 
   @Get('reports')
   @Roles(Role.ADMIN, Role.SALES_MANAGER, Role.FINANCE)
-  @ApiOperation({ summary: 'Aggregate analytics reports across categories and customer tiers' })
+  @ApiOperation({ summary: 'Aggregate analytics reports across categories, customer tiers, and period filters' })
   @ApiResponse({ status: 200, description: 'Executive report aggregations' })
-  async getReports() {
-    return this.analyticsService.getReports();
+  async getReports(@Query() filter: ReportFilterDto) {
+    return this.analyticsService.getReports(filter);
   }
 
   @Get(['export/csv', 'export/xls'])

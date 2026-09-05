@@ -12,6 +12,7 @@ import {
   CalculateBlendedRiskDto,
   UpdateApprovalMatrixDto,
   UpdateCategoryCeilingDto,
+  UpdateDiscountRulesBatchDto,
   UpdateTierCeilingDto,
   ValidateDiscountLineDto,
 } from './dto/discount-rule.dto';
@@ -79,15 +80,26 @@ export class DiscountRulesController {
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Update discount rules or ceilings (Admin only)' })
   @ApiResponse({ status: 200, description: 'Rules updated' })
-  async updateRules(@Body() body: any) {
-    if (body.tier && body.maxDiscountPercent !== undefined) {
-      await this.discountRulesService.updateTierCeiling(body);
+  async updateRules(@Body() body: UpdateDiscountRulesBatchDto) {
+    if (body.tier && (body.maxDiscountPercent !== undefined || body.maxDiscount !== undefined)) {
+      await this.discountRulesService.updateTierCeiling({
+        tier: body.tier,
+        maxDiscount: body.maxDiscount ?? body.maxDiscountPercent!,
+      });
     }
-    if (body.category && body.maxDiscountPercent !== undefined) {
-      await this.discountRulesService.updateCategoryCeiling(body);
+    if (body.category && (body.maxDiscountPercent !== undefined || body.maxDiscount !== undefined)) {
+      await this.discountRulesService.updateCategoryCeiling({
+        category: body.category,
+        maxDiscount: body.maxDiscount ?? body.maxDiscountPercent!,
+      });
     }
     if (body.riskLevel) {
-      await this.discountRulesService.updateApprovalMatrix(body);
+      await this.discountRulesService.updateApprovalMatrix({
+        riskLevel: body.riskLevel,
+        requiresManagerApproval: body.requiresManagerApproval ?? false,
+        requiresFinanceApproval: body.requiresFinanceApproval ?? false,
+        description: body.description ?? `Approval policy for ${body.riskLevel}`,
+      });
     }
     return this.discountRulesService.getAllRules();
   }

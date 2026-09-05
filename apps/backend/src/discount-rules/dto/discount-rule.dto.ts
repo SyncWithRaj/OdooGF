@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { CustomerTier, ProductCategory, RiskLevel } from '@prisma/client';
-import { IsArray, IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsString, Max, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class UpdateTierCeilingDto {
@@ -110,5 +110,51 @@ export class CalculateBlendedRiskDto {
   @ValidateNested({ each: true })
   @Type(() => QuotationLineItemDto)
   lines: QuotationLineItemDto[];
+}
+
+export class UpdateDiscountRulesBatchDto {
+  @ApiProperty({ enum: CustomerTier, required: false })
+  @IsEnum(CustomerTier)
+  @IsOptional()
+  tier?: CustomerTier;
+
+  @ApiProperty({ enum: ProductCategory, required: false })
+  @IsEnum(ProductCategory)
+  @IsOptional()
+  category?: ProductCategory;
+
+  @ApiProperty({ example: 12.5, required: false })
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  @IsOptional()
+  maxDiscountPercent?: number;
+
+  @ApiProperty({ example: 12.5, required: false })
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  @IsOptional()
+  maxDiscount?: number;
+
+  @ApiProperty({ enum: RiskLevel, required: false })
+  @IsEnum(RiskLevel)
+  @IsOptional()
+  riskLevel?: RiskLevel;
+
+  @ApiProperty({ required: false })
+  @IsBoolean()
+  @IsOptional()
+  requiresManagerApproval?: boolean;
+
+  @ApiProperty({ required: false })
+  @IsBoolean()
+  @IsOptional()
+  requiresFinanceApproval?: boolean;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  description?: string;
 }
 

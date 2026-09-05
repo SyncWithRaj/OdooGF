@@ -7,7 +7,7 @@ import {
   Role,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { NudgeRepDto } from './dto/analytics.dto';
+import { NudgeRepDto, ReportFilterDto } from './dto/analytics.dto';
 
 @Injectable()
 export class AnalyticsService {
@@ -132,10 +132,47 @@ export class AnalyticsService {
       isEscalated: true,
     }));
 
+    // Detect stalled deals: inactive quotes (> 7 days) in active negotiation/portal review
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const stalledQuotes = await this.prisma.quotation.findMany({
+      where: {
+        status: {
+          in: [
+            QuotationStatus.SENT_TO_CUSTOMER,
+            QuotationStatus.UNDER_NEGOTIATION,
+            QuotationStatus.DRAFT,
+          ],
+        },
+        OR: [
+          { isStalled: true },
+          { lastActivityAt: { lt: sevenDaysAgo } },
+        ],
+      },
+      include: {
+        customer: true,
+        salesRep: true,
+      },
+    });
+
+    const stalledSummaries = stalledQuotes.map((q) => ({
+      quotationId: q.id,
+      quoteNumber: q.quoteNumber,
+      customerName: q.customer.name,
+      salesRepName: q.salesRep.fullName,
+      issueType: HealthIssueType.STALLED_DEAL,
+      sentiment: 'STALLED',
+      description: `Quotation ${q.quoteNumber} has been inactive for >7 days without customer confirmation. Nudge sales rep to revive deal.`,
+      flaggedAt: q.lastActivityAt || q.updatedAt,
+      isEscalated: false,
+    }));
+
     return {
-      totalAlerts: alerts.length + anomalySummaries.length,
+      totalAlerts: alerts.length + anomalySummaries.length + stalledSummaries.length,
       alerts,
       anomalies: anomalySummaries,
+      stalledDeals: stalledSummaries,
     };
   }
 
@@ -185,12 +222,34 @@ export class AnalyticsService {
   // ----------------------------------------------------------------------------
   // SCREEN 15: ADMIN & EXECUTIVE REPORTING
   // ----------------------------------------------------------------------------
-  async getReports() {
+  async getReports(filter?: ReportFilterDto) {
+    const quoteWhere: any = {};
+    if (filter?.salesRepId) quoteWhere.salesRepId = filter.salesRepId;
+    if (filter?.status) quoteWhere.status = filter.status;
+    if (filter?.teamName) {
+      quoteWhere.salesRep = { teamName: filter.teamName };
+    }
+    if (filter?.startDate || filter?.endDate) {
+      quoteWhere.createdAt = {};
+      if (filter.startDate) quoteWhere.createdAt.gte = new Date(filter.startDate);
+      if (filter.endDate) quoteWhere.createdAt.lte = new Date(filter.endDate);
+    }
+
+    const lineWhere: any = {};
+    if (filter?.category) lineWhere.category = filter.category;
+    if (Object.keys(quoteWhere).length > 0) {
+      lineWhere.quotation = quoteWhere;
+    }
+
     const [quotes, lines] = await Promise.all([
       this.prisma.quotation.findMany({
-        include: { customer: true },
+        where: quoteWhere,
+        include: { customer: true, salesRep: true },
+        orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.quotationLine.findMany(),
+      this.prisma.quotationLine.findMany({
+        where: lineWhere,
+      }),
     ]);
 
     // Revenue by Category
@@ -220,10 +279,13 @@ export class AnalyticsService {
     }
 
     return {
-      totalPipelineVolume: quotes.reduce((acc, q) => acc + q.totalAmount, 0),
+      totalPipelineVolume: Number(
+        quotes.reduce((acc, q) => acc + q.totalAmount, 0).toFixed(2),
+      ),
       totalQuotesRecorded: quotes.length,
       revenueByCategory: categoryRevenue,
       revenueByCustomerTier: tierRevenue,
+      filtersApplied: filter || {},
     };
   }
 
