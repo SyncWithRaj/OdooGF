@@ -80,9 +80,25 @@ export const quotationsService = {
 
   // 6. Create a new quotation directly in NestJS backend
   async createQuotation(quoteData, currentUser) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const salesRepId = (quoteData.salesRepId && uuidRegex.test(quoteData.salesRepId))
+      ? quoteData.salesRepId
+      : (currentUser?.id && uuidRegex.test(currentUser.id))
+        ? currentUser.id
+        : undefined;
+
     const payload = {
-      ...quoteData,
-      salesRepId: currentUser?.id,
+      customerId: quoteData.customerId,
+      ...(salesRepId ? { salesRepId } : {}),
+      orderDiscountPercent: Number(quoteData.orderDiscountPercent) || 0,
+      initialComment: quoteData.initialComment || quoteData.notes || undefined,
+      lines: (quoteData.lines || []).map((l) => ({
+        productId: l.productId,
+        quantity: Math.max(1, Number(l.quantity) || 1),
+        unitPrice: Number(l.unitPrice) || 0,
+        discountPercent: Number(l.discountPercent) || 0,
+        ...(l.variantId && uuidRegex.test(l.variantId) ? { variantId: l.variantId } : {}),
+      })),
     };
     return apiClient.createQuotation(payload);
   },
@@ -120,7 +136,7 @@ export const quotationsService = {
     if (newStatus === 'PENDING_APPROVAL') {
       return apiClient.submitQuotation(id, 'Pipeline stage move');
     }
-    return apiClient.getQuotation(id);
+    return apiClient.updateQuotationStatus(id, newStatus);
   },
 
   // 13. Fetch AI Recommendations for cart products
