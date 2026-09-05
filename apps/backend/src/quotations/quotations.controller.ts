@@ -109,9 +109,9 @@ export class QuotationsController {
   // ----------------------------------------------------------------------------
   // B2: CPQ LINE EDITOR (Bulk update lines, real-time risk recalculation)
   // ----------------------------------------------------------------------------
-  @Put(':id/lines')
+  @Put([':id/lines', ':id'])
   @Roles(Role.ADMIN, Role.SALES_REP, Role.SALES_MANAGER)
-  @ApiOperation({ summary: 'Update quotation lines with live limit badge and margin recalculation' })
+  @ApiOperation({ summary: 'Update quotation lines with live limit badge and margin recalculation (/lines and :id alias)' })
   @ApiResponse({ status: 200, description: 'Quotation with recalculated lines and risk level' })
   async updateLines(
     @Param('id') id: string,

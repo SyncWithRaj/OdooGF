@@ -23,7 +23,7 @@ import { ActionApprovalDto, ApprovalQueueQueryDto } from './dto/approval.dto';
 export class ApprovalsController {
   constructor(private readonly approvalsService: ApprovalsService) {}
 
-  @Get('queue')
+  @Get(['', 'queue'])
   @Roles(Role.ADMIN, Role.SALES_MANAGER, Role.FINANCE)
   @ApiOperation({ summary: 'Get pending approvals queue routed by role stage' })
   @ApiResponse({ status: 200, description: 'Approval queue items with line details' })

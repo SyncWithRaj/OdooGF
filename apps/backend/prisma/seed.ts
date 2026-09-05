@@ -83,7 +83,18 @@ async function main() {
     },
   });
 
-  console.log('✅ Users seeded (Admin, Rep, Manager, Finance).');
+  const customerUser = await prisma.user.create({
+    data: {
+      email: 'customer@dealflow.com',
+      passwordHash: defaultPasswordHash,
+      fullName: 'Vikram Mehta (Procurement Lead)',
+      role: Role.CUSTOMER,
+      teamName: 'External Client',
+      isEmailVerified: true,
+    },
+  });
+
+  console.log('✅ Users seeded (Admin, Rep, Manager, Finance, Customer).');
 
   // 3. Seed Customers with Geo-coordinates & Shipping Addresses
   const acme = await prisma.customer.create({

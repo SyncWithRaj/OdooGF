@@ -23,11 +23,11 @@ import { FulfillmentsService } from './fulfillments.service';
 @ApiTags('Fulfillment & Multi-Warehouse Split (Screens 7 & 8, B6, B7)')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Controller('api/fulfillments')
+@Controller(['api/fulfillments', 'api/fulfillment'])
 export class FulfillmentsController {
   constructor(private readonly fulfillmentsService: FulfillmentsService) {}
 
-  @Post('quotation/:quotationId/split')
+  @Post(['quotation/:quotationId/split', ':quotationId/split'])
   @Roles(Role.ADMIN, Role.SALES_REP, Role.SALES_MANAGER, Role.FINANCE)
   @ApiOperation({ summary: 'Calculate and trigger intelligent multi-warehouse inventory split' })
   @ApiResponse({ status: 201, description: 'Fulfillment order and split allocations created' })
@@ -35,7 +35,7 @@ export class FulfillmentsController {
     return this.fulfillmentsService.calculateAndCreateSplit(quotationId);
   }
 
-  @Get('quotation/:quotationId')
+  @Get(['quotation/:quotationId', ':quotationId/split'])
   @Roles(Role.ADMIN, Role.SALES_REP, Role.SALES_MANAGER, Role.FINANCE)
   @ApiOperation({ summary: 'Get fulfillment order and split details for a quotation' })
   @ApiResponse({ status: 200, description: 'Fulfillment order details' })
@@ -43,7 +43,7 @@ export class FulfillmentsController {
     return this.fulfillmentsService.getFulfillmentByQuotationId(quotationId);
   }
 
-  @Get()
+  @Get(['', 'orders'])
   @Roles(Role.ADMIN, Role.SALES_MANAGER, Role.FINANCE)
   @ApiOperation({ summary: 'List all fulfillment orders' })
   @ApiQuery({ name: 'status', required: false, enum: FulfillmentStatus })
@@ -67,9 +67,10 @@ export class FulfillmentsController {
     return this.fulfillmentsService.getFulfillmentById(id);
   }
 
-  @Patch(':id/override')
+  @Patch([':id/override', ':id/confirm-split'])
+  @Post(':id/confirm-split')
   @Roles(Role.ADMIN, Role.SALES_MANAGER)
-  @ApiOperation({ summary: 'Manual override of warehouse item allocations' })
+  @ApiOperation({ summary: 'Manual override or confirmation of warehouse item allocations' })
   @ApiResponse({ status: 200, description: 'Fulfillment order updated with manual split' })
   async manualOverride(
     @Param('id') id: string,

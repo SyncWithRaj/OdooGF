@@ -13,7 +13,10 @@
     "lint:backend": "pnpm --filter backend lint",
     "up": "docker compose -f infra/docker-compose.yml up -d",
     "down": "docker compose -f infra/docker-compose.yml down",
-    "studio": "pnpm --filter backend prisma studio"
+    "studio": "pnpm --filter backend prisma studio",
+    "seed": "pnpm --filter backend prisma db seed",
+    "test:flow": "node scripts/verify-quick-flow.js",
+    "test:e2e": "node scripts/verify-quick-flow.js"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

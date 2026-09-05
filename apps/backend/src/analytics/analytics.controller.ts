@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Post,
+  Query,
   Res,
   UseGuards,
 } from '@nestjs/common';
@@ -14,7 +15,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { AnalyticsService } from './analytics.service';
-import { NudgeRepDto } from './dto/analytics.dto';
+import { NudgeRepDto, ReportFilterDto } from './dto/analytics.dto';
 
 @ApiTags('Intelligence, Deal Health & Reports (Screens 2, 14, 15)')
 @ApiBearerAuth()
@@ -58,16 +59,16 @@ export class AnalyticsController {
 
   @Get('reports')
   @Roles(Role.ADMIN, Role.SALES_MANAGER, Role.FINANCE)
-  @ApiOperation({ summary: 'Aggregate analytics reports across categories and customer tiers' })
+  @ApiOperation({ summary: 'Aggregate analytics reports across categories, customer tiers, and period filters' })
   @ApiResponse({ status: 200, description: 'Executive report aggregations' })
-  async getReports() {
-    return this.analyticsService.getReports();
+  async getReports(@Query() filter: ReportFilterDto) {
+    return this.analyticsService.getReports(filter);
   }
 
-  @Get('export/csv')
+  @Get(['export/csv', 'export/xls'])
   @Roles(Role.ADMIN, Role.SALES_MANAGER, Role.FINANCE)
-  @ApiOperation({ summary: 'Export full sales pipeline report as CSV spreadsheet (Screen 15 / A7)' })
-  @ApiResponse({ status: 200, description: 'Downloadable CSV report' })
+  @ApiOperation({ summary: 'Export full sales pipeline report as CSV/XLS spreadsheet (Screen 15 / A7)' })
+  @ApiResponse({ status: 200, description: 'Downloadable CSV/XLS report' })
   async exportCsv(@Res() res: Response) {
     const csvData = await this.analyticsService.exportPipelineCsv();
     res.setHeader('Content-Type', 'text/csv');
@@ -76,5 +77,15 @@ export class AnalyticsController {
       `attachment; filename="dealflow360_pipeline_export_${Date.now()}.csv"`,
     );
     return res.status(200).send(csvData);
+  }
+
+  @Get('export/pdf')
+  @Roles(Role.ADMIN, Role.SALES_MANAGER, Role.FINANCE)
+  @ApiOperation({ summary: 'Export executive pipeline report formatted for print/PDF (Screen 15 / A7)' })
+  @ApiResponse({ status: 200, description: 'Downloadable PDF/Printable report' })
+  async exportPdf(@Res() res: Response) {
+    const reportHtml = await this.analyticsService.exportPipelineHtmlReport();
+    res.setHeader('Content-Type', 'text/html');
+    return res.status(200).send(reportHtml);
   }
 }

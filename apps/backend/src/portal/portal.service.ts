@@ -72,6 +72,12 @@ export class PortalService {
       throw new NotFoundException('Quotation link is invalid or expired');
     }
 
+    if (quote.status === QuotationStatus.DRAFT) {
+      throw new BadRequestException(
+        'This quotation is currently in draft state and has not yet been released to the customer portal.',
+      );
+    }
+
     return {
       quoteNumber: quote.quoteNumber,
       status: quote.status,
@@ -119,6 +125,12 @@ export class PortalService {
 
     if (quote.status === QuotationStatus.CANCELLED) {
       throw new BadRequestException('This quotation has been cancelled');
+    }
+
+    if (quote.status === QuotationStatus.PENDING_APPROVAL) {
+      throw new BadRequestException(
+        'This quotation is currently pending internal management approval. Terms cannot be confirmed until management signs off.',
+      );
     }
 
     await this.prisma.quotation.update({
@@ -180,9 +192,11 @@ export class PortalService {
     });
     const tierLimit = tierCeiling ? tierCeiling.maxDiscount : 5.0;
 
-    const isOverCeiling = dto.counterDiscountProposed > tierLimit;
+    const proposedDiscount =
+      dto.counterDiscountProposed ?? dto.counterDiscountPercent ?? 0;
+    const isOverCeiling = proposedDiscount > tierLimit;
     const deviation = isOverCeiling
-      ? Number((dto.counterDiscountProposed - tierLimit).toFixed(2))
+      ? Number((proposedDiscount - tierLimit).toFixed(2))
       : 0;
 
     let targetStatus: QuotationStatus = QuotationStatus.UNDER_NEGOTIATION;
@@ -204,7 +218,7 @@ export class PortalService {
           currentStage: routingStage,
           blendedRiskLevel: riskLevel,
           worstLineDeviation: deviation,
-          flagReasonSummary: `Customer Portal Counter-Proposal (${dto.counterDiscountProposed}% vs ${tierLimit}% allowed ceiling, +${deviation.toFixed(1)}pt deviation)`,
+          flagReasonSummary: `Customer Portal Counter-Proposal (${proposedDiscount}% vs ${tierLimit}% allowed ceiling, +${deviation.toFixed(1)}pt deviation)`,
           isCompleted: false,
         },
       });
@@ -214,7 +228,7 @@ export class PortalService {
           approvalRequestId: approvalReq.id,
           userId: quote.salesRepId,
           action: ApprovalAction.SUBMITTED,
-          note: `Customer proposed ${dto.counterDiscountProposed}% counter discount (+${deviation.toFixed(1)}pt deviation). Auto-routed back into approval queue.`,
+          note: `Customer proposed ${proposedDiscount}% counter discount (+${deviation.toFixed(1)}pt deviation). Auto-routed back into approval queue.`,
         },
       });
     }
@@ -223,7 +237,7 @@ export class PortalService {
       where: { id: quote.id },
       data: {
         status: targetStatus,
-        counterDiscountProposed: dto.counterDiscountProposed,
+        counterDiscountProposed: proposedDiscount,
         ...(dto.requestedDeliveryDate && {
           requestedDeliveryDate: new Date(dto.requestedDeliveryDate),
         }),
@@ -238,14 +252,14 @@ export class PortalService {
         authorRole: Role.CUSTOMER,
         message:
           dto.message ||
-          `Customer proposed counter-discount of ${dto.counterDiscountProposed}%.`,
+          `Customer proposed counter-discount of ${proposedDiscount}%.`,
       },
     });
 
     return {
       success: true,
       status: targetStatus,
-      counterDiscountProposed: dto.counterDiscountProposed,
+      counterDiscountProposed: proposedDiscount,
       triggeredReApproval,
       riskLevel,
       deviation,

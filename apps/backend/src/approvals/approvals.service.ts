@@ -187,6 +187,16 @@ export class ApprovalsService {
       }
     }
 
+    // Segregation of Duties: Sales Rep cannot approve their own quotation
+    if (
+      request.quotation.salesRepId === currentUser.id &&
+      currentUser.role !== Role.ADMIN
+    ) {
+      throw new ForbiddenException(
+        'Segregation of Duties: You cannot approve your own quotation. Another authorized manager must review it.',
+      );
+    }
+
     if (dto.action === ApprovalAction.APPROVED) {
       // Check if this requires multi-tier escalation to Finance
       if (

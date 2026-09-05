@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { AcceptQuoteDto, CounterProposalDto, ShortageActionDto } from './dto/portal.dto';
+import { AcceptQuoteDto, CounterProposalDto, PortalCommentDto, ShortageActionDto } from './dto/portal.dto';
 import { PortalService } from './portal.service';
 
 @ApiTags('Customer Self-Service Portal & Negotiation Loop (Screen 11 & Red-Dashed Loop, B8)')
@@ -40,7 +40,7 @@ export class PortalController {
   @ApiResponse({ status: 201, description: 'Comment recorded' })
   async addComment(
     @Param('token') token: string,
-    @Body() dto: { message: string },
+    @Body() dto: PortalCommentDto,
   ) {
     return this.portalService.addComment(token, dto.message);
   }

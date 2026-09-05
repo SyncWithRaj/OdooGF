@@ -382,6 +382,7 @@ export class QuotationsService {
     let totalDiscountAmount = 0;
     let totalCost = 0;
     let maxLineDeviation = 0;
+    let cumulativeDeviationPoints = 0;
 
     const computedLines = [];
 
@@ -407,6 +408,7 @@ export class QuotationsService {
       if (overLimitPoints > maxLineDeviation) {
         maxLineDeviation = overLimitPoints;
       }
+      cumulativeDeviationPoints += overLimitPoints;
 
       const lineGross = unitPrice * quantity;
       const lineDisc = lineGross * (discountPercent / 100);
@@ -451,11 +453,14 @@ export class QuotationsService {
     const finalMarginPercent =
       finalAmount > 0 ? ((finalAmount - totalCost) / finalAmount) * 100 : 0;
 
-    // Determine blended risk level based on max line deviation
+    // Section 10: Determine blended risk score based on worst line AND cumulative order pattern
+    const orderDisc = orderDiscountPercent ?? 0;
+    const totalConcessionDeviation = cumulativeDeviationPoints + orderDisc;
+
     let blendedRiskScore: RiskLevel = RiskLevel.LOW;
-    if (maxLineDeviation > 5.0) {
+    if (maxLineDeviation > 5.0 || totalConcessionDeviation > 5.0) {
       blendedRiskScore = RiskLevel.HIGH;
-    } else if (maxLineDeviation > 0) {
+    } else if (maxLineDeviation > 0 || totalConcessionDeviation > 0) {
       blendedRiskScore = RiskLevel.MEDIUM;
     }
 
@@ -722,11 +727,16 @@ export class QuotationsService {
       );
     }
 
-    // Find worst line deviation
+    // Find worst line deviation and cumulative order deviation pattern (Section 10)
     const worstLineDeviation = quote.lines.reduce(
       (max, line) => Math.max(max, line.overLimitPoints),
       0,
     );
+    const cumulativeDeviation = quote.lines.reduce(
+      (sum, line) => sum + line.overLimitPoints,
+      0,
+    ) + (quote.orderDiscountPercent ?? 0);
+    const effectiveDeviation = Math.max(worstLineDeviation, cumulativeDeviation);
 
     // Decision Logic per Section A3 Notes & B3 Spec
     if (quote.blendedRiskScore === RiskLevel.LOW) {
@@ -779,8 +789,8 @@ export class QuotationsService {
           quotationId: id,
           currentStage: ApprovalStage.SALES_MANAGER,
           blendedRiskLevel: RiskLevel.MEDIUM,
-          worstLineDeviation,
-          flagReasonSummary: `Sales Manager Approval Required: Max line discount deviation +${worstLineDeviation.toFixed(1)}pt`,
+          worstLineDeviation: effectiveDeviation,
+          flagReasonSummary: `Sales Manager Approval Required: Discount deviation +${effectiveDeviation.toFixed(1)}pt`,
           isCompleted: false,
         },
       });
@@ -790,7 +800,7 @@ export class QuotationsService {
           approvalRequestId: approvalReq.id,
           userId: currentUser.id,
           action: ApprovalAction.SUBMITTED,
-          note: dto?.notes || `Submitted for Sales Manager review (Deviation: +${worstLineDeviation.toFixed(1)}pt)`,
+          note: dto?.notes || `Submitted for Sales Manager review (Deviation: +${effectiveDeviation.toFixed(1)}pt)`,
         },
       });
 
@@ -799,7 +809,7 @@ export class QuotationsService {
         status: QuotationStatus.PENDING_APPROVAL,
         autoApproved: false,
         routing: 'SALES_MANAGER',
-        message: `Quotation routed to Sales Manager queue (Risk: MEDIUM, Deviation: +${worstLineDeviation.toFixed(1)}pt).`,
+        message: `Quotation routed to Sales Manager queue (Risk: MEDIUM, Deviation: +${effectiveDeviation.toFixed(1)}pt).`,
         quotation: await this.getQuotationById(id),
       };
     } else {
@@ -816,8 +826,8 @@ export class QuotationsService {
           quotationId: id,
           currentStage: ApprovalStage.SALES_MANAGER,
           blendedRiskLevel: RiskLevel.HIGH,
-          worstLineDeviation,
-          flagReasonSummary: `Two-Tier Approval Required (Sales Manager -> Finance): Max line discount deviation +${worstLineDeviation.toFixed(1)}pt`,
+          worstLineDeviation: effectiveDeviation,
+          flagReasonSummary: `Two-Tier Approval Required (Sales Manager -> Finance): Blended discount deviation +${effectiveDeviation.toFixed(1)}pt`,
           isCompleted: false,
         },
       });
@@ -827,7 +837,7 @@ export class QuotationsService {
           approvalRequestId: approvalReq.id,
           userId: currentUser.id,
           action: ApprovalAction.SUBMITTED,
-          note: dto?.notes || `Submitted for Two-Tier Approval (Deviation: +${worstLineDeviation.toFixed(1)}pt)`,
+          note: dto?.notes || `Submitted for Two-Tier Approval (Deviation: +${effectiveDeviation.toFixed(1)}pt)`,
         },
       });
 
@@ -836,7 +846,7 @@ export class QuotationsService {
         status: QuotationStatus.PENDING_APPROVAL,
         autoApproved: false,
         routing: 'SALES_MANAGER_THEN_FINANCE',
-        message: `Quotation routed for Two-Tier Approval (Risk: HIGH, Deviation: +${worstLineDeviation.toFixed(1)}pt).`,
+        message: `Quotation routed for Two-Tier Approval (Risk: HIGH, Deviation: +${effectiveDeviation.toFixed(1)}pt).`,
         quotation: await this.getQuotationById(id),
       };
     }

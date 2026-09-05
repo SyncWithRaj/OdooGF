@@ -37,9 +37,9 @@ export class WarehousesController {
     return this.warehousesService.create(dto);
   }
 
-  @Get()
+  @Get(['', 'stock'])
   @Roles(Role.ADMIN, Role.SALES_REP, Role.SALES_MANAGER, Role.FINANCE)
-  @ApiOperation({ summary: 'List all warehouses with aggregate inventory metrics and shipping cost weights' })
+  @ApiOperation({ summary: 'List all warehouses with aggregate inventory metrics and shipping cost weights (/stock alias)' })
   @ApiResponse({ status: 200, description: 'Warehouses list retrieved' })
   async findAll() {
     return this.warehousesService.findAll();
