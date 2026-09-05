@@ -18,7 +18,7 @@ export default function AuthPage() {
   const router = useRouter();
 
   // Where to send each role after login
-  const goHome = (u) => router.push(u.role === 'customer' ? '/portal' : '/dashboard');
+  const goHome = (u) => router.push(u?.role === 'customer' ? '/portal' : '/dashboard');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -43,32 +43,36 @@ export default function AuthPage() {
   };
 
   const inputCls =
-    'w-full px-3.5 py-2.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-100 text-sm focus:outline-none focus:border-emerald-500 transition';
+    'w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition shadow-xs';
 
-  // Already logged in → show a small card
+  // Already logged in → show user session card
   if (isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#090d16] text-slate-100 flex items-center justify-center p-6">
-        <div className="w-full max-w-md bg-slate-900/60 border border-slate-800 rounded-xl p-8 text-center">
-          <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-4 text-2xl font-bold border border-emerald-500/30">
+      <div className="min-h-screen bg-[#F8F9FA] text-slate-900 flex items-center justify-center p-6">
+        <div className="w-full max-w-md bg-white border border-slate-200/80 rounded-2xl p-8 text-center shadow-sm">
+          {/* Avatar with pastel aqua highlight */}
+          <div className="w-16 h-16 rounded-full bg-[#E0F7F6] text-teal-800 flex items-center justify-center mx-auto mb-4 text-2xl font-bold border border-teal-200">
             {user?.name?.[0]?.toUpperCase() || 'U'}
           </div>
-          <h2 className="text-xl font-bold text-white mb-1">Signed in as</h2>
-          <p className="text-slate-300 font-medium">{user?.name}</p>
-          <p className="text-xs text-slate-500">{user?.email}</p>
-          <span className="inline-block mt-2 mb-6 text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 capitalize">
-            {user?.role}
-          </span>
+          <h2 className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-1">Active Session</h2>
+          <p className="text-xl font-bold text-slate-900 mb-0.5">{user?.name}</p>
+          <p className="text-xs text-slate-500 mb-4">{user?.email}</p>
+
+          {/* Role badge with pastel buttercream background */}
+          <div className="inline-block px-3 py-1 rounded-md bg-[#FEF9C3] text-amber-900 border border-amber-200 font-bold text-xs uppercase tracking-wider mb-6">
+            Role: {user?.role}
+          </div>
+
           <div className="flex gap-3">
             <button
               onClick={() => goHome(user)}
-              className="flex-1 px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium border border-slate-700"
+              className="flex-1 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-semibold text-xs transition shadow-sm cursor-pointer"
             >
-              Continue
+              Continue to {user?.role === 'customer' ? 'Portal' : 'Dashboard'}
             </button>
             <button
               onClick={logout}
-              className="flex-1 px-4 py-2.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-sm font-medium border border-rose-500/30"
+              className="px-5 py-2.5 rounded-xl bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 font-semibold text-xs transition cursor-pointer"
             >
               Sign Out
             </button>
@@ -79,14 +83,20 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col items-center justify-center p-6">
-      <Link href="/" className="mb-8 text-xs text-slate-400 hover:text-slate-200">
-        ← Back
+    <div className="min-h-screen bg-[#F8F9FA] text-slate-900 flex flex-col items-center justify-center p-6">
+      <Link
+        href="/"
+        className="mb-8 text-xs text-slate-500 hover:text-slate-900 flex items-center gap-1.5 transition font-semibold"
+      >
+        ← Back to Home
       </Link>
 
-      <div className="w-full max-w-md bg-slate-900/70 border border-slate-800 rounded-2xl p-8 shadow-2xl">
-        {/* Sign In / Create Account tabs */}
-        <div className="flex rounded-lg bg-slate-950/80 p-1 border border-slate-800/80 mb-6 relative z-10">
+      <div className="w-full max-w-md bg-white border border-slate-200/80 rounded-2xl p-8 shadow-sm relative overflow-hidden">
+        {/* Top Accent Strip with Pastel Aqua */}
+        <div className="h-1 bg-[#E0F7F6] absolute top-0 left-0 right-0" />
+
+        {/* Tab Toggle with subtle slate background */}
+        <div className="flex rounded-xl bg-slate-100 p-1 mb-6 relative z-10">
           <button
             id="tab-signin"
             type="button"
@@ -94,10 +104,10 @@ export default function AuthPage() {
               setIsLogin(true);
               setError('');
             }}
-            className={`flex-1 py-2 text-xs font-semibold rounded-md transition-all cursor-pointer select-none ${
+            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer select-none ${
               isLogin
-                ? 'bg-emerald-500 text-slate-950 shadow-sm font-bold'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-500 hover:text-slate-900'
             }`}
           >
             Sign In
@@ -109,25 +119,30 @@ export default function AuthPage() {
               setIsLogin(false);
               setError('');
             }}
-            className={`flex-1 py-2 text-xs font-semibold rounded-md transition-all cursor-pointer select-none ${
+            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer select-none ${
               !isLogin
-                ? 'bg-emerald-500 text-slate-950 shadow-sm font-bold'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-500 hover:text-slate-900'
             }`}
           >
             Create Account
           </button>
         </div>
 
-        <h1 className="text-xl font-bold text-white mb-1 text-center">
-          {isLogin ? 'Welcome back' : 'Create your account'}
+        {/* Heading */}
+        <h1 className="text-2xl font-bold text-slate-900 mb-1 text-center tracking-tight">
+          {isLogin ? 'Welcome back' : 'Create an account'}
         </h1>
-        <p className="text-xs text-slate-400 mb-6 text-center">
-          {isLogin ? 'Sign in to DealFlow360' : 'Customer accounts open the quote portal'}
+        <p className="text-xs text-slate-500 mb-6 text-center">
+          {isLogin
+            ? 'Sign in to access your sales operations dashboard'
+            : 'Register to manage quotes and customer contracts'}
         </p>
 
+        {/* Error Alert */}
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">
+          <div className="mb-5 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-rose-500" />
             {error}
           </div>
         )}
@@ -135,39 +150,75 @@ export default function AuthPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {!isLogin && (
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Full Name</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Abid Khan" className={inputCls} />
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Full Name
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Aryan Sondharva"
+                className={inputCls}
+              />
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" required className={inputCls} />
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              Email Address
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@company.com"
+              required
+              className={inputCls}
+            />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required className={inputCls} />
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+              className={inputCls}
+            />
           </div>
 
           {!isLogin && (
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Confirm Password</label>
-              <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="••••••••" required className={inputCls} />
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Confirm Password
+              </label>
+              <input
+                type="password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder="••••••••"
+                required
+                className={inputCls}
+              />
             </div>
           )}
 
+          {/* Primary Action Button - Solid Slate 950 */}
           <button
             type="submit"
             disabled={submitting}
-            className="w-full py-2.5 mt-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-sm transition disabled:opacity-50 cursor-pointer"
+            className="w-full py-2.5 mt-2 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-semibold text-xs transition shadow-sm disabled:opacity-50 cursor-pointer tracking-wide"
           >
             {submitting ? 'Processing…' : isLogin ? 'Sign In' : 'Create Account'}
           </button>
         </form>
 
-        {/* Alternate toggle at bottom */}
-        <div className="mt-6 text-center text-xs text-slate-400 border-t border-slate-800/60 pt-4">
+        {/* Bottom Switcher */}
+        <div className="mt-6 text-center text-xs text-slate-400 border-t border-slate-100 pt-4">
           {isLogin ? (
             <p>
               Don't have an account?{' '}
@@ -177,7 +228,7 @@ export default function AuthPage() {
                   setIsLogin(false);
                   setError('');
                 }}
-                className="text-emerald-400 hover:text-emerald-300 font-semibold hover:underline cursor-pointer ml-1"
+                className="text-slate-900 hover:underline font-semibold cursor-pointer ml-1"
               >
                 Create Account
               </button>
@@ -191,7 +242,7 @@ export default function AuthPage() {
                   setIsLogin(true);
                   setError('');
                 }}
-                className="text-emerald-400 hover:text-emerald-300 font-semibold hover:underline cursor-pointer ml-1"
+                className="text-slate-900 hover:underline font-semibold cursor-pointer ml-1"
               >
                 Sign In
               </button>
