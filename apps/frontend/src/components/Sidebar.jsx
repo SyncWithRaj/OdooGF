@@ -292,51 +292,53 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
                     </p>
                   )}
 
-                  {/* Navigation Item Links */}
-                  <nav className="space-y-1">
-                    {visibleItems.map((item) => {
-                      const isActive = pathname === item.href;
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          onClick={() => onClose && onClose()}
-                          className={`relative group flex items-center transition-all ${
-                            isCollapsed
-                              ? 'w-10 h-10 mx-auto justify-center rounded-xl'
-                              : 'px-3 py-2 rounded-xl text-xs font-medium justify-between'
-                          } ${
-                            isActive
-                              ? isCollapsed
-                                ? 'bg-slate-950 text-white shadow-xs'
-                                : 'bg-slate-100 text-slate-900 font-semibold shadow-2xs'
-                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/80'
-                          }`}
-                        >
-                          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-2.5'}`}>
-                            <span className={isActive ? (isCollapsed ? 'text-white' : 'text-slate-900') : 'text-slate-400'}>
-                              {item.icon}
-                            </span>
-                            {!isCollapsed && <span>{item.label}</span>}
-                          </div>
+                    {/* Navigation Item Links */}
+                    <nav className="space-y-1">
+                      {visibleItems.map((item) => {
+                        const isActive = pathname === item.href;
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={() => onClose && onClose()}
+                            className={`relative group flex items-center transition-colors ${
+                              isCollapsed
+                                ? 'w-10 h-10 mx-auto justify-center rounded-xl'
+                                : 'px-3 py-2 rounded-lg text-xs font-medium justify-between'
+                            } ${
+                              isActive
+                                ? 'bg-zinc-900 text-white font-semibold shadow-xs'
+                                : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
+                            }`}
+                          >
+                            <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-2.5'}`}>
+                              <span className={isActive ? 'text-white' : 'text-zinc-400 group-hover:text-zinc-700'}>
+                                {item.icon}
+                              </span>
+                              {!isCollapsed && <span>{item.label}</span>}
+                            </div>
 
-                          {/* Badge in expanded mode */}
-                          {!isCollapsed && item.badge && (
-                            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-[#FCE7F3] text-pink-700 border border-pink-200">
-                              {item.badge}
-                            </span>
-                          )}
+                            {/* Badge in expanded mode */}
+                            {!isCollapsed && item.badge && (
+                              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                                isActive
+                                  ? 'bg-zinc-800 text-zinc-200 border border-zinc-700'
+                                  : 'bg-zinc-100 text-zinc-800 border border-zinc-200'
+                              }`}>
+                                {item.badge}
+                              </span>
+                            )}
 
-                          {/* Hover Floating Tooltip in collapsed single-line app icon mode */}
-                          {isCollapsed && (
-                            <span className="absolute left-14 ml-1 px-2.5 py-1 rounded-xl bg-slate-950 text-white text-xs font-semibold whitespace-nowrap shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-150 z-50">
-                              {item.label}
-                            </span>
-                          )}
-                        </Link>
-                      );
-                    })}
-                  </nav>
+                            {/* Hover Floating Tooltip in collapsed single-line app icon mode */}
+                            {isCollapsed && (
+                              <span className="absolute left-14 ml-1 px-2.5 py-1 rounded-lg bg-zinc-900 text-white text-xs font-semibold whitespace-nowrap shadow-md opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 z-50">
+                                {item.label}
+                              </span>
+                            )}
+                          </Link>
+                        );
+                      })}
+                    </nav>
                 </div>
               );
             })}
