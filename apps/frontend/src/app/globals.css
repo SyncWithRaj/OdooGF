@@ -4,22 +4,16 @@
 
 :root {
   color-scheme: light;
-  --bg-canvas: #F8F9FA;
+  --bg-canvas: #FAFAFA;
   --bg-card: #FFFFFF;
-  --border-subtle: #EAECEF;
-  --border-muted: #E2E8F0;
+  --border-subtle: #E4E4E7;
+  --border-muted: #D4D4D8;
 
-  /* Signature Pastel Accents */
-  --pastel-aqua: #E0F7F6;
-  --pastel-mint: #E3F7EB;
-  --pastel-rose: #FCE7F3;
-  --pastel-butter: #FEF9C3;
-
-  /* High-contrast Typography & Brand */
-  --text-primary: #0F172A;
-  --text-muted: #64748B;
-  --text-subtle: #94A3B8;
-  --brand-accent: #F97316;
+  /* Crisp Monochrome Typography & Brand */
+  --text-primary: #18181B;
+  --text-muted: #71717A;
+  --text-subtle: #A1A1AA;
+  --brand-primary: #09090B;
 }
 
 body {
@@ -31,8 +25,8 @@ body {
 }
 
 ::selection {
-  background-color: #E0F7F6;
-  color: #0F172A;
+  background-color: #18181B;
+  color: #FFFFFF;
 }
 
 /* Hide scrollbar utility */
