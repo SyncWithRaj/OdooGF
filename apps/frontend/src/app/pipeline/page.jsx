@@ -265,7 +265,7 @@ export default function PipelinePage() {
                             </div>
 
                             {/* Blended Risk & Rep */}
-                            <div className="mt-2.5 flex items-center justify-between text-[10px]">
+                            <div className="mt-2.5 flex items-center justify-between text-[10px] flex-wrap gap-1">
                               <span
                                 className={`px-2 py-0.5 rounded-md font-bold uppercase ${
                                   deal.blendedRiskScore === 'HIGH'
@@ -277,6 +277,12 @@ export default function PipelinePage() {
                               >
                                 {deal.blendedRiskScore || 'LOW'} RISK
                               </span>
+
+                              {deal.counterDiscountProposed > 0 && (
+                                <span className="px-1.5 py-0.5 rounded-md font-bold text-[9px] bg-purple-50 text-purple-700 border border-purple-200">
+                                  💬 {deal.counterDiscountProposed}% Counter
+                                </span>
+                              )}
 
                               <span className="text-slate-500 font-medium">
                                 {deal.salesRep?.fullName?.split(' ')[0] || 'Direct Rep'}
