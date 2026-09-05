@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
+import { apiClient } from '@/services/apiClient';
 
 export default function SubscriptionsPage() {
   const [subscriptions, setSubscriptions] = useState([]);
@@ -46,16 +47,25 @@ export default function SubscriptionsPage() {
 
   const loadDependencies = async () => {
     try {
-      const [cRes, qRes] = await Promise.all([
-        fetch('http://localhost:4000/api/customers'),
-        fetch('/api/quotations'),
+      const [custList, qData] = await Promise.all([
+        apiClient.getCustomers().catch(() => []),
+        fetch('/api/quotations').then((r) => r.json()).catch(() => ({ quotations: [] })),
       ]);
-      const cData = await cRes.json();
-      const qData = await qRes.json();
-      setCustomers(cData.customers || []);
-      setQuotations(qData.quotations || []);
+      const validCusts = Array.isArray(custList) ? custList : [];
+      const validQuotes = qData.quotations || [];
+      setCustomers(validCusts);
+      setQuotations(validQuotes);
+
+      // Pre-populate form defaults
+      setCreateForm((prev) => ({
+        ...prev,
+        customerId: prev.customerId || validCusts[0]?.id || '',
+        quotationId: prev.quotationId || validQuotes[0]?.id || '',
+        planName: prev.planName || 'Enterprise Cloud Operations SLA',
+        amount: prev.amount || 2400,
+      }));
     } catch (err) {
-      console.error(err);
+      console.error('Error loading dependencies:', err);
     }
   };
 
@@ -347,6 +357,21 @@ export default function SubscriptionsPage() {
                     {customers.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name} ({c.companyName || c.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Associated Quotation / Order *</label>
+                  <select
+                    value={createForm.quotationId}
+                    onChange={(e) => setCreateForm({ ...createForm, quotationId: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                  >
+                    {quotations.map((q) => (
+                      <option key={q.id} value={q.id}>
+                        {q.quoteNumber} — {q.customerName || 'Customer'} [${q.totalAmount?.toLocaleString()}]
                       </option>
                     ))}
                   </select>

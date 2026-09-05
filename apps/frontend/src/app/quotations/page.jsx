@@ -301,7 +301,15 @@ export default function QuotationsPage() {
         totalMarginPercent: evalData.financials.totalMarginPercent,
         notes: newQuoteNotes,
         flagReasonSummary: evalData.flagReasonSummary,
-        lines: evalData.lines || newQuoteLines,
+        lines: newQuoteLines.map((line, idx) => {
+          const evalLine = evalData.lines?.[idx] || {};
+          return {
+            ...line,
+            ...evalLine,
+            productId: line.productId,
+            productName: line.productName,
+          };
+        }),
       };
 
       const created = await quotationsService.createQuotation(quotePayload, user);

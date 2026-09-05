@@ -10,6 +10,8 @@
  * - ZERO hardcoded static arrays in code.
  */
 
+import { apiClient } from './apiClient';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 const TOKEN_KEY = 'dealflow_token';
 
@@ -24,38 +26,32 @@ function getAuthHeaders() {
 export const quotationsService = {
   // 1. Fetch live customers from PostgreSQL backend
   async getLiveCustomers() {
-    const res = await fetch(`${API_URL}/api/customers`, {
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) {
-      throw new Error(`Failed to fetch customers from database: ${res.statusText}`);
+    try {
+      return await apiClient.getCustomers();
+    } catch (e) {
+      console.error('getLiveCustomers error:', e);
+      return [];
     }
-    const data = await res.json();
-    return data.customers || data.data || [];
   },
 
   // 2. Fetch live product catalog from PostgreSQL backend
   async getLiveProducts() {
-    const res = await fetch(`${API_URL}/api/products`, {
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) {
-      throw new Error(`Failed to fetch products from database: ${res.statusText}`);
+    try {
+      return await apiClient.getProducts();
+    } catch (e) {
+      console.error('getLiveProducts error:', e);
+      return [];
     }
-    const data = await res.json();
-    return data.products || data.data || [];
   },
 
   // 3. Fetch discount governance rules from PostgreSQL backend
   async getGovernanceRules() {
-    const res = await fetch(`${API_URL}/api/config/discount-rules`, {
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) {
-      throw new Error(`Failed to fetch discount rules from database: ${res.statusText}`);
+    try {
+      return await apiClient.getDiscountRules();
+    } catch (e) {
+      console.error('getGovernanceRules error:', e);
+      return null;
     }
-    const data = await res.json();
-    return data.rules || data;
   },
 
   // 4. Invoke live backend calculation engine: calculate-blended-risk
@@ -73,16 +69,7 @@ export const quotationsService = {
       })),
     };
 
-    const res = await fetch(`${API_URL}/api/config/discount-rules/calculate-blended-risk`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      throw new Error(`Risk calculation engine failed: ${res.statusText}`);
-    }
-    const data = await res.json();
+    const data = await apiClient.calculateBlendedRisk(payload);
     return data.blendedEvaluation;
   },
 

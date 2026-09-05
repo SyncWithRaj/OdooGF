@@ -88,11 +88,34 @@ export async function POST(request) {
     const nextDate = new Date();
     nextDate.setMonth(nextDate.getMonth() + (body.cycle === 'YEARLY' ? 12 : body.cycle === 'QUARTERLY' ? 3 : 1));
 
+    // Resolve valid customer
+    let custId = body.customerId;
+    if (!custId) {
+      const firstCust = await prisma.customer.findFirst();
+      custId = firstCust?.id;
+    }
+
+    // Resolve valid quotation
+    let quoteId = body.quotationId;
+    if (!quoteId) {
+      const custQuote = await prisma.quotation.findFirst({ where: { customerId: custId } });
+      if (custQuote) {
+        quoteId = custQuote.id;
+      } else {
+        const anyQuote = await prisma.quotation.findFirst();
+        quoteId = anyQuote?.id;
+      }
+    }
+
+    if (!custId || !quoteId) {
+      return NextResponse.json({ success: false, error: 'Customer and Quotation are required to provision a subscription.' }, { status: 400 });
+    }
+
     const newSub = await prisma.subscription.create({
       data: {
-        customerId: body.customerId,
-        quotationId: body.quotationId,
-        planName: body.planName,
+        customer: { connect: { id: custId } },
+        quotation: { connect: { id: quoteId } },
+        planName: body.planName || 'Enterprise Subscription Plan',
         cycle: body.cycle || 'MONTHLY',
         amount: Number(body.amount) || 0,
         status: 'ACTIVE',

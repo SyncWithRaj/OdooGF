@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
+import { apiClient } from '@/services/apiClient';
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState([]);
@@ -53,16 +54,25 @@ export default function InvoicesPage() {
 
   const loadDependencies = async () => {
     try {
-      const [cRes, qRes] = await Promise.all([
-        fetch('http://localhost:4000/api/customers'),
-        fetch('/api/quotations'),
+      const [custList, qData] = await Promise.all([
+        apiClient.getCustomers().catch(() => []),
+        fetch('/api/quotations').then((r) => r.json()).catch(() => ({ quotations: [] })),
       ]);
-      const cData = await cRes.json();
-      const qData = await qRes.json();
-      setCustomers(cData.customers || []);
-      setQuotations(qData.quotations || []);
+      const validCusts = Array.isArray(custList) ? custList : [];
+      const validQuotes = qData.quotations || [];
+      setCustomers(validCusts);
+      setQuotations(validQuotes);
+
+      // Prepopulate default form selection
+      setCreateForm((prev) => ({
+        ...prev,
+        customerId: prev.customerId || validCusts[0]?.id || '',
+        quotationId: prev.quotationId || validQuotes[0]?.id || '',
+        amount: prev.amount || validQuotes[0]?.totalAmount || 5000,
+        dueDate: prev.dueDate || new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+      }));
     } catch (err) {
-      console.error(err);
+      console.error('Error loading dependencies:', err);
     }
   };
 
