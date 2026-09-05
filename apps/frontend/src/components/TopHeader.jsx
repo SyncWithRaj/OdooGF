@@ -25,10 +25,12 @@ export default function TopHeader({ onToggleSidebar, isCollapsed = false }) {
           onClick={onToggleSidebar}
           aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse to single-line app icons'}
           title={isCollapsed ? 'Expand sidebar' : 'Collapse to single-line app icons'}
-          className="p-1.5 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-100 text-slate-700 transition shadow-2xs cursor-pointer active:scale-95"
+          className="w-9 h-9 rounded-2xl bg-slate-100/90 hover:bg-slate-200/90 text-slate-800 flex items-center justify-center transition-all duration-150 cursor-pointer shadow-2xs active:scale-95 group border border-slate-200/60"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h10M4 18h16" />
+          <svg className="w-4 h-4 text-slate-700 group-hover:text-slate-900 transition-colors" viewBox="0 0 20 20" fill="currentColor">
+            <rect x="3" y="4" width="14" height="2.2" rx="1.1" />
+            <rect x="3" y="8.9" width="8" height="2.2" rx="1.1" />
+            <rect x="3" y="13.8" width="14" height="2.2" rx="1.1" />
           </svg>
         </button>
 

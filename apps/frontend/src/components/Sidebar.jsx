@@ -207,17 +207,60 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
         <div className="flex-1 overflow-y-auto px-2 py-4 scrollbar-thin flex flex-col">
           {/* Brand Header */}
           <div className={`flex items-center mb-5 ${isCollapsed ? 'justify-center px-1' : 'justify-between px-2'}`}>
-            <Link href="/" className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-slate-950 text-white flex items-center justify-center font-black text-xs shadow-xs shrink-0">
-                DF
-              </div>
-              {!isCollapsed && (
-                <div className="overflow-hidden">
-                  <span className="text-sm font-black text-slate-900 block leading-tight tracking-tight">DealFlow360</span>
-                  <span className="text-[10px] text-slate-400 font-semibold block leading-tight">Sales Operations</span>
+            {isCollapsed ? (
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                className="group relative w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-200 cursor-pointer hover:bg-slate-100 border border-transparent hover:border-slate-200/70 shadow-none hover:shadow-2xs active:scale-95"
+                title="Expand sidebar"
+                aria-label="Expand sidebar"
+              >
+                {/* Default State: Sleek DF Badge */}
+                <div className="w-8 h-8 rounded-xl bg-slate-950 text-white flex items-center justify-center font-black text-xs shadow-xs group-hover:opacity-0 group-hover:scale-75 transition-all duration-150 absolute">
+                  DF
                 </div>
-              )}
-            </Link>
+
+                {/* Hover State: The Exact Squircle Symbol from user screenshot */}
+                <div className="opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 transition-all duration-150 flex items-center justify-center w-8 h-8 rounded-2xl bg-slate-100 text-slate-800 border border-slate-200/60 shadow-2xs">
+                  <svg className="w-4 h-4 text-slate-800" viewBox="0 0 20 20" fill="currentColor">
+                    <rect x="3" y="4" width="14" height="2.2" rx="1.1" />
+                    <rect x="3" y="8.9" width="8" height="2.2" rx="1.1" />
+                    <rect x="3" y="13.8" width="14" height="2.2" rx="1.1" />
+                  </svg>
+                </div>
+
+                {/* Floating tooltip on hover */}
+                <span className="absolute left-14 ml-1 px-2.5 py-1 rounded-xl bg-slate-950 text-white text-xs font-semibold whitespace-nowrap shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-150 z-50">
+                  Expand sidebar
+                </span>
+              </button>
+            ) : (
+              <div className="flex items-center justify-between w-full">
+                <Link href="/" className="flex items-center gap-2.5 group">
+                  <div className="w-8 h-8 rounded-xl bg-slate-950 text-white flex items-center justify-center font-black text-xs shadow-xs shrink-0">
+                    DF
+                  </div>
+                  <div className="overflow-hidden">
+                    <span className="text-sm font-black text-slate-900 block leading-tight tracking-tight">DealFlow360</span>
+                    <span className="text-[10px] text-slate-400 font-semibold block leading-tight">Sales Operations</span>
+                  </div>
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={onToggleCollapse}
+                  className="hidden lg:flex w-8 h-8 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 items-center justify-center transition-all duration-150 cursor-pointer shadow-2xs active:scale-95 group border border-slate-200/60"
+                  title="Collapse sidebar"
+                  aria-label="Collapse sidebar"
+                >
+                  <svg className="w-3.5 h-3.5 text-slate-700 group-hover:text-slate-900" viewBox="0 0 20 20" fill="currentColor">
+                    <rect x="3" y="4" width="14" height="2.2" rx="1.1" />
+                    <rect x="3" y="8.9" width="8" height="2.2" rx="1.1" />
+                    <rect x="3" y="13.8" width="14" height="2.2" rx="1.1" />
+                  </svg>
+                </button>
+              </div>
+            )}
 
             {/* Mobile Close Button */}
             <button
@@ -307,20 +350,19 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
           <button
             type="button"
             onClick={onToggleCollapse}
-            className={`w-full py-2 rounded-xl text-xs font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition flex items-center ${
+            className={`w-full py-2 rounded-xl text-xs font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition flex items-center group ${
               isCollapsed ? 'justify-center' : 'justify-between px-3'
             }`}
             title={isCollapsed ? 'Expand sidebar' : 'Collapse to single-line app icons'}
           >
-            {!isCollapsed && <span className="text-[11px] font-semibold text-slate-400">Collapse sidebar</span>}
-            <svg
-              className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isCollapsed ? 'rotate-180' : ''}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-            </svg>
+            {!isCollapsed && <span className="text-[11px] font-semibold text-slate-400 group-hover:text-slate-600">Collapse sidebar</span>}
+            <div className="w-8 h-8 rounded-2xl bg-slate-100 group-hover:bg-slate-200 text-slate-800 flex items-center justify-center shrink-0 border border-slate-200/60 transition-colors shadow-2xs">
+              <svg className="w-3.5 h-3.5 text-slate-700 group-hover:text-slate-900" viewBox="0 0 20 20" fill="currentColor">
+                <rect x="3" y="4" width="14" height="2.2" rx="1.1" />
+                <rect x="3" y="8.9" width="8" height="2.2" rx="1.1" />
+                <rect x="3" y="13.8" width="14" height="2.2" rx="1.1" />
+              </svg>
+            </div>
           </button>
         </div>
       </aside>
