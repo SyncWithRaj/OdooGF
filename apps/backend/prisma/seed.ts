@@ -641,17 +641,17 @@ async function main() {
 
   // 4 Core Demo Quotations
   quotationsData.push(
-    { id: q1Id, quoteNumber: 'Q-1001', customerId: acmeId, salesRepId: repId, status: QuotationStatus.DRAFT, blendedRiskScore: RiskLevel.LOW, subtotalAmount: 6900.0, totalDiscountAmount: 708.0, orderDiscountPercent: 0.0, totalTaxAmount: 928.8, totalAmount: 7120.8, totalCost: 4450.0, totalMarginPercent: 28.13, portalToken: 'portal-acme-q1001-demo-token', customerTermsConfirmed: false, isStalled: false },
-    { id: q2Id, quoteNumber: 'Q-1002', customerId: betaId, salesRepId: repId, status: QuotationStatus.PENDING_APPROVAL, blendedRiskScore: RiskLevel.MEDIUM, subtotalAmount: 12450.0, totalDiscountAmount: 1716.0, orderDiscountPercent: 0.0, totalTaxAmount: 1610.1, totalAmount: 12344.1, totalCost: 8200.0, totalMarginPercent: 23.61, portalToken: 'portal-beta-q1002-demo-token', customerTermsConfirmed: false, isStalled: false },
-    { id: q3Id, quoteNumber: 'Q-1003', customerId: deltaId, salesRepId: repId, status: QuotationStatus.PENDING_APPROVAL, blendedRiskScore: RiskLevel.HIGH, subtotalAmount: 28500.0, totalDiscountAmount: 3810.0, orderDiscountPercent: 0.0, totalTaxAmount: 3703.5, totalAmount: 28393.5, totalCost: 19500.0, totalMarginPercent: 21.02, portalToken: 'portal-delta-q1003-demo-token', customerTermsConfirmed: false, isStalled: false },
-    { id: q4Id, quoteNumber: 'Q-1004', customerId: acmeId, salesRepId: repId, status: QuotationStatus.UNDER_NEGOTIATION, blendedRiskScore: RiskLevel.LOW, subtotalAmount: 1104.0, totalDiscountAmount: 88.32, orderDiscountPercent: 0.0, totalTaxAmount: 0.0, totalAmount: 1015.68, totalCost: 600.0, totalMarginPercent: 40.93, portalToken: 'portal-acme-q1004-negotiate-token', counterDiscountProposed: 12.0, customerTermsConfirmed: false, isStalled: false }
+    { id: q1Id, quoteNumber: 'Q-1001', customerId: acmeId, salesRepId: repId, status: QuotationStatus.PENDING_APPROVAL, blendedRiskScore: RiskLevel.MEDIUM, subtotalAmount: 6900.0, totalDiscountAmount: 708.0, orderDiscountPercent: 12.0, totalTaxAmount: 928.8, totalAmount: 7120.8, totalCost: 4450.0, totalMarginPercent: 28.13, portalToken: 'portal-acme-q1001-demo-token', customerTermsConfirmed: false, isStalled: false },
+    { id: q2Id, quoteNumber: 'Q-1002', customerId: betaId, salesRepId: repId, status: QuotationStatus.PENDING_APPROVAL, blendedRiskScore: RiskLevel.MEDIUM, subtotalAmount: 12450.0, totalDiscountAmount: 1716.0, orderDiscountPercent: 14.0, totalTaxAmount: 1610.1, totalAmount: 12344.1, totalCost: 8200.0, totalMarginPercent: 23.61, portalToken: 'portal-beta-q1002-demo-token', customerTermsConfirmed: false, isStalled: false },
+    { id: q3Id, quoteNumber: 'Q-1003', customerId: deltaId, salesRepId: repId, status: QuotationStatus.PENDING_APPROVAL, blendedRiskScore: RiskLevel.HIGH, subtotalAmount: 28500.0, totalDiscountAmount: 3810.0, orderDiscountPercent: 20.0, totalTaxAmount: 3703.5, totalAmount: 28393.5, totalCost: 19500.0, totalMarginPercent: 21.02, portalToken: 'portal-delta-q1003-demo-token', customerTermsConfirmed: false, isStalled: false },
+    { id: q4Id, quoteNumber: 'Q-1004', customerId: acmeId, salesRepId: repId, status: QuotationStatus.PENDING_APPROVAL, blendedRiskScore: RiskLevel.HIGH, subtotalAmount: 1104.0, totalDiscountAmount: 188.32, orderDiscountPercent: 18.0, totalTaxAmount: 0.0, totalAmount: 915.68, totalCost: 600.0, totalMarginPercent: 34.47, portalToken: 'portal-acme-q1004-negotiate-token', counterDiscountProposed: 18.0, customerTermsConfirmed: false, isStalled: false }
   );
 
   // 3 Historical Baseline Quotations for 90-Day Rolling Rep Discount Baseline (Rep J. Rao, median = 8.0%)
   quotationsData.push(
-    { id: hq1Id, quoteNumber: 'Q-HIST-01', customerId: acmeId, salesRepId: repId, status: QuotationStatus.CONFIRMED, blendedRiskScore: RiskLevel.LOW, subtotalAmount: 4800.0, totalDiscountAmount: 336.0, orderDiscountPercent: 0.0, totalTaxAmount: 0.0, totalAmount: 4464.0, totalCost: 3200.0, totalMarginPercent: 28.32, portalToken: 'portal-hist-01-token', customerTermsConfirmed: true, isStalled: false, createdAt: new Date(Date.now() - 20 * 24 * 3600 * 1000) },
-    { id: hq2Id, quoteNumber: 'Q-HIST-02', customerId: betaId, salesRepId: repId, status: QuotationStatus.CONFIRMED, blendedRiskScore: RiskLevel.LOW, subtotalAmount: 3600.0, totalDiscountAmount: 288.0, orderDiscountPercent: 0.0, totalTaxAmount: 0.0, totalAmount: 3312.0, totalCost: 2400.0, totalMarginPercent: 27.54, portalToken: 'portal-hist-02-token', customerTermsConfirmed: true, isStalled: false, createdAt: new Date(Date.now() - 40 * 24 * 3600 * 1000) },
-    { id: hq3Id, quoteNumber: 'Q-HIST-03', customerId: deltaId, salesRepId: repId, status: QuotationStatus.CONFIRMED, blendedRiskScore: RiskLevel.LOW, subtotalAmount: 2400.0, totalDiscountAmount: 192.0, orderDiscountPercent: 0.0, totalTaxAmount: 0.0, totalAmount: 2208.0, totalCost: 1600.0, totalMarginPercent: 27.54, portalToken: 'portal-hist-03-token', customerTermsConfirmed: true, isStalled: false, createdAt: new Date(Date.now() - 60 * 24 * 3600 * 1000) }
+    { id: hq1Id, quoteNumber: 'Q-HIST-01', customerId: acmeId, salesRepId: repId, status: QuotationStatus.CONFIRMED, blendedRiskScore: RiskLevel.MEDIUM, subtotalAmount: 4800.0, totalDiscountAmount: 336.0, orderDiscountPercent: 0.0, totalTaxAmount: 0.0, totalAmount: 4464.0, totalCost: 3200.0, totalMarginPercent: 28.32, portalToken: 'portal-hist-01-token', customerTermsConfirmed: true, isStalled: false, createdAt: new Date(Date.now() - 20 * 24 * 3600 * 1000) },
+    { id: hq2Id, quoteNumber: 'Q-HIST-02', customerId: betaId, salesRepId: repId, status: QuotationStatus.CONFIRMED, blendedRiskScore: RiskLevel.MEDIUM, subtotalAmount: 3600.0, totalDiscountAmount: 288.0, orderDiscountPercent: 0.0, totalTaxAmount: 0.0, totalAmount: 3312.0, totalCost: 2400.0, totalMarginPercent: 27.54, portalToken: 'portal-hist-02-token', customerTermsConfirmed: true, isStalled: false, createdAt: new Date(Date.now() - 40 * 24 * 3600 * 1000) },
+    { id: hq3Id, quoteNumber: 'Q-HIST-03', customerId: deltaId, salesRepId: repId, status: QuotationStatus.CONFIRMED, blendedRiskScore: RiskLevel.HIGH, subtotalAmount: 2400.0, totalDiscountAmount: 192.0, orderDiscountPercent: 0.0, totalTaxAmount: 0.0, totalAmount: 2208.0, totalCost: 1600.0, totalMarginPercent: 27.54, portalToken: 'portal-hist-03-token', customerTermsConfirmed: true, isStalled: false, createdAt: new Date(Date.now() - 60 * 24 * 3600 * 1000) }
   );
 
   const quoteStatuses = [
@@ -669,7 +669,7 @@ async function main() {
     const qid = crypto.randomUUID();
     quotationIds.push(qid);
     const status = quoteStatuses[i % quoteStatuses.length];
-    const risk = [RiskLevel.LOW, RiskLevel.LOW, RiskLevel.MEDIUM, RiskLevel.LOW, RiskLevel.HIGH, RiskLevel.LOW, RiskLevel.MEDIUM][i % 7];
+    const risk = (i % 2 === 0) ? RiskLevel.MEDIUM : RiskLevel.HIGH;
     const custId = customerIds[i % customerIds.length];
     const rep = salesRepIds[i % salesRepIds.length];
     const subtotal = Number((2000.0 + ((i * 147.25) % 45000.0)).toFixed(2));
@@ -903,21 +903,50 @@ async function main() {
   const approvalRequestIds: string[] = [];
   const approvalRequestsData: any[] = [];
 
-  const appStages = [
-    ApprovalStage.SALES_MANAGER,
-    ApprovalStage.FINANCE,
-    ApprovalStage.APPROVED,
-    ApprovalStage.REJECTED,
-    ApprovalStage.RETURNED,
-  ];
+
 
   for (let i = 0; i < 500; i++) {
     const arid = crypto.randomUUID();
     approvalRequestIds.push(arid);
-    const stage = appStages[i % appStages.length];
+
+    // Assign risk based on quotation characteristics (round-robin)
     const risk = [RiskLevel.MEDIUM, RiskLevel.HIGH, RiskLevel.LOW][i % 3];
+
+    // Stage must match real workflow rules:
+    //   LOW  → auto-approved instantly (always APPROVED + isCompleted)
+    //   MEDIUM → single-tier: SALES_MANAGER only (or APPROVED/REJECTED/RETURNED if completed)
+    //   HIGH → two-tier: starts at SALES_MANAGER, can escalate to FINANCE (or completed states)
+    let stage: ApprovalStage;
+    let isCompleted: boolean;
+
+    if (risk === RiskLevel.LOW) {
+      // LOW risk = auto-approved, never in any queue
+      stage = ApprovalStage.APPROVED;
+      isCompleted = true;
+    } else if (risk === RiskLevel.MEDIUM) {
+      // MEDIUM = single-tier (Sales Manager only)
+      const mediumStages = [
+        ApprovalStage.SALES_MANAGER,  // pending in queue
+        ApprovalStage.APPROVED,        // completed
+        ApprovalStage.REJECTED,        // completed
+        ApprovalStage.RETURNED,        // completed
+      ];
+      stage = mediumStages[i % mediumStages.length];
+      isCompleted = stage !== ApprovalStage.SALES_MANAGER;
+    } else {
+      // HIGH = two-tier (Sales Manager → Finance)
+      const highStages = [
+        ApprovalStage.SALES_MANAGER,  // pending L1
+        ApprovalStage.FINANCE,         // pending L2 (escalated)
+        ApprovalStage.APPROVED,        // completed
+        ApprovalStage.REJECTED,        // completed
+        ApprovalStage.RETURNED,        // completed
+      ];
+      stage = highStages[i % highStages.length];
+      isCompleted = ![ApprovalStage.SALES_MANAGER, ApprovalStage.FINANCE].includes(stage);
+    }
+
     const worstDev = Number(((i % 12) * 1.25).toFixed(1));
-    const isCompleted = ([ApprovalStage.APPROVED, ApprovalStage.REJECTED, ApprovalStage.RETURNED] as ApprovalStage[]).includes(stage);
 
     approvalRequestsData.push({
       id: arid,
