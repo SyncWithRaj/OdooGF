@@ -11,6 +11,9 @@ import { WarehousesModule } from './warehouses/warehouses.module';
 import { DiscountRulesModule } from './discount-rules/discount-rules.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { UpsellRulesModule } from './upsell-rules/upsell-rules.module';
+import { QuotationsModule } from './quotations/quotations.module';
+import { ApprovalsModule } from './approvals/approvals.module';
+import { PortalModule } from './portal/portal.module';
 
 @Module({
   imports: [
@@ -24,6 +27,9 @@ import { UpsellRulesModule } from './upsell-rules/upsell-rules.module';
     DiscountRulesModule,
     SubscriptionsModule,
     UpsellRulesModule,
+    QuotationsModule,
+    ApprovalsModule,
+    PortalModule,
   ],
   controllers: [AppController],
   providers: [AppService],
