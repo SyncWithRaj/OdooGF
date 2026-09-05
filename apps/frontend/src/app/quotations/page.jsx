@@ -181,11 +181,12 @@ export default function QuotationsPage() {
 
   // Filtered Quotations
   const filteredQuotations = useMemo(() => {
-    return quotations.filter((q) => {
+    const filtered = quotations.filter((q) => {
       // Tab filter
       if (activeTab === 'drafts' && q.status !== 'DRAFT') return false;
       if (activeTab === 'manager' && (q.status !== 'PENDING_APPROVAL' || q.currentStage !== 'SALES_MANAGER')) return false;
       if (activeTab === 'finance' && (q.status !== 'PENDING_APPROVAL' || q.currentStage !== 'FINANCE')) return false;
+      if (activeTab === 'sent' && q.status !== 'SENT_TO_CUSTOMER' && q.status !== 'UNDER_NEGOTIATION' && q.status !== 'APPROVED') return false;
       if (activeTab === 'confirmed' && q.status !== 'CONFIRMED') return false;
 
       // Status dropdown filter
@@ -236,6 +237,7 @@ export default function QuotationsPage() {
     const totalPipeline = quotations.reduce((acc, q) => acc + (q.totalAmount || 0), 0);
     const pendingManagerCount = quotations.filter((q) => q.status === 'PENDING_APPROVAL' && q.currentStage === 'SALES_MANAGER').length;
     const pendingFinanceCount = quotations.filter((q) => q.status === 'PENDING_APPROVAL' && q.currentStage === 'FINANCE').length;
+    const sentCount = quotations.filter((q) => q.status === 'SENT_TO_CUSTOMER' || q.status === 'UNDER_NEGOTIATION' || q.status === 'APPROVED').length;
     const draftsCount = quotations.filter((q) => q.status === 'DRAFT').length;
     const confirmedCount = quotations.filter((q) => q.status === 'CONFIRMED').length;
     const avgMargin = quotations.length > 0
@@ -246,6 +248,7 @@ export default function QuotationsPage() {
       totalPipeline,
       pendingManagerCount,
       pendingFinanceCount,
+      sentCount,
       draftsCount,
       confirmedCount,
       avgMargin,
@@ -368,59 +371,52 @@ export default function QuotationsPage() {
 
       const quotePayload = {
         customerId: newQuoteCustomer.id,
-        customerName: newQuoteCustomer.name,
-        customerEmail: newQuoteCustomer.email,
-        customerTier: newQuoteCustomer.tier,
-        status: statusTarget,
-        currentStage: statusTarget === 'PENDING_APPROVAL' 
-          ? (evalData.blendedRiskScore === 'LOW' ? 'APPROVED' : 'SALES_MANAGER')
-          : 'SALES_REP',
-        blendedRiskScore: evalData.blendedRiskScore,
-        requiresManagerApproval: evalData.requiresManagerApproval,
-        requiresFinanceApproval: evalData.requiresFinanceApproval,
-        subtotalAmount: evalData.financials.totalSubtotal,
-        totalDiscountAmount: evalData.financials.totalDiscountAmount,
-        orderDiscountPercent: evalData.financials.totalSubtotal > 0
+        orderDiscountPercent: (evalData?.financials?.totalSubtotal > 0)
           ? Number(((evalData.financials.totalDiscountAmount / evalData.financials.totalSubtotal) * 100).toFixed(1))
           : 0,
-        totalAmount: evalData.financials.totalRevenue,
-        totalCost: evalData.financials.totalCost,
-        totalMarginPercent: evalData.financials.totalMarginPercent,
         notes: newQuoteNotes,
-        flagReasonSummary: evalData.flagReasonSummary,
-        lines: newQuoteLines.map((line, idx) => {
-          const evalLine = evalData.lines?.[idx] || {};
-          return {
-            ...line,
-            ...evalLine,
-            productId: line.productId,
-            productName: line.productName,
-          };
-        }),
+        lines: newQuoteLines.map((line) => ({
+          productId: line.productId,
+          quantity: Math.max(1, Number(line.quantity) || 1),
+          unitPrice: Number(line.unitPrice) || 0,
+          discountPercent: Number(line.discountPercent) || 0,
+          variantId: line.variantId || undefined,
+        })),
       };
 
       const created = await quotationsService.createQuotation(quotePayload, user);
+      if (statusTarget === 'PENDING_APPROVAL' && created?.id) {
+        await quotationsService.submitForApproval(created.id, user, newQuoteNotes);
+      }
       const updatedList = await quotationsService.getQuotations();
       setQuotations(updatedList);
       setIsCreateModalOpen(false);
       showToast(
         statusTarget === 'PENDING_APPROVAL'
-          ? `Quotation ${created.quoteNumber} created and submitted for governance approval!`
-          : `Draft ${created.quoteNumber} saved successfully!`
+          ? `Quotation ${created?.quoteNumber || ''} created and submitted for governance approval!`
+          : `Draft ${created?.quoteNumber || ''} saved successfully!`
       );
     } catch (e) {
       console.error('Failed to create quotation:', e);
-      showToast('Error saving quotation.', 'error');
+      showToast(e?.message || 'Error saving quotation.', 'error');
     } finally {
       setIsSubmittingAction(false);
     }
   };
 
   // Open details drawer
-  const handleOpenDetailDrawer = (quote) => {
+  const handleOpenDetailDrawer = async (quote) => {
     setSelectedQuote(quote);
     setActionComment('');
     setIsDetailDrawerOpen(true);
+    try {
+      const fresh = await apiClient.getQuotation(quote.id);
+      if (fresh && fresh.id) {
+        setSelectedQuote(fresh);
+      }
+    } catch (e) {
+      console.warn('Could not fetch fresh quotation details:', e);
+    }
   };
 
   // Handle Governance Actions (Approve, Reject, Return, Confirm)
@@ -434,26 +430,38 @@ export default function QuotationsPage() {
         showToast(`Quotation ${selectedQuote.quoteNumber} submitted for approval.`);
       } else if (actionType === 'APPROVE') {
         const arId = selectedQuote.approvalRequests?.[0]?.id;
-        if (!arId) { showToast('No active approval request for this quotation.', 'error'); return; }
-        updated = await apiClient.actionApproval(arId, 'APPROVED', actionComment);
+        if (arId) {
+          updated = await apiClient.actionApproval(arId, 'APPROVED', actionComment);
+        } else {
+          updated = await quotationsService.approveQuotation(selectedQuote.id, user, actionComment);
+        }
         showToast(
-          updated.status === 'ESCALATED_TO_FINANCE'
+          updated?.status === 'ESCALATED_TO_FINANCE'
             ? `Quotation ${selectedQuote.quoteNumber} approved at L1 — escalated to Finance Controller.`
             : `Quotation ${selectedQuote.quoteNumber} fully approved & sent to customer!`
         );
       } else if (actionType === 'REJECT') {
         const arId = selectedQuote.approvalRequests?.[0]?.id;
-        if (!arId) { showToast('No active approval request for this quotation.', 'error'); return; }
-        updated = await apiClient.actionApproval(arId, 'REJECTED', actionComment);
+        if (arId) {
+          updated = await apiClient.actionApproval(arId, 'REJECTED', actionComment);
+        } else {
+          updated = await apiClient.rejectQuotation(selectedQuote.id, actionComment);
+        }
         showToast(`Quotation ${selectedQuote.quoteNumber} rejected.`);
       } else if (actionType === 'RETURN') {
         const arId = selectedQuote.approvalRequests?.[0]?.id;
-        if (!arId) { showToast('No active approval request for this quotation.', 'error'); return; }
-        updated = await apiClient.actionApproval(arId, 'RETURNED_FOR_REVISION', actionComment);
+        if (arId) {
+          updated = await apiClient.actionApproval(arId, 'RETURNED_FOR_REVISION', actionComment);
+        } else {
+          updated = await apiClient.rejectQuotation(selectedQuote.id, actionComment || 'Returned for revision');
+        }
         showToast(`Quotation ${selectedQuote.quoteNumber} returned to sales rep for revision.`);
       } else if (actionType === 'CONFIRM') {
         updated = await quotationsService.confirmOrder(selectedQuote.id, user);
         showToast(`Quotation ${selectedQuote.quoteNumber} confirmed into an active Order!`);
+      } else if (actionType === 'SEND_TO_CUSTOMER') {
+        updated = await quotationsService.updateQuotationStatus(selectedQuote.id, 'SENT_TO_CUSTOMER', user);
+        showToast(`Quotation ${selectedQuote.quoteNumber} released to Customer Portal!`);
       }
 
       if (updated) {
@@ -465,7 +473,7 @@ export default function QuotationsPage() {
       }
     } catch (e) {
       console.error('Governance action error:', e);
-      showToast('Failed to perform action', 'error');
+      showToast(e?.message || 'Failed to perform action', 'error');
     } finally {
       setIsSubmittingAction(false);
     }
@@ -497,32 +505,44 @@ export default function QuotationsPage() {
     switch (status) {
       case 'CONFIRMED':
         return (
-          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-emerald-400 text-emerald-600 bg-transparent">
-            Delivered
+          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-emerald-400 text-emerald-700 bg-emerald-50">
+            Confirmed
+          </span>
+        );
+      case 'SENT_TO_CUSTOMER':
+        return (
+          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-blue-400 text-blue-700 bg-blue-50">
+            Sent to Customer
+          </span>
+        );
+      case 'UNDER_NEGOTIATION':
+        return (
+          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-purple-400 text-purple-700 bg-purple-50">
+            In Negotiation
           </span>
         );
       case 'PENDING_APPROVAL':
         return (
-          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-amber-400 text-amber-600 bg-transparent">
-            Pending
+          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-amber-400 text-amber-700 bg-amber-50">
+            In Approval
           </span>
         );
       case 'APPROVED':
         return (
-          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-blue-400 text-blue-600 bg-transparent">
-            Shipped
+          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-emerald-400 text-emerald-700 bg-emerald-50">
+            Approved
           </span>
         );
       case 'REJECTED':
         return (
-          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-rose-400 text-rose-600 bg-transparent">
-            Cancelled
+          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-rose-400 text-rose-700 bg-rose-50">
+            Rejected
           </span>
         );
       case 'DRAFT':
       default:
         return (
-          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-slate-300 text-slate-600 bg-transparent">
+          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-slate-300 text-slate-600 bg-slate-50">
             Draft
           </span>
         );
@@ -694,16 +714,27 @@ export default function QuotationsPage() {
               )}
             </button>
             <button
+              onClick={() => setActiveTab('sent')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition cursor-pointer ${activeTab === 'sent' ? 'bg-blue-700 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+            >
+              <span>Sent to Client</span>
+              {metrics.sentCount > 0 && (
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-medium ${activeTab === 'sent' ? 'bg-white/30 text-white' : 'bg-blue-100 text-blue-800'}`}>
+                  {metrics.sentCount}
+                </span>
+              )}
+            </button>
+            <button
               onClick={() => setActiveTab('confirmed')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition cursor-pointer ${activeTab === 'confirmed' ? 'bg-blue-700 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition cursor-pointer ${activeTab === 'confirmed' ? 'bg-emerald-700 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
             >
               Confirmed ({metrics.confirmedCount})
             </button>
           </div>
 
-          {/* SEARCH & FILTERS */}
+          {/* SEARCH */}
           <div className="flex items-center gap-2">
-            <div className="relative flex-1 md:w-56">
+            <div className="relative flex-1 md:w-64">
               <svg className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
@@ -715,17 +746,6 @@ export default function QuotationsPage() {
                 className="w-full h-9 pl-9 pr-3 rounded-md text-xs bg-white border border-gray-200 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-200"
               />
             </div>
-
-            <select
-              value={riskFilter}
-              onChange={(e) => setRiskFilter(e.target.value)}
-              className="h-9 px-3 rounded-md text-xs bg-white border border-gray-200 font-medium text-gray-700 focus:outline-none focus:border-gray-400"
-            >
-              <option value="ALL">All Risks</option>
-              <option value="LOW">Low Risk</option>
-              <option value="MEDIUM">Medium Risk</option>
-              <option value="HIGH">High Risk</option>
-            </select>
           </div>
         </div>
 
@@ -1430,6 +1450,43 @@ export default function QuotationsPage() {
                   </div>
                 )}
 
+                {/* ACTIVE CUSTOMER COUNTER PROPOSAL BANNER */}
+                {(selectedQuote.counterDiscountProposed > 0 || selectedQuote.status === 'UNDER_NEGOTIATION') && (
+                  <div className="p-4 rounded-xl bg-purple-50 border border-purple-200 text-xs text-purple-950 space-y-2 shadow-2xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-purple-600 animate-pulse"></span>
+                        <span className="font-bold text-sm text-purple-950">Active Customer Counter-Proposal</span>
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold text-[10px] border border-purple-300">
+                        {selectedQuote.counterDiscountProposed}% Extra Discount Requested
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-600 pt-1 border-t border-purple-200/60">
+                      <div>
+                        <span className="text-[10px] text-purple-700 block font-semibold">Requested Concession:</span>
+                        <span className="font-bold text-purple-900">{selectedQuote.counterDiscountProposed}% discount</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-purple-700 block font-semibold">Requested Delivery Date:</span>
+                        <span className="font-semibold text-slate-800">
+                          {selectedQuote.requestedDeliveryDate
+                            ? new Date(selectedQuote.requestedDeliveryDate).toLocaleDateString()
+                            : 'Standard Delivery'}
+                        </span>
+                      </div>
+                    </div>
+                    {selectedQuote.comments && selectedQuote.comments.length > 0 && (
+                      <div className="pt-2 border-t border-purple-200/60 text-slate-700">
+                        <span className="text-[10px] text-purple-700 block font-semibold mb-1">Customer Note:</span>
+                        <p className="italic bg-white/80 p-2 rounded-lg border border-purple-100 text-slate-800">
+                          &ldquo;{selectedQuote.comments[0]?.message || selectedQuote.comments[0]}&rdquo;
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* LINE ITEMS */}
                 <div>
                   <h3 className="text-sm font-medium text-gray-900 mb-2">Order Line Items</h3>
@@ -1571,8 +1628,8 @@ export default function QuotationsPage() {
                       </>
                     )}
 
-                    {/* CONFIRM ORDER ACTION (When Approved) */}
-                    {selectedQuote.status === 'APPROVED' && (
+                    {/* CONFIRM ORDER ACTION (When Approved or in Customer Negotiation) */}
+                    {(selectedQuote.status === 'APPROVED' || selectedQuote.status === 'SENT_TO_CUSTOMER' || selectedQuote.status === 'UNDER_NEGOTIATION') && (
                       <button
                         type="button"
                         onClick={() => handlePerformAction('CONFIRM')}
@@ -1582,7 +1639,19 @@ export default function QuotationsPage() {
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        Confirm &amp; Convert to Order
+                        {selectedQuote.status === 'UNDER_NEGOTIATION' ? 'Accept Counter & Confirm Order' : 'Confirm & Convert to Order'}
+                      </button>
+                    )}
+
+                    {/* RELEASE TO CUSTOMER PORTAL ACTION */}
+                    {selectedQuote.status === 'APPROVED' && (
+                      <button
+                        type="button"
+                        onClick={() => handlePerformAction('SEND_TO_CUSTOMER')}
+                        disabled={isSubmittingAction}
+                        className="h-9 px-3.5 rounded-md text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition cursor-pointer shadow-xs flex items-center gap-1.5"
+                      >
+                        📤 Release to Client Portal
                       </button>
                     )}
 
@@ -1625,17 +1694,45 @@ export default function QuotationsPage() {
               </div>
 
               {/* DRAWER FOOTER */}
-              <div className="px-6 py-4 border-t border-gray-200 bg-gray-50/50 flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setIsPreviewModalOpen(true)}
-                  className="h-9 px-4 rounded-md text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 transition cursor-pointer flex items-center gap-1.5"
-                >
-                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                  Client Proposal View
-                </button>
+              <div className="px-6 py-4 border-t border-gray-200 bg-gray-50/50 flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setIsPreviewModalOpen(true)}
+                    className="h-9 px-3.5 rounded-md text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    Client Proposal View
+                  </button>
+
+                  {selectedQuote.portalToken && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const url = `${window.location.origin}/portal?token=${selectedQuote.portalToken}`;
+                          navigator.clipboard.writeText(url);
+                          showToast('Client Portal link copied to clipboard!');
+                        }}
+                        className="h-9 px-3 rounded-md text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 hover:bg-purple-100 transition cursor-pointer flex items-center gap-1"
+                        title="Copy direct portal link for this client"
+                      >
+                        🔗 Copy Portal Link
+                      </button>
+                      <a
+                        href={`/portal?token=${selectedQuote.portalToken}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="h-9 px-3 rounded-md text-xs font-medium text-slate-700 bg-white border border-gray-300 hover:bg-gray-50 transition cursor-pointer flex items-center gap-1"
+                      >
+                        🌐 Open Portal
+                      </a>
+                    </>
+                  )}
+                </div>
+
                 <button
                   type="button"
                   onClick={() => setIsDetailDrawerOpen(false)}
