@@ -200,6 +200,7 @@ model Product {
   // Upsell pairings
   recommendedPairings ProductCoPurchaseRule[] @relation("BaseProductPairings")
   pairedInRules       ProductCoPurchaseRule[] @relation("RecommendedProductPairings")
+  fulfillmentSplits   FulfillmentSplitItem[]
 }
 
 model ProductVariant {
@@ -424,6 +425,7 @@ model FulfillmentSplitItem {
   warehouseId        String
   warehouse          Warehouse        @relation(fields: [warehouseId], references: [id])
   productId          String
+  product            Product          @relation(fields: [productId], references: [id])
   quantityFulfilled  Int              @default(0)
   quantityBackordered Int             @default(0)
   estimatedShipCost  Float            @default(0.0)
