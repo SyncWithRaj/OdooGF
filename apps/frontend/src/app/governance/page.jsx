@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { apiClient } from '@/services/apiClient';
+import { toast } from 'react-toastify';
 
 export default function GovernancePage() {
   const [rules, setRules] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [notification, setNotification] = useState(null);
   const [savingKey, setSavingKey] = useState(null);
 
   // Ceilings editable state
@@ -25,8 +25,13 @@ export default function GovernancePage() {
   });
 
   const showToast = (message, type = 'success') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 4000);
+    if (type === 'error') {
+      toast.error(message);
+    } else if (type === 'info') {
+      toast.info(message);
+    } else {
+      toast.success(message);
+    }
   };
 
   const loadRules = async () => {
@@ -92,23 +97,15 @@ export default function GovernancePage() {
   return (
     <RequireRole roles={['manager', 'finance', 'admin']}>
       <AppLayout>
-        {/* Flash Toast */}
-        {notification && (
-          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-sm font-medium border border-slate-700 animate-in fade-in slide-in-from-bottom-4">
-            <span className={`w-2.5 h-2.5 rounded-full ${notification.type === 'error' ? 'bg-rose-500' : 'bg-emerald-400'}`}></span>
-            <span>{notification.message}</span>
-          </div>
-        )}
-
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Discount Governance &amp; Policy Matrix</h1>
-            <p className="text-xs text-slate-500 mt-1">
+            <h1 className="text-2xl font-bold text-zinc-900 tracking-tight">Discount Governance &amp; Policy Matrix</h1>
+            <p className="text-xs text-zinc-500 mt-1">
               Configure tier-based caps, category discount ceilings, and multi-tier approval routing chains.
             </p>
           </div>
-          <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold self-start sm:self-auto">
+          <span className="px-3 py-1 rounded-full bg-zinc-100 text-zinc-900 border border-zinc-200 text-xs font-semibold self-start sm:self-auto">
             Live PostgreSQL Governance Rules
           </span>
         </div>
@@ -246,10 +243,10 @@ export default function GovernancePage() {
                 </div>
 
                 {/* Services */}
-                <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/40">
+                <div className="p-4 rounded-xl border border-zinc-200 bg-zinc-50/50">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-emerald-900 uppercase tracking-wider">Services</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 font-bold">Professional</span>
+                    <span className="text-xs font-bold text-zinc-900 uppercase tracking-wider">Services</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-900 font-bold">Professional</span>
                   </div>
                   <div className="flex items-center gap-2 mt-3">
                     <input
@@ -258,13 +255,13 @@ export default function GovernancePage() {
                       max="50"
                       value={categoryCeilings.SERVICES}
                       onChange={(e) => setCategoryCeilings({ ...categoryCeilings, SERVICES: e.target.value })}
-                      className="w-24 h-9 px-3 rounded-lg border border-emerald-300 bg-white font-bold text-sm text-slate-900 focus:outline-none"
+                      className="w-24 h-9 px-3 rounded-lg border border-zinc-300 bg-white font-bold text-sm text-zinc-900 focus:outline-none"
                     />
-                    <span className="text-sm font-semibold text-slate-600">% Max</span>
+                    <span className="text-sm font-semibold text-zinc-600">% Max</span>
                     <button
                       onClick={() => handleUpdateCategory('SERVICES')}
                       disabled={savingKey === 'cat-SERVICES'}
-                      className="ml-auto px-3 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-900 text-white font-medium text-xs transition cursor-pointer shadow-2xs"
+                      className="ml-auto px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-black text-white font-medium text-xs transition cursor-pointer shadow-2xs"
                     >
                       {savingKey === 'cat-SERVICES' ? 'Saving...' : 'Save'}
                     </button>
@@ -320,21 +317,21 @@ export default function GovernancePage() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     <tr className="hover:bg-slate-50/50">
-                      <td className="py-3.5 px-4 font-semibold text-emerald-700">LOW RISK</td>
+                      <td className="py-3.5 px-4 font-semibold text-zinc-900">LOW RISK</td>
                       <td className="py-3.5 px-4 text-slate-500">Auto-approved</td>
                       <td className="py-3.5 px-4 text-slate-500">Not required</td>
                       <td className="py-3.5 px-4 text-slate-600">Within tier and category ceilings. Instant rep sign-off.</td>
                     </tr>
                     <tr className="hover:bg-slate-50/50">
                       <td className="py-3.5 px-4 font-semibold text-amber-700">MEDIUM RISK</td>
-                      <td className="py-3.5 px-4 font-semibold text-slate-900">✓ Required (L1)</td>
+                      <td className="py-3.5 px-4 font-semibold text-slate-900">Required (L1)</td>
                       <td className="py-3.5 px-4 text-slate-500">Not required</td>
                       <td className="py-3.5 px-4 text-slate-600">Exceeds rep limits up to 5 points. Routed to Sales Manager.</td>
                     </tr>
                     <tr className="hover:bg-slate-50/50">
                       <td className="py-3.5 px-4 font-semibold text-rose-700">HIGH RISK</td>
-                      <td className="py-3.5 px-4 font-semibold text-slate-900">✓ Required (L1)</td>
-                      <td className="py-3.5 px-4 font-semibold text-rose-700">✓ Required (L2)</td>
+                      <td className="py-3.5 px-4 font-semibold text-slate-900">Required (L1)</td>
+                      <td className="py-3.5 px-4 font-semibold text-rose-700">Required (L2)</td>
                       <td className="py-3.5 px-4 text-slate-600">Exceeds limits by &gt;5 points or margin breach. Multi-tier sign-off.</td>
                     </tr>
                   </tbody>
@@ -480,9 +477,9 @@ function DiscountSimulator() {
             <button
               onClick={handleRunBlendedSimulation}
               disabled={blendedLoading}
-              className="w-full py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition"
+              className="w-full py-2 rounded-lg bg-zinc-900 hover:bg-black text-white text-xs font-semibold shadow-xs transition"
             >
-              {blendedLoading ? 'Evaluating Quotation...' : '⚡ Run Blended Quotation Risk Evaluation'}
+              {blendedLoading ? 'Evaluating Quotation...' : 'Run Blended Quotation Risk Evaluation'}
             </button>
           </div>
         </div>
@@ -497,7 +494,7 @@ function DiscountSimulator() {
                   className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
                     validationResult.isOverLimit
                       ? 'bg-rose-50 border-rose-200 text-rose-700'
-                      : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                      : 'bg-zinc-100 border-zinc-200 text-zinc-800'
                   }`}
                 >
                   {validationResult.statusBadge || (validationResult.isOverLimit ? 'OVER LIMIT' : 'COMPLIANT')}
@@ -526,16 +523,16 @@ function DiscountSimulator() {
           )}
 
           {blendedResult && (
-            <div className="p-4 rounded-xl border border-teal-200 bg-teal-50/40 shadow-xs">
+            <div className="p-4 rounded-xl border border-zinc-200 bg-zinc-50/50 shadow-xs">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-teal-900">Blended Risk Quotation Score</span>
+                <span className="text-xs font-bold text-zinc-900">Blended Risk Quotation Score</span>
                 <span
                   className={`px-2.5 py-0.5 rounded-full text-xs font-black uppercase ${
                     blendedResult.blendedRiskScore === 'HIGH'
                       ? 'bg-rose-100 text-rose-800'
                       : blendedResult.blendedRiskScore === 'MEDIUM'
                       ? 'bg-amber-100 text-amber-800'
-                      : 'bg-emerald-100 text-emerald-800'
+                      : 'bg-zinc-100 text-zinc-800'
                   }`}
                 >
                   {blendedResult.blendedRiskScore} RISK
@@ -545,7 +542,7 @@ function DiscountSimulator() {
               <p className="text-xs text-slate-700 mb-2">{blendedResult.flagReasonSummary}</p>
 
               {blendedResult.financials && (
-                <div className="grid grid-cols-3 gap-2 text-center text-xs pt-2 border-t border-teal-100">
+                <div className="grid grid-cols-3 gap-2 text-center text-xs pt-2 border-t border-zinc-200">
                   <div>
                     <span className="text-[10px] text-slate-400 block">Revenue</span>
                     <span className="font-bold text-slate-900">${blendedResult.financials.totalRevenue?.toLocaleString()}</span>
@@ -556,7 +553,7 @@ function DiscountSimulator() {
                   </div>
                   <div>
                     <span className="text-[10px] text-slate-400 block">Net Margin</span>
-                    <span className="font-bold text-emerald-600">{blendedResult.financials.totalMarginPercent}%</span>
+                    <span className="font-bold text-zinc-900">{blendedResult.financials.totalMarginPercent}%</span>
                   </div>
                 </div>
               )}
