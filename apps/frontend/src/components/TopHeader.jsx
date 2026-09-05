@@ -17,7 +17,7 @@ export default function TopHeader({ onToggleSidebar, isCollapsed = false }) {
 
   return (
     <header className="h-14 bg-white/95 border-b border-slate-200/80 backdrop-blur-md sticky top-0 z-30 px-4 sm:px-6 flex items-center justify-between">
-      {/* Left side: Sidebar Toggle + Outlet Switcher */}
+      {/* Left side: Sidebar Toggle */}
       <div className="flex items-center gap-3">
         {/* Toggle Sidebar Button (Collapse to single-line app icon mode / Expand) */}
         <button
@@ -33,15 +33,6 @@ export default function TopHeader({ onToggleSidebar, isCollapsed = false }) {
             <rect x="3" y="13.8" width="14" height="2.2" rx="1.1" />
           </svg>
         </button>
-
-        {/* Tenant / Outlet Selector matching "Shadcn Outlet" */}
-        <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl hover:bg-slate-50 cursor-pointer border border-transparent hover:border-slate-200/60 transition select-none">
-          <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-xs" />
-          <span className="text-xs font-semibold text-slate-800">DealFlow Outlet</span>
-          <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-          </svg>
-        </div>
       </div>
 
       {/* Right side: User Session & Avatar */}
