@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { useAuth } from '@/context/AuthContext';
+import { toast } from 'react-toastify';
 
 export default function ProfilePage() {
   const { user, updateProfile, initiatePasswordReset, verifyPasswordReset } = useAuth();
@@ -27,7 +28,6 @@ export default function ProfilePage() {
   const [bannerSrc, setBannerSrc] = useState('/cover_banner.jpg');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
 
   // Profile Edit Modal State
   const [showEditModal, setShowEditModal] = useState(false);
@@ -88,8 +88,7 @@ export default function ProfilePage() {
   }, [user]);
 
   const showToast = (msg) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 3500);
+    toast.success(msg);
   };
 
   // Avatar upload handler using MinIO Object Storage
@@ -286,7 +285,7 @@ export default function ProfilePage() {
     if (r === 'SALES_MANAGER') {
       return [
         { label: 'Approvals Pending (L1)', value: '2 Deals', sub: 'Medium risk reviews', color: 'text-amber-600' },
-        { label: 'Team Compliance', value: '98.4%', sub: 'Discount ceilings met', color: 'text-emerald-600' },
+        { label: 'Team Compliance', value: '98.4%', sub: 'Discount ceilings met', color: 'text-zinc-900' },
         { label: 'Governed Pipeline', value: '$22,870', sub: 'Active deal value', color: 'text-slate-900' },
         { label: 'Direct Reports', value: '6 Reps', sub: 'Sales Ops team', color: 'text-indigo-600' },
       ];
@@ -294,7 +293,7 @@ export default function ProfilePage() {
     if (r === 'FINANCE') {
       return [
         { label: 'Urgent Margin Audits (L2)', value: '1 Deal', sub: 'High risk approval', color: 'text-rose-600' },
-        { label: 'Avg Gross Margin', value: '28.9%', sub: 'Target threshold > 20%', color: 'text-emerald-600' },
+        { label: 'Avg Gross Margin', value: '28.9%', sub: 'Target threshold > 20%', color: 'text-zinc-900' },
         { label: 'Pending Invoices', value: '$10,934', sub: 'Awaiting fulfillment', color: 'text-amber-600' },
         { label: 'Financial Compliance', value: '100%', sub: 'Argon2 & audit logs', color: 'text-indigo-600' },
       ];
@@ -303,16 +302,16 @@ export default function ProfilePage() {
       return [
         { label: 'Active Personas', value: '5 Roles', sub: 'Admin, Rep, Mgr, Fin, Cust', color: 'text-indigo-600' },
         { label: 'Global Pipeline', value: '$22,870', sub: 'PostgreSQL live database', color: 'text-slate-900' },
-        { label: 'Discount Ceilings', value: '6 Active', sub: 'Tiers & categories', color: 'text-emerald-600' },
-        { label: 'System Health', value: '100%', sub: 'PostgreSQL 16 healthy', color: 'text-emerald-600' },
+        { label: 'Discount Ceilings', value: '6 Active', sub: 'Tiers & categories', color: 'text-zinc-900' },
+        { label: 'System Health', value: '100%', sub: 'PostgreSQL 16 healthy', color: 'text-zinc-900' },
       ];
     }
     // Default: SALES_REP
     return [
       { label: 'Active Proposals', value: '4 Quotes', sub: 'CPQ lifecycle', color: 'text-slate-900' },
       { label: 'Pipeline Value', value: '$12,215', sub: 'Assigned quota', color: 'text-indigo-600' },
-      { label: 'Win Rate', value: '84.2%', sub: 'Confirmed agreements', color: 'text-emerald-600' },
-      { label: 'Avg Line Margin', value: '31.4%', sub: 'Within policy limits', color: 'text-emerald-600' },
+      { label: 'Win Rate', value: '84.2%', sub: 'Confirmed agreements', color: 'text-zinc-900' },
+      { label: 'Avg Line Margin', value: '31.4%', sub: 'Within policy limits', color: 'text-zinc-900' },
     ];
   }, [profile.rawRole]);
 
@@ -324,7 +323,7 @@ export default function ProfilePage() {
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">Executive User Profile</h1>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-900 border border-zinc-300">
                 PostgreSQL Synced
               </span>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1.5">
@@ -358,14 +357,6 @@ export default function ProfilePage() {
             </button>
           </div>
         </div>
-
-        {/* Floating Toast */}
-        {toastMessage && (
-          <div className="fixed bottom-6 right-6 z-50 bg-slate-950 text-white text-xs font-semibold px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 border border-slate-800 animate-in fade-in slide-in-from-bottom-4">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <span>{toastMessage}</span>
-          </div>
-        )}
 
         <div className="space-y-6">
           {/* ================= HERO CARD: Cover Banner + Centered Avatar ================= */}
@@ -458,7 +449,7 @@ export default function ProfilePage() {
             {/* Bottom Meta Strip */}
             <div className="px-6 py-3 border-t border-slate-100 bg-slate-50/60 flex flex-wrap items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-2 font-semibold text-slate-700">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-zinc-900 animate-pulse" />
                 <span>Active Organizational Role: <span className="font-bold text-slate-900">{profile.rawRole}</span></span>
               </div>
               <span className="text-[11px] text-slate-400 font-mono">ID: {user?.id ? user.id.slice(0, 18) + '...' : 'Live PostgreSQL'}</span>
@@ -484,7 +475,7 @@ export default function ProfilePage() {
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Account Credentials</h3>
-                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Verified</span>
+                    <span className="text-[10px] font-bold text-zinc-900 bg-zinc-100 px-2 py-0.5 rounded-full border border-zinc-300">Verified</span>
                   </div>
                   <div className="space-y-3 text-xs text-slate-700">
                     <div className="flex items-center gap-2.5">
@@ -534,7 +525,7 @@ export default function ProfilePage() {
                   <div className="p-3 rounded-xl bg-slate-50 text-[11px] text-slate-600 space-y-1">
                     <div className="flex justify-between">
                       <span>CPQ Creation:</span>
-                      <span className="font-bold text-emerald-600">Authorized</span>
+                      <span className="font-bold text-zinc-900">Authorized</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Discount Deviations:</span>
@@ -577,7 +568,7 @@ export default function ProfilePage() {
                       <p className="text-[11px] text-slate-500 mt-0.5">
                         Customer: <span className="font-semibold text-slate-800">Aryan Sondharva</span> (Bronze Tier) • Total: $1,584 USD • Margin: 27.4%
                       </p>
-                      <span className="inline-block mt-1.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <span className="inline-block mt-1.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-zinc-100 text-zinc-900 border border-zinc-300">
                         Within Bronze 5% policy • Low Risk
                       </span>
                     </div>
