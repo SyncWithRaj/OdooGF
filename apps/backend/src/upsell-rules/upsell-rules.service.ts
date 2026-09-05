@@ -27,6 +27,13 @@ export class UpsellRulesService {
       throw new NotFoundException(`Recommended product '${dto.recommendedProductId}' not found`);
     }
 
+    await this.prisma.adminCuratedUpsell.deleteMany({
+      where: {
+        baseProductId: dto.baseProductId,
+        recommendedProductId: dto.recommendedProductId,
+      },
+    });
+
     return this.prisma.adminCuratedUpsell.upsert({
       where: {
         baseProductId_rank: {

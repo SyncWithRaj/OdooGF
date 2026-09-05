@@ -299,5 +299,26 @@ export const apiClient = {
       body: JSON.stringify({ productIds }),
     });
   },
+
+  // ==================== Deal Health & Analytics (Screen 14 / B9) ====================
+  async getDealHealth() {
+    return apiRequest('/api/analytics/deal-health');
+  },
+
+  async nudgeRep(data) {
+    return apiRequest('/api/analytics/nudge', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async getReports(filter = {}) {
+    const params = new URLSearchParams();
+    Object.entries(filter).forEach(([k, v]) => {
+      if (v) params.append(k, v);
+    });
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    return apiRequest(`/api/analytics/reports${qs}`);
+  },
 };
 
