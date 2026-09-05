@@ -1,20 +1,37 @@
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Enable CORS
+  // Enable CORS for frontend and mobile access
   app.enableCors({
     origin: '*',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
   });
+
+  // Global DTO Validation Pipe
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: false,
+    }),
+  );
 
   // Swagger Documentation setup mounted at /api/docs
   const config = new DocumentBuilder()
-    .setTitle('Odoo Hackathon API')
-    .setDescription('Interactive API documentation for hackathon endpoints')
+    .setTitle('DealFlow360 API')
+    .setDescription('DealFlow360 — Intelligent, Self-Governing Sales Operations Platform API')
     .setVersion('1.0')
+    .addBearerAuth()
+    .addTag('Authentication', 'JWT login, OTP signup, password reset, token rotation')
     .addTag('Health', 'System health and database connectivity probe')
     .build();
 

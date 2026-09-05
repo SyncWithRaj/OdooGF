@@ -140,7 +140,8 @@ export function AuthProvider({ children }) {
         isAuthenticated: !!user,
         loading,
         login,
-        register,
+        initiateSignup,
+        verifySignup,
         logout,
         hasRole,
       }}

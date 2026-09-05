@@ -39,3 +39,6 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+images/
+DealFlow360.pdf
