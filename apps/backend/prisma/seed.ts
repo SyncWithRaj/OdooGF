@@ -11,6 +11,7 @@ async function main() {
   await prisma.invoice.deleteMany();
   await prisma.subscriptionProrationLog.deleteMany();
   await prisma.subscription.deleteMany();
+  await prisma.subscriptionPlanTemplate.deleteMany();
   await prisma.fulfillmentSplitItem.deleteMany();
   await prisma.fulfillmentOrder.deleteMany();
   await prisma.approvalAuditLog.deleteMany();
@@ -328,6 +329,44 @@ async function main() {
   });
 
   console.log('✅ AI Upsell / Cross-Sell pairing rules seeded.');
+
+  // 9. Seed Subscription Plan Templates (A5)
+  await prisma.subscriptionPlanTemplate.createMany({
+    data: [
+      {
+        code: 'MONTHLY_STANDARD',
+        name: 'Monthly Flexible Plan',
+        description: 'Billed monthly. Standard proration calculated by calendar days.',
+        interval: RecurringInterval.MONTHLY,
+        discountPercent: 0.0,
+        prorationPolicy: 'CALENDAR_DAYS',
+        cancellationPolicy: 'PRORATED_REFUND',
+        isActive: true,
+      },
+      {
+        code: 'QUARTERLY_PRO',
+        name: 'Quarterly Growth Plan',
+        description: 'Billed quarterly with 5% discount incentive.',
+        interval: RecurringInterval.QUARTERLY,
+        discountPercent: 5.0,
+        prorationPolicy: 'CALENDAR_DAYS',
+        cancellationPolicy: 'PRORATED_REFUND',
+        isActive: true,
+      },
+      {
+        code: 'ANNUAL_SAVER',
+        name: 'Annual Enterprise Plan',
+        description: 'Billed annually with 15% discount incentive.',
+        interval: RecurringInterval.YEARLY,
+        discountPercent: 15.0,
+        prorationPolicy: 'FIXED_30_DAYS',
+        cancellationPolicy: 'NO_REFUND',
+        isActive: true,
+      },
+    ],
+  });
+
+  console.log('✅ Subscription Plan Templates seeded.');
 
   console.log('🎉 DealFlow360 seed complete!');
 }

@@ -431,8 +431,22 @@ model FulfillmentSplitItem {
 }
 
 // ------------------------------------------------------------------------------
-// 10. SUBSCRIPTIONS & HYBRID BILLING (Screens 9 & 10)
+// 10. SUBSCRIPTIONS & HYBRID BILLING (Screens 9 & 10, A5)
 // ------------------------------------------------------------------------------
+
+model SubscriptionPlanTemplate {
+  id                 String            @id @default(uuid())
+  code               String            @unique // e.g. "MONTHLY_STANDARD", "ANNUAL_SAVER"
+  name               String            // e.g. "Monthly Recurring Plan"
+  description        String?
+  interval           RecurringInterval @default(MONTHLY)
+  discountPercent    Float             @default(0.0) // Discount incentive for longer term
+  prorationPolicy    String            @default("CALENDAR_DAYS") // "CALENDAR_DAYS" | "FIXED_30_DAYS"
+  cancellationPolicy String            @default("PRORATED_REFUND") // "PRORATED_REFUND" | "NO_REFUND"
+  isActive           Boolean           @default(true)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+}
 
 model Subscription {
   id                 String             @id @default(uuid())
