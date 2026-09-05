@@ -11,11 +11,15 @@ import {
   SubscriptionStatus,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { InvoiceQueryDto, PayInvoiceDto } from './dto/invoice.dto';
+import { InvoiceQueryDto, PayInvoiceDto, VerifyRazorpayPaymentDto } from './dto/invoice.dto';
+import { RazorpayService } from './razorpay.service';
 
 @Injectable()
 export class InvoicesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly razorpayService: RazorpayService,
+  ) {}
 
   // ----------------------------------------------------------------------------
   // B9: GENERATE SPLIT INVOICES (ONE-TIME & RECURRING) FROM CONFIRMED QUOTE
@@ -255,6 +259,71 @@ export class InvoicesService {
       isFullyPaid: updatedInvoice.status === InvoiceStatus.PAID,
       totalPaidSoFar: Number(totalPaid.toFixed(2)),
       remainingBalance: Math.max(0, Number((invoice.amount - totalPaid).toFixed(2))),
+      invoice: updatedInvoice,
+    };
+  }
+
+  // ----------------------------------------------------------------------------
+  // RAZORPAY — Create Order
+  // ----------------------------------------------------------------------------
+  async createRazorpayOrder(id: string, currency = 'INR') {
+    const invoice = await this.prisma.invoice.findUnique({ where: { id } });
+
+    if (!invoice) {
+      throw new NotFoundException(`Invoice with ID '${id}' not found`);
+    }
+    if (invoice.status === InvoiceStatus.PAID) {
+      throw new BadRequestException('This invoice has already been fully paid');
+    }
+
+    const order = await this.razorpayService.createOrder(id, invoice.amount, currency);
+    return { success: true, ...order, invoiceId: id, invoiceAmount: invoice.amount };
+  }
+
+  // ----------------------------------------------------------------------------
+  // RAZORPAY — Verify Payment Signature & Mark Invoice Paid
+  // ----------------------------------------------------------------------------
+  async verifyRazorpayPayment(id: string, dto: VerifyRazorpayPaymentDto) {
+    const invoice = await this.prisma.invoice.findUnique({
+      where: { id },
+      include: { payments: true },
+    });
+
+    if (!invoice) {
+      throw new NotFoundException(`Invoice with ID '${id}' not found`);
+    }
+    if (invoice.status === InvoiceStatus.PAID) {
+      return { success: true, message: 'Invoice already paid', invoice };
+    }
+
+    // Throws BadRequestException if signature is invalid
+    this.razorpayService.verifySignature(
+      dto.razorpayOrderId,
+      dto.razorpayPaymentId,
+      dto.razorpaySignature,
+    );
+
+    // Record the payment entry
+    const payment = await this.prisma.payment.create({
+      data: {
+        invoiceId: id,
+        amount: invoice.amount,
+        paymentMethod: 'Razorpay',
+        reference: dto.razorpayPaymentId,
+      },
+    });
+
+    // Mark invoice as PAID
+    const updatedInvoice = await this.prisma.invoice.update({
+      where: { id },
+      data: { status: InvoiceStatus.PAID, paidAt: new Date() },
+      include: { payments: true, customer: true },
+    });
+
+    return {
+      success: true,
+      message: 'Payment verified and invoice marked as paid',
+      payment,
       invoice: updatedInvoice,
     };
   }

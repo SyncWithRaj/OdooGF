@@ -262,7 +262,7 @@ export async function PATCH(request) {
   }
 
   try {
-    const { id, action, note, currentUser } = await request.json();
+    const { id, action, note, currentUser, newStatus } = await request.json();
     const existing = await prisma.quotation.findUnique({
       where: { id },
       include: {
@@ -310,7 +310,6 @@ export async function PATCH(request) {
       nextStage = 'APPROVED';
       approvalAction = 'APPROVED';
     } else if (action === 'UPDATE_STATUS') {
-      const { newStatus } = await request.clone().json().catch(() => ({}));
       if (newStatus) {
         nextStatus = newStatus;
       }
