@@ -291,5 +291,13 @@ export const apiClient = {
       body: JSON.stringify(ruleData),
     });
   },
+
+  // ==================== AI Recommendation Engine ====================
+  async getCartRecommendations(productIds) {
+    return apiRequest('/api/config/upsell-rules/cart-recommendations', {
+      method: 'POST',
+      body: JSON.stringify({ productIds }),
+    });
+  },
 };
 

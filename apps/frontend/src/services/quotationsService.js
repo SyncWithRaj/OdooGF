@@ -225,5 +225,16 @@ export const quotationsService = {
     const data = await res.json();
     return data.quotation;
   },
+
+  // 13. Fetch AI Recommendations for cart products
+  async getAiRecommendations(productIds) {
+    try {
+      if (!productIds || productIds.length === 0) return [];
+      return await apiClient.getCartRecommendations(productIds);
+    } catch (e) {
+      console.warn('Could not fetch AI recommendations:', e);
+      return [];
+    }
+  },
 };
 

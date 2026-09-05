@@ -45,6 +45,8 @@ export default function QuotationsPage() {
   const [newQuoteNotes, setNewQuoteNotes] = useState('');
   const [blendedEvaluation, setBlendedEvaluation] = useState(null);
   const [isCalculatingRisk, setIsCalculatingRisk] = useState(false);
+  const [aiRecommendations, setAiRecommendations] = useState([]);
+  const [isLoadingAiRecs, setIsLoadingAiRecs] = useState(false);
 
   // Flash notification helper
   const showToast = (message, type = 'success') => {
@@ -108,6 +110,65 @@ export default function QuotationsPage() {
     };
   }, [isCreateModalOpen, newQuoteCustomer, newQuoteLines]);
 
+  // B5: Fetch AI Upsell & Cross-Sell Recommendations in Real Time (Screen 4)
+  useEffect(() => {
+    if (!isCreateModalOpen || newQuoteLines.length === 0) {
+      setAiRecommendations([]);
+      return;
+    }
+
+    let isCancelled = false;
+    async function fetchAiRecs() {
+      setIsLoadingAiRecs(true);
+      try {
+        const prodIds = newQuoteLines.map((l) => l.productId).filter(Boolean);
+        const recs = await quotationsService.getAiRecommendations(prodIds);
+        if (!isCancelled) {
+          setAiRecommendations(Array.isArray(recs) ? recs : []);
+        }
+      } catch (err) {
+        console.warn('AI recommendation fetch error:', err);
+      } finally {
+        if (!isCancelled) setIsLoadingAiRecs(false);
+      }
+    }
+
+    const timer = setTimeout(fetchAiRecs, 300);
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [isCreateModalOpen, newQuoteLines]);
+
+  const handleAddAiRecommendation = (rec) => {
+    const existing = newQuoteLines.find((l) => l.productId === rec.productId);
+    if (existing) {
+      setNewQuoteLines((prev) =>
+        prev.map((l) => (l.productId === rec.productId ? { ...l, quantity: l.quantity + 1 } : l))
+      );
+    } else {
+      const prod = products.find((p) => p.id === rec.productId) || {
+        id: rec.productId,
+        name: rec.name,
+        basePrice: rec.basePrice,
+        baseCost: rec.baseCost,
+        category: rec.category,
+      };
+      setNewQuoteLines((prev) => [
+        ...prev,
+        {
+          productId: prod.id,
+          productName: prod.name,
+          category: prod.category || 'HARDWARE',
+          quantity: 1,
+          unitPrice: prod.basePrice,
+          baseCost: prod.baseCost,
+          discountPercent: 0,
+        },
+      ]);
+    }
+    showToast(`Added ${rec.name} to quotation!`, 'success');
+  };
 
   // Filtered Quotations
   const filteredQuotations = useMemo(() => {
@@ -1065,6 +1126,76 @@ export default function QuotationsPage() {
                     </table>
                   </div>
                 </div>
+
+                {/* 2.5 AI UPSELL & CROSS-SELL RECOMMENDATIONS (Screen 4 / B5) */}
+                {newQuoteLines.length > 0 && (
+                  <div className="p-3.5 rounded-lg bg-indigo-50/50 border border-indigo-100 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-indigo-600 text-white text-xs font-bold">
+                          ✨
+                        </span>
+                        <div>
+                          <h4 className="text-xs font-semibold text-indigo-950">
+                            AI Upsell & Cross-Sell Recommendations
+                          </h4>
+                          <p className="text-[11px] text-indigo-700/80">
+                            Ranked by FP-Growth Market Basket Analysis & Admin Governance Feeds
+                          </p>
+                        </div>
+                      </div>
+                      {isLoadingAiRecs && (
+                        <span className="text-[11px] text-indigo-600 animate-pulse font-medium">
+                          Mining patterns...
+                        </span>
+                      )}
+                    </div>
+
+                    {aiRecommendations.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                        {aiRecommendations.slice(0, 3).map((rec) => (
+                          <div
+                            key={rec.productId}
+                            className="bg-white p-2.5 rounded-md border border-indigo-200/80 shadow-xs flex flex-col justify-between hover:border-indigo-400 transition"
+                          >
+                            <div>
+                              <div className="flex items-center justify-between gap-1 mb-1">
+                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800">
+                                  {rec.source === 'ADMIN_CURATED' ? `👑 Priority #${rec.feedRank}` : `🤖 Score: ${rec.score}`}
+                                </span>
+                                <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60">
+                                  {rec.promotionTag || `+${rec.marginPct || 25}% Margin`}
+                                </span>
+                              </div>
+                              <h5 className="text-xs font-medium text-gray-900 line-clamp-1" title={rec.name}>
+                                {rec.name}
+                              </h5>
+                              <p className="text-[11px] text-gray-500 mt-0.5">
+                                ${rec.basePrice} <span className="text-gray-400">({rec.marginPct || 30}% margin)</span>
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleAddAiRecommendation(rec)}
+                              className="mt-2 w-full py-1 px-2 rounded text-[11px] font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-600 hover:text-white border border-indigo-200/80 hover:border-transparent transition flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                              </svg>
+                              1-Click Add
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      !isLoadingAiRecs && (
+                        <p className="text-[11px] text-indigo-600/70 italic py-1">
+                          No additional high-affinity pairings mined for current item combination.
+                        </p>
+                      )
+                    )}
+                  </div>
+                )}
 
                 {/* 3. ORDER FINANCIAL SUMMARY & RISK ASSESSMENT (Clean light card) */}
                 {blendedEvaluation && (

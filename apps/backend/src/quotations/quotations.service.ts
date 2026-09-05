@@ -618,6 +618,8 @@ export class QuotationsService {
       ruleId: item.productId,
       baseProductId: currentProductIds[0],
       baseProductName: item.baseProductName || 'Base Cart Item',
+      suggestedProductId: item.productId,
+      suggestedProductName: item.name,
       recommendedProduct: {
         id: item.productId,
         sku: item.sku,
@@ -658,6 +660,11 @@ export class QuotationsService {
       );
     }
 
+    const targetProdId = dto.recommendedProductId || dto.productId;
+    if (!targetProdId) {
+      throw new BadRequestException('productId or recommendedProductId is required');
+    }
+
     const qtyToAdd = Math.max(1, dto.quantity ?? 1);
 
     // Existing lines mapped to DTO format
@@ -670,12 +677,12 @@ export class QuotationsService {
     }));
 
     // If item already exists in quote, increment quantity instead of creating duplicate line
-    const existingIndex = currentLines.findIndex((l) => l.productId === dto.recommendedProductId);
+    const existingIndex = currentLines.findIndex((l) => l.productId === targetProdId);
     if (existingIndex >= 0) {
       currentLines[existingIndex].quantity += qtyToAdd;
     } else {
       currentLines.push({
-        productId: dto.recommendedProductId,
+        productId: targetProdId,
         quantity: qtyToAdd,
         discountPercent: Math.max(0, dto.discountPercent ?? 0.0),
       });

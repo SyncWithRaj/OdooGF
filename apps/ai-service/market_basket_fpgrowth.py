@@ -38,7 +38,7 @@ SAMPLE_TRANSACTIONS = [
 ]
 
 
-def run_fpgrowth_ml(transactions: List[List[str]], min_support: float = 0.1, min_lift: float = 1.05):
+def run_fpgrowth_ml(transactions: List[List[str]], min_support: float = 0.002, min_lift: float = 1.0):
     """
     Executes FP-Growth using mlxtend if installed, otherwise falls back to
     built-in native FP-tree association rule miner.
@@ -123,7 +123,39 @@ def fallback_mine_rules(transactions: List[List[str]], min_support: float, min_l
     return rules
 
 
-def recommend_for_cart(cart_items: List[str], transactions: List[List[str]] = SAMPLE_TRANSACTIONS) -> List[Dict[str, Any]]:
+def load_live_database():
+    """Extracts live transactions and product catalog directly from PostgreSQL database."""
+    import subprocess
+    catalog = dict(CATALOG)
+    transactions = []
+    try:
+        cat_raw = subprocess.check_output(
+            ["docker", "exec", "odoo_postgres", "psql", "-U", "postgres", "-d", "odoo_hackathon", "-t", "-A", "-F", "|",
+             "-c", 'SELECT sku, name, "basePrice", "baseCost", "isPromoted" FROM "Product";'],
+            text=True
+        )
+        for line in cat_raw.strip().split("\n"):
+            parts = line.split("|")
+            if len(parts) >= 5:
+                sku, name, price, cost, promo = parts[0], parts[1], float(parts[2]), float(parts[3]), parts[4] == 't'
+                catalog[sku] = {"name": name, "price": price, "cost": cost, "promoted": promo}
+
+        tx_raw = subprocess.check_output(
+            ["docker", "exec", "odoo_postgres", "psql", "-U", "postgres", "-d", "odoo_hackathon", "-t", "-A",
+             "-c", 'SELECT string_agg(p.sku, \',\') FROM "QuotationLine" ql JOIN "Product" p ON ql."productId" = p.id GROUP BY ql."quotationId";'],
+            text=True
+        )
+        for line in tx_raw.strip().split("\n"):
+            items = [i.strip() for i in line.split(",") if i.strip()]
+            if items:
+                transactions.append(items)
+        return catalog, transactions
+    except Exception as e:
+        print(f"[WARN] Could not connect to live PostgreSQL: {e}. Falling back to sample dataset.", file=sys.stderr)
+        return CATALOG, SAMPLE_TRANSACTIONS
+
+
+def recommend_for_cart(cart_items: List[str], transactions: List[List[str]] = SAMPLE_TRANSACTIONS, catalog: Dict[str, Any] = CATALOG) -> List[Dict[str, Any]]:
     rules = run_fpgrowth_ml(transactions)
     cart_set = set(cart_items)
     candidates = {}
@@ -135,7 +167,7 @@ def recommend_for_cart(cart_items: List[str], transactions: List[List[str]] = SA
         # Check if cart contains the rule antecedent
         if antecedents.issubset(cart_set) and consequents:
             for c in consequents:
-                meta = CATALOG.get(c, {"name": c, "price": 100.0, "cost": 50.0, "promoted": False})
+                meta = catalog.get(c, {"name": c, "price": 100.0, "cost": 50.0, "promoted": False})
                 price = meta["price"]
                 cost = meta["cost"]
                 margin_pct = round(((price - cost) / price) * 100, 1) if price > 0 else 0
@@ -168,9 +200,16 @@ def recommend_for_cart(cart_items: List[str], transactions: List[List[str]] = SA
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="DealFlow360 FP-Growth Affinity Recommendation Engine")
     parser.add_argument("--cart", nargs="+", default=["HW-LAP-PRO14"], help="Current items in quote cart")
+    parser.add_argument("--live", action="store_true", help="Mine live transactions from PostgreSQL database")
     args = parser.parse_args()
 
-    recommendations = recommend_for_cart(args.cart)
+    if args.live:
+        cat, tx = load_live_database()
+        print(f"🔗 Connected to live database: {len(tx)} transactions, {len(cat)} products cataloged.")
+        recommendations = recommend_for_cart(args.cart, tx, cat)
+    else:
+        recommendations = recommend_for_cart(args.cart, SAMPLE_TRANSACTIONS, CATALOG)
+
     print(f"\n=======================================================")
     print(f"DealFlow360 AI Affinity Recommendations for Cart: {args.cart}")
     print(f"=======================================================")
