@@ -121,6 +121,10 @@ model User {
   role             Role      @default(SALES_REP)
   teamName         String?   @default("Direct Sales")
   isEmailVerified  Boolean   @default(false)
+  phone            String?
+  location         String?
+  avatarUrl        String?
+  bannerUrl        String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
