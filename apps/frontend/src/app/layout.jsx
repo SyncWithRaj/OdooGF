@@ -1,5 +1,7 @@
 import './globals.css';
+import 'react-toastify/dist/ReactToastify.css';
 import { AuthProvider } from '@/context/AuthContext';
+import { ToastContainer } from 'react-toastify';
 
 export const metadata = {
   title: 'DealFlow360',
@@ -9,8 +11,19 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-[#F8F9FA] text-slate-900 antialiased">
-        <AuthProvider>{children}</AuthProvider>
+      <body className="min-h-screen bg-[#FAFAFA] text-zinc-900 antialiased">
+        <AuthProvider>
+          {children}
+          <ToastContainer
+            position="bottom-right"
+            autoClose={3000}
+            hideProgressBar
+            newestOnTop
+            closeOnClick
+            pauseOnHover
+            theme="dark"
+          />
+        </AuthProvider>
       </body>
     </html>
   );
