@@ -23,13 +23,22 @@ export class PortalService {
   async getPortalQuotes() {
     return this.prisma.quotation.findMany({
       where: {
-        status: {
-          in: [
-            QuotationStatus.SENT_TO_CUSTOMER,
-            QuotationStatus.CONFIRMED,
-            QuotationStatus.FULFILLED,
-          ],
-        },
+        OR: [
+          {
+            status: {
+              in: [
+                QuotationStatus.SENT_TO_CUSTOMER,
+                QuotationStatus.UNDER_NEGOTIATION,
+                QuotationStatus.CONFIRMED,
+                QuotationStatus.FULFILLED,
+              ],
+            },
+          },
+          {
+            status: QuotationStatus.PENDING_APPROVAL,
+            counterDiscountProposed: { gt: 0 },
+          },
+        ],
       },
       select: {
         id: true,
@@ -41,10 +50,28 @@ export class PortalService {
         orderDiscountPercent: true,
         totalAmount: true,
         customerTermsConfirmed: true,
+        counterDiscountProposed: true,
         requestedDeliveryDate: true,
         promisedDeliveryDate: true,
         createdAt: true,
         updatedAt: true,
+        salesRep: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+        comments: {
+          select: {
+            id: true,
+            authorName: true,
+            authorRole: true,
+            message: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        },
         customer: {
           select: {
             id: true,
@@ -77,8 +104,8 @@ export class PortalService {
           orderBy: { createdAt: 'asc' },
         },
       },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
+      orderBy: { updatedAt: 'desc' },
+      take: 60,
     });
   }
 
