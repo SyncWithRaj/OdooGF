@@ -1,0 +1,21 @@
+{
+  "name": "odoo-hackathon",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter backend dev\" \"pnpm --filter frontend dev\"",
+    "dev:backend": "pnpm --filter backend dev",
+    "dev:frontend": "pnpm --filter frontend dev",
+    "build": "pnpm --recursive run build",
+    "build:backend": "pnpm --filter backend build",
+    "build:frontend": "pnpm --filter frontend build",
+    "format:backend": "pnpm --filter backend format",
+    "lint:backend": "pnpm --filter backend lint",
+    "up": "docker compose -f infra/docker-compose.yml up -d",
+    "down": "docker compose -f infra/docker-compose.yml down",
+    "studio": "pnpm --filter backend prisma studio"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
