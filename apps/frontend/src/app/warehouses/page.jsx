@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { apiClient } from '@/services/apiClient';
+import { toast } from 'react-toastify';
 
 export default function WarehousesPage() {
   const [warehouses, setWarehouses] = useState([]);
@@ -12,7 +13,6 @@ export default function WarehousesPage() {
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [notification, setNotification] = useState(null);
 
   // Modals state
   const [isFacilityModalOpen, setIsFacilityModalOpen] = useState(false);
@@ -43,8 +43,13 @@ export default function WarehousesPage() {
   });
 
   const showToast = (message, type = 'success') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 4000);
+    if (type === 'error') {
+      toast.error(message);
+    } else if (type === 'info') {
+      toast.info(message);
+    } else {
+      toast.success(message);
+    }
   };
 
   const loadWarehouses = async () => {
@@ -232,19 +237,6 @@ export default function WarehousesPage() {
 
   return (
     <AppLayout>
-      {/* Toast Notification */}
-      {notification && (
-        <div
-          className={`fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-xl text-xs font-semibold shadow-lg border transition-all duration-200 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-4 ${
-            notification.type === 'error'
-              ? 'bg-rose-50 border-rose-200 text-rose-700'
-              : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-          }`}
-        >
-          <span>{notification.message}</span>
-        </div>
-      )}
-
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
@@ -303,7 +295,7 @@ export default function WarehousesPage() {
         </div>
         <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
           <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Available for Quotations</p>
-          <p className="text-xl font-black text-emerald-600 mt-1">{metrics.totalAvailable}</p>
+          <p className="text-xl font-black text-slate-900 mt-1">{metrics.totalAvailable}</p>
           <p className="text-[10px] text-slate-400 mt-1">Immediately sellable stock</p>
         </div>
       </div>
@@ -372,7 +364,7 @@ export default function WarehousesPage() {
                   </div>
                   <div>
                     <span className={`block text-[10px] ${isSelected ? 'text-slate-400' : 'text-slate-400'}`}>Available</span>
-                    <span className={`font-bold ${isSelected ? 'text-emerald-300' : 'text-emerald-600'}`}>{w.totalAvailable}</span>
+                    <span className={`font-bold ${isSelected ? 'text-zinc-200' : 'text-zinc-900'}`}>{w.totalAvailable}</span>
                   </div>
                 </div>
 
@@ -473,7 +465,7 @@ export default function WarehousesPage() {
                     <td className="py-3 px-4 text-right font-medium text-amber-600">
                       {stock.reserved}
                     </td>
-                    <td className="py-3 px-4 text-right font-black text-emerald-600">
+                    <td className="py-3 px-4 text-right font-black text-slate-900">
                       {stock.available}
                     </td>
                     <td className="py-3 px-4 text-center">
@@ -483,7 +475,7 @@ export default function WarehousesPage() {
                             ? 'bg-rose-50 border-rose-200 text-rose-700'
                             : stock.available <= 20
                             ? 'bg-amber-50 border-amber-200 text-amber-700'
-                            : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                            : 'bg-zinc-100 border-zinc-300 text-zinc-900'
                         }`}
                       >
                         {stock.available === 0 ? 'Out of Stock' : stock.available <= 20 ? 'Low Stock' : 'Optimal'}
@@ -519,9 +511,10 @@ export default function WarehousesPage() {
               <h3 className="text-base font-bold text-slate-900">Register Warehouse Facility</h3>
               <button
                 onClick={() => setIsFacilityModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition"
+                aria-label="Close"
               >
-                ✕
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
             <form onSubmit={handleCreateFacility} className="space-y-4">
@@ -590,9 +583,10 @@ export default function WarehousesPage() {
               <h3 className="text-base font-bold text-slate-900">Adjust Physical Stock</h3>
               <button
                 onClick={() => setIsAdjustModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition"
+                aria-label="Close"
               >
-                ✕
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
             <form onSubmit={handleAdjustStock} className="space-y-4">
@@ -694,9 +688,10 @@ export default function WarehousesPage() {
               <h3 className="text-base font-bold text-slate-900">Set Replenishment Threshold</h3>
               <button
                 onClick={() => setIsReplenishModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition"
+                aria-label="Close"
               >
-                ✕
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
             <form onSubmit={handleSetReplenishRule} className="space-y-4">
