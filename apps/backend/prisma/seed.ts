@@ -76,6 +76,7 @@ async function main() {
   await prisma.quotation.deleteMany();
   await prisma.warehouseStock.deleteMany();
   await prisma.warehouse.deleteMany();
+  await prisma.adminCuratedUpsell.deleteMany();
   await prisma.productCoPurchaseRule.deleteMany();
   await prisma.priceListRule.deleteMany();
   await prisma.productVariant.deleteMany();
@@ -179,22 +180,58 @@ async function main() {
   console.log(`✔ Seeded ${otpsData.length} OtpVerifications.`);
 
   // --------------------------------------------------------------------------
-  // 4. Seed 500 Customers
+  // 4. Seed 500 Customers (with Geo-coordinates & Shipping Addresses)
   // --------------------------------------------------------------------------
-  console.log('🏢 Generating 500 Customers...');
+  console.log('🏢 Generating 500 Customers with Geo-coordinates...');
   const customerIds: string[] = [];
   const customersData: any[] = [];
 
-  // Demo Customers
+  // Demo Customers with exact coordinates for Haversine warehouse allocation
   const acmeId = crypto.randomUUID();
   const betaId = crypto.randomUUID();
   const deltaId = crypto.randomUUID();
   customerIds.push(acmeId, betaId, deltaId);
 
   customersData.push(
-    { id: acmeId, name: 'Acme Corp', email: 'procurement@acmecorp.com', phone: '+1-555-0199', companyName: 'Acme Enterprises Inc', tier: CustomerTier.GOLD, assignedRepId: repId, historicalAvgDisc: 8.0 },
-    { id: betaId, name: 'Beta Industries', email: 'contact@betaindustries.com', phone: '+1-555-0144', companyName: 'Beta Manufacturing Ltd', tier: CustomerTier.SILVER, assignedRepId: repId, historicalAvgDisc: 6.5 },
-    { id: deltaId, name: 'Delta LLC', email: 'deals@deltallc.com', phone: '+1-555-0188', companyName: 'Delta Logistics LLC', tier: CustomerTier.BRONZE, assignedRepId: repId, historicalAvgDisc: 4.0 }
+    {
+      id: acmeId,
+      name: 'Acme Corp',
+      email: 'procurement@acmecorp.com',
+      phone: '+1-555-0199',
+      companyName: 'Acme Enterprises Inc',
+      tier: CustomerTier.GOLD,
+      assignedRepId: repId,
+      historicalAvgDisc: 8.0,
+      shippingAddress: '100 Market St, San Francisco, CA 94105',
+      shippingLatitude: 37.7833,
+      shippingLongitude: -122.4167,
+    },
+    {
+      id: betaId,
+      name: 'Beta Industries',
+      email: 'contact@betaindustries.com',
+      phone: '+1-555-0144',
+      companyName: 'Beta Manufacturing Ltd',
+      tier: CustomerTier.SILVER,
+      assignedRepId: repId,
+      historicalAvgDisc: 6.5,
+      shippingAddress: '250 Broadway, New York, NY 10007',
+      shippingLatitude: 40.7128,
+      shippingLongitude: -74.0060,
+    },
+    {
+      id: deltaId,
+      name: 'Delta LLC',
+      email: 'deals@deltallc.com',
+      phone: '+1-555-0188',
+      companyName: 'Delta Logistics LLC',
+      tier: CustomerTier.BRONZE,
+      assignedRepId: repId,
+      historicalAvgDisc: 4.0,
+      shippingAddress: '300 N Michigan Ave, Chicago, IL 60601',
+      shippingLatitude: 41.8818,
+      shippingLongitude: -87.6231,
+    }
   );
 
   const tiers = [CustomerTier.GOLD, CustomerTier.SILVER, CustomerTier.BRONZE];
@@ -216,10 +253,13 @@ async function main() {
       tier,
       assignedRepId: rep,
       historicalAvgDisc: Number((4.0 + (i % 8) * 1.1).toFixed(1)),
+      shippingAddress: `${100 + (i * 13) % 900} Commerce Way, Sector ${i % 20}, USA`,
+      shippingLatitude: Number((25.0 + (i % 25) * 0.9).toFixed(4)),
+      shippingLongitude: Number((-120.0 + (i % 40) * 1.5).toFixed(4)),
     });
   }
   await prisma.customer.createMany({ data: customersData });
-  console.log(`✔ Seeded ${customersData.length} Customers.`);
+  console.log(`✔ Seeded ${customersData.length} Customers with Geo-coordinates.`);
 
   // --------------------------------------------------------------------------
   // 5. Seed Discount Ceilings & Matrices (3 items each - Enum Constrained)
@@ -403,22 +443,29 @@ async function main() {
   console.log(`✔ Seeded ${priceListRulesData.length} PriceListRules.`);
 
   // --------------------------------------------------------------------------
-  // 9. Seed 500 Warehouses
+  // 9. Seed 500 Warehouses (5 Regional Geo Hubs + 495 Industrial Distribution Centers)
   // --------------------------------------------------------------------------
-  console.log('🏭 Generating 500 Warehouses...');
+  console.log('🏭 Generating 500 Warehouses with Geo-Coordinates...');
   const warehouseIds: string[] = [];
   const warehousesData: any[] = [];
 
-  const mainWarehouseId = crypto.randomUUID();
-  const eastDepotId = crypto.randomUUID();
-  warehouseIds.push(mainWarehouseId, eastDepotId);
+  const sfWarehouseId = crypto.randomUUID();
+  const chicagoWarehouseId = crypto.randomUUID();
+  const newarkWarehouseId = crypto.randomUUID();
+  const dallasWarehouseId = crypto.randomUUID();
+  const seattleWarehouseId = crypto.randomUUID();
+  warehouseIds.push(sfWarehouseId, chicagoWarehouseId, newarkWarehouseId, dallasWarehouseId, seattleWarehouseId);
 
+  // 5 Geographically Distributed Warehouses for Haversine Distance & Slippage Engines
   warehousesData.push(
-    { id: mainWarehouseId, name: 'Main Warehouse', location: 'Central Depot - Bay 4', shippingCostWeight: 1.0 },
-    { id: eastDepotId, name: 'East Depot', location: 'East Coast Logistics Hub', shippingCostWeight: 1.2 }
+    { id: sfWarehouseId, name: 'San Francisco Bay Depot', location: 'South San Francisco Logistics Park, CA', latitude: 37.7749, longitude: -122.4194, defaultLeadDays: 2, shippingCostWeight: 1.0 },
+    { id: chicagoWarehouseId, name: 'Chicago Central Depot', location: "O'Hare Cargo Center, Chicago, IL", latitude: 41.8781, longitude: -87.6298, defaultLeadDays: 3, shippingCostWeight: 1.1 },
+    { id: newarkWarehouseId, name: 'Newark East Depot', location: 'Port Newark Logistics Hub, NJ', latitude: 40.7357, longitude: -74.1724, defaultLeadDays: 3, shippingCostWeight: 1.2 },
+    { id: dallasWarehouseId, name: 'Dallas Distribution Hub', location: 'DFW Logistics Interchange, Dallas, TX', latitude: 32.7767, longitude: -96.7970, defaultLeadDays: 2, shippingCostWeight: 1.05 },
+    { id: seattleWarehouseId, name: 'Seattle Pacific Hub', location: 'SeaTac Freight Center, Seattle, WA', latitude: 47.6062, longitude: -122.3321, defaultLeadDays: 4, shippingCostWeight: 1.3 }
   );
 
-  for (let i = 3; i <= 500; i++) {
+  for (let i = 6; i <= 500; i++) {
     const wid = crypto.randomUUID();
     warehouseIds.push(wid);
     const city = CITIES[i % CITIES.length];
@@ -426,6 +473,9 @@ async function main() {
       id: wid,
       name: `Warehouse Hub #${i} (${city} Logistics Center)`,
       location: `${city} Industrial District Sector ${Math.floor(i / 10) + 1}`,
+      latitude: Number((25.0 + (i % 25) * 0.9).toFixed(4)),
+      longitude: Number((-120.0 + (i % 40) * 1.5).toFixed(4)),
+      defaultLeadDays: 1 + (i % 5),
       shippingCostWeight: Number((1.0 + (i % 12) * 0.1).toFixed(2)),
     });
   }
@@ -433,22 +483,37 @@ async function main() {
   console.log(`✔ Seeded ${warehousesData.length} Warehouses.`);
 
   // --------------------------------------------------------------------------
-  // 10. Seed 500 WarehouseStock items
+  // 10. Seed 500 WarehouseStock items (Realistic Hub Distribution)
   // --------------------------------------------------------------------------
   console.log('📊 Generating 500 WarehouseStock items...');
   const stockData: any[] = [];
 
-  // Essential demo stock mappings to guarantee test flow passes
+  // Essential demo stock mappings across the 5 regional hubs (exact numbers for allocation tests)
+  // Laptop: SF(5 avail), Chicago(8 avail), Newark(10 avail), Dallas(6 avail), Seattle(4 avail) -> 33 total
   stockData.push(
-    { id: crypto.randomUUID(), warehouseId: mainWarehouseId, productId: laptopId, inStock: 50, reserved: 10, available: 40, minStockLevel: 10, reorderQuantity: 50 },
-    { id: crypto.randomUUID(), warehouseId: eastDepotId, productId: laptopId, inStock: 30, reserved: 5, available: 25, minStockLevel: 10, reorderQuantity: 50 },
-    { id: crypto.randomUUID(), warehouseId: mainWarehouseId, productId: dockingId, inStock: 80, reserved: 10, available: 70, minStockLevel: 10, reorderQuantity: 50 },
-    { id: crypto.randomUUID(), warehouseId: mainWarehouseId, productId: mouseId, inStock: 150, reserved: 0, available: 150, minStockLevel: 20, reorderQuantity: 100 },
-    { id: crypto.randomUUID(), warehouseId: eastDepotId, productId: mouseId, inStock: 80, reserved: 0, available: 80, minStockLevel: 20, reorderQuantity: 100 }
+    { id: crypto.randomUUID(), warehouseId: sfWarehouseId, productId: laptopId, inStock: 6, reserved: 1, available: 5, minStockLevel: 5, reorderQuantity: 20 },
+    { id: crypto.randomUUID(), warehouseId: chicagoWarehouseId, productId: laptopId, inStock: 10, reserved: 2, available: 8, minStockLevel: 5, reorderQuantity: 20 },
+    { id: crypto.randomUUID(), warehouseId: newarkWarehouseId, productId: laptopId, inStock: 12, reserved: 2, available: 10, minStockLevel: 5, reorderQuantity: 20 },
+    { id: crypto.randomUUID(), warehouseId: dallasWarehouseId, productId: laptopId, inStock: 7, reserved: 1, available: 6, minStockLevel: 5, reorderQuantity: 20 },
+    { id: crypto.randomUUID(), warehouseId: seattleWarehouseId, productId: laptopId, inStock: 4, reserved: 0, available: 4, minStockLevel: 5, reorderQuantity: 20 },
+
+    // Docking Station: 88 available across 5 hubs
+    { id: crypto.randomUUID(), warehouseId: sfWarehouseId, productId: dockingId, inStock: 25, reserved: 5, available: 20, minStockLevel: 10, reorderQuantity: 30 },
+    { id: crypto.randomUUID(), warehouseId: chicagoWarehouseId, productId: dockingId, inStock: 30, reserved: 5, available: 25, minStockLevel: 10, reorderQuantity: 30 },
+    { id: crypto.randomUUID(), warehouseId: newarkWarehouseId, productId: dockingId, inStock: 20, reserved: 2, available: 18, minStockLevel: 10, reorderQuantity: 30 },
+    { id: crypto.randomUUID(), warehouseId: dallasWarehouseId, productId: dockingId, inStock: 15, reserved: 0, available: 15, minStockLevel: 10, reorderQuantity: 30 },
+    { id: crypto.randomUUID(), warehouseId: seattleWarehouseId, productId: dockingId, inStock: 10, reserved: 0, available: 10, minStockLevel: 10, reorderQuantity: 30 },
+
+    // Mouse: 190 available across 5 hubs
+    { id: crypto.randomUUID(), warehouseId: sfWarehouseId, productId: mouseId, inStock: 50, reserved: 0, available: 50, minStockLevel: 20, reorderQuantity: 50 },
+    { id: crypto.randomUUID(), warehouseId: chicagoWarehouseId, productId: mouseId, inStock: 50, reserved: 0, available: 50, minStockLevel: 20, reorderQuantity: 50 },
+    { id: crypto.randomUUID(), warehouseId: newarkWarehouseId, productId: mouseId, inStock: 40, reserved: 0, available: 40, minStockLevel: 20, reorderQuantity: 50 },
+    { id: crypto.randomUUID(), warehouseId: dallasWarehouseId, productId: mouseId, inStock: 30, reserved: 0, available: 30, minStockLevel: 20, reorderQuantity: 50 },
+    { id: crypto.randomUUID(), warehouseId: seattleWarehouseId, productId: mouseId, inStock: 20, reserved: 0, available: 20, minStockLevel: 20, reorderQuantity: 50 }
   );
 
   // Distribute one unique pair per remaining warehouse to hit >= 500 rows
-  for (let i = 5; i < 500; i++) {
+  for (let i = 15; i < 500; i++) {
     const wid = warehouseIds[i % warehouseIds.length];
     const pid = productIds[i % productIds.length];
     const inStock = 50 + ((i * 13) % 400);
@@ -468,7 +533,7 @@ async function main() {
   console.log(`✔ Seeded ${stockData.length} WarehouseStock records.`);
 
   // --------------------------------------------------------------------------
-  // 11. Seed 500 ProductCoPurchaseRules (Upsell Engine)
+  // 11. Seed 500 ProductCoPurchaseRules (Upsell Co-Purchase Engine)
   // --------------------------------------------------------------------------
   console.log('🤖 Generating 500 ProductCoPurchaseRules...');
   const coPurchaseData: any[] = [];
@@ -496,7 +561,42 @@ async function main() {
   console.log(`✔ Seeded ${coPurchaseData.length} ProductCoPurchaseRules.`);
 
   // --------------------------------------------------------------------------
-  // 12. Seed 500 SubscriptionPlanTemplates
+  // 12. Seed 500 AdminCuratedUpsell records (Engine 1 Direct Feed)
+  // --------------------------------------------------------------------------
+  console.log('⭐ Generating 500 AdminCuratedUpsell records...');
+  const curatedUpsellData: any[] = [];
+
+  // Ranks 1 to 5 for Laptop Pro 14
+  curatedUpsellData.push(
+    { id: crypto.randomUUID(), baseProductId: laptopId, recommendedProductId: mouseId, rank: 1, isActive: true },
+    { id: crypto.randomUUID(), baseProductId: laptopId, recommendedProductId: dockingId, rank: 2, isActive: true },
+    { id: crypto.randomUUID(), baseProductId: laptopId, recommendedProductId: carePlanId, rank: 3, isActive: true },
+    { id: crypto.randomUUID(), baseProductId: laptopId, recommendedProductId: setupServiceId, rank: 4, isActive: true },
+    { id: crypto.randomUUID(), baseProductId: laptopId, recommendedProductId: supportSlaId, rank: 5, isActive: true }
+  );
+
+  // Generate 5 ranks for 99 additional products = 495 more records (total 500)
+  for (let p = 1; p < 100; p++) {
+    const basePid = productIds[p];
+    for (let r = 1; r <= 5; r++) {
+      const recIdx = (p * 5 + r) % productIds.length;
+      if (recIdx !== p) {
+        curatedUpsellData.push({
+          id: crypto.randomUUID(),
+          baseProductId: basePid,
+          recommendedProductId: productIds[recIdx],
+          rank: r,
+          isActive: true,
+        });
+      }
+    }
+  }
+  const finalCurated = curatedUpsellData.slice(0, 500);
+  await prisma.adminCuratedUpsell.createMany({ data: finalCurated });
+  console.log(`✔ Seeded ${finalCurated.length} AdminCuratedUpsell records.`);
+
+  // --------------------------------------------------------------------------
+  // 13. Seed 500 SubscriptionPlanTemplates
   // --------------------------------------------------------------------------
   console.log('📑 Generating 500 SubscriptionPlanTemplates...');
   const planTemplatesData: any[] = [];
@@ -524,7 +624,7 @@ async function main() {
   console.log(`✔ Seeded ${planTemplatesData.length} SubscriptionPlanTemplates.`);
 
   // --------------------------------------------------------------------------
-  // 13. Seed 500 Quotations
+  // 14. Seed 500 Quotations (Core Demo + 90-Day Baseline + Volume)
   // --------------------------------------------------------------------------
   console.log('📑 Generating 500 Quotations...');
   const quotationIds: string[] = [];
@@ -534,7 +634,10 @@ async function main() {
   const q2Id = crypto.randomUUID();
   const q3Id = crypto.randomUUID();
   const q4Id = crypto.randomUUID();
-  quotationIds.push(q1Id, q2Id, q3Id, q4Id);
+  const hq1Id = crypto.randomUUID();
+  const hq2Id = crypto.randomUUID();
+  const hq3Id = crypto.randomUUID();
+  quotationIds.push(q1Id, q2Id, q3Id, q4Id, hq1Id, hq2Id, hq3Id);
 
   // 4 Core Demo Quotations
   quotationsData.push(
@@ -542,6 +645,13 @@ async function main() {
     { id: q2Id, quoteNumber: 'Q-1002', customerId: betaId, salesRepId: repId, status: QuotationStatus.PENDING_APPROVAL, blendedRiskScore: RiskLevel.MEDIUM, subtotalAmount: 12450.0, totalDiscountAmount: 1716.0, orderDiscountPercent: 0.0, totalTaxAmount: 1610.1, totalAmount: 12344.1, totalCost: 8200.0, totalMarginPercent: 23.61, portalToken: 'portal-beta-q1002-demo-token', customerTermsConfirmed: false, isStalled: false },
     { id: q3Id, quoteNumber: 'Q-1003', customerId: deltaId, salesRepId: repId, status: QuotationStatus.PENDING_APPROVAL, blendedRiskScore: RiskLevel.HIGH, subtotalAmount: 28500.0, totalDiscountAmount: 3810.0, orderDiscountPercent: 0.0, totalTaxAmount: 3703.5, totalAmount: 28393.5, totalCost: 19500.0, totalMarginPercent: 21.02, portalToken: 'portal-delta-q1003-demo-token', customerTermsConfirmed: false, isStalled: false },
     { id: q4Id, quoteNumber: 'Q-1004', customerId: acmeId, salesRepId: repId, status: QuotationStatus.UNDER_NEGOTIATION, blendedRiskScore: RiskLevel.LOW, subtotalAmount: 1104.0, totalDiscountAmount: 88.32, orderDiscountPercent: 0.0, totalTaxAmount: 0.0, totalAmount: 1015.68, totalCost: 600.0, totalMarginPercent: 40.93, portalToken: 'portal-acme-q1004-negotiate-token', counterDiscountProposed: 12.0, customerTermsConfirmed: false, isStalled: false }
+  );
+
+  // 3 Historical Baseline Quotations for 90-Day Rolling Rep Discount Baseline (Rep J. Rao, median = 8.0%)
+  quotationsData.push(
+    { id: hq1Id, quoteNumber: 'Q-HIST-01', customerId: acmeId, salesRepId: repId, status: QuotationStatus.CONFIRMED, blendedRiskScore: RiskLevel.LOW, subtotalAmount: 4800.0, totalDiscountAmount: 336.0, orderDiscountPercent: 0.0, totalTaxAmount: 0.0, totalAmount: 4464.0, totalCost: 3200.0, totalMarginPercent: 28.32, portalToken: 'portal-hist-01-token', customerTermsConfirmed: true, isStalled: false, createdAt: new Date(Date.now() - 20 * 24 * 3600 * 1000) },
+    { id: hq2Id, quoteNumber: 'Q-HIST-02', customerId: betaId, salesRepId: repId, status: QuotationStatus.CONFIRMED, blendedRiskScore: RiskLevel.LOW, subtotalAmount: 3600.0, totalDiscountAmount: 288.0, orderDiscountPercent: 0.0, totalTaxAmount: 0.0, totalAmount: 3312.0, totalCost: 2400.0, totalMarginPercent: 27.54, portalToken: 'portal-hist-02-token', customerTermsConfirmed: true, isStalled: false, createdAt: new Date(Date.now() - 40 * 24 * 3600 * 1000) },
+    { id: hq3Id, quoteNumber: 'Q-HIST-03', customerId: deltaId, salesRepId: repId, status: QuotationStatus.CONFIRMED, blendedRiskScore: RiskLevel.LOW, subtotalAmount: 2400.0, totalDiscountAmount: 192.0, orderDiscountPercent: 0.0, totalTaxAmount: 0.0, totalAmount: 2208.0, totalCost: 1600.0, totalMarginPercent: 27.54, portalToken: 'portal-hist-03-token', customerTermsConfirmed: true, isStalled: false, createdAt: new Date(Date.now() - 60 * 24 * 3600 * 1000) }
   );
 
   const quoteStatuses = [
@@ -555,7 +665,7 @@ async function main() {
     QuotationStatus.CANCELLED,
   ];
 
-  for (let i = 5; i <= 500; i++) {
+  for (let i = 8; i <= 500; i++) {
     const qid = crypto.randomUUID();
     quotationIds.push(qid);
     const status = quoteStatuses[i % quoteStatuses.length];
@@ -596,7 +706,7 @@ async function main() {
   console.log(`✔ Seeded ${quotationsData.length} Quotations.`);
 
   // --------------------------------------------------------------------------
-  // 14. Seed QuotationLines (600 records >= 500)
+  // 15. Seed QuotationLines (600 records >= 500)
   // --------------------------------------------------------------------------
   console.log('📝 Generating 600 QuotationLines...');
   const linesData: any[] = [];
@@ -625,8 +735,80 @@ async function main() {
     { id: crypto.randomUUID(), quotationId: q4Id, productId: supportSlaId, category: ProductCategory.SUBSCRIPTION, quantity: 2, unitCost: 120.0, unitPrice: 300.0, discountPercent: 8.0, allowedLimitPercent: 15.0, isOverLimit: false, overLimitPoints: 0.0, lineTotal: 552.0, lineCostTotal: 240.0, lineMarginPercent: 56.52 }
   );
 
-  // Quotation lines for remaining 496 quotations (and second lines for first 100 quotes)
-  for (let i = 4; i < 500; i++) {
+  // Q-HIST-01 Lines (Rep baseline: 7.0% discount)
+  linesData.push({
+    id: crypto.randomUUID(),
+    quotationId: hq1Id,
+    productId: laptopId,
+    category: ProductCategory.HARDWARE,
+    quantity: 4,
+    unitCost: 800.0,
+    unitPrice: 1200.0,
+    discountPercent: 7.0,
+    allowedLimitPercent: 15.0,
+    isOverLimit: false,
+    overLimitPoints: 0.0,
+    lineTotal: 4464.0,
+    lineCostTotal: 3200.0,
+    lineMarginPercent: 28.32,
+  });
+
+  // Q-HIST-02 Lines (Rep baseline: 8.0% discount)
+  linesData.push({
+    id: crypto.randomUUID(),
+    quotationId: hq2Id,
+    productId: laptopId,
+    category: ProductCategory.HARDWARE,
+    quantity: 3,
+    unitCost: 800.0,
+    unitPrice: 1200.0,
+    discountPercent: 8.0,
+    allowedLimitPercent: 10.0,
+    isOverLimit: false,
+    overLimitPoints: 0.0,
+    lineTotal: 3312.0,
+    lineCostTotal: 2400.0,
+    lineMarginPercent: 27.54,
+  });
+
+  // Q-HIST-03 Lines (Rep baseline: 8.0% and 9.0% discount)
+  linesData.push(
+    {
+      id: crypto.randomUUID(),
+      quotationId: hq3Id,
+      productId: laptopId,
+      category: ProductCategory.HARDWARE,
+      quantity: 2,
+      unitCost: 800.0,
+      unitPrice: 1200.0,
+      discountPercent: 8.0,
+      allowedLimitPercent: 5.0,
+      isOverLimit: true,
+      overLimitPoints: 3.0,
+      lineTotal: 2208.0,
+      lineCostTotal: 1600.0,
+      lineMarginPercent: 27.54,
+    },
+    {
+      id: crypto.randomUUID(),
+      quotationId: hq3Id,
+      productId: mouseId,
+      category: ProductCategory.HARDWARE,
+      quantity: 2,
+      unitCost: 20.0,
+      unitPrice: 45.0,
+      discountPercent: 9.0,
+      allowedLimitPercent: 5.0,
+      isOverLimit: true,
+      overLimitPoints: 4.0,
+      lineTotal: 81.9,
+      lineCostTotal: 40.0,
+      lineMarginPercent: 51.16,
+    }
+  );
+
+  // Quotation lines for remaining quotations
+  for (let i = 7; i < 500; i++) {
     const qid = quotationIds[i];
     const pid = productIds[i % productIds.length];
     const prod = productsData[i % productsData.length];
@@ -656,7 +838,7 @@ async function main() {
     });
 
     // Extra line for first 100 quotes to reach 600 total lines
-    if (i < 108) {
+    if (i < 105) {
       const extraPid = productIds[(i + 50) % productIds.length];
       const extraProd = productsData[(i + 50) % productsData.length];
       const eQty = 1 + (i % 8);
@@ -686,7 +868,7 @@ async function main() {
   console.log(`✔ Seeded ${linesData.length} QuotationLines.`);
 
   // --------------------------------------------------------------------------
-  // 15. Seed 500 QuotationComments
+  // 16. Seed 500 QuotationComments
   // --------------------------------------------------------------------------
   console.log('💬 Generating 500 QuotationComments...');
   const commentsData: any[] = [];
@@ -715,7 +897,7 @@ async function main() {
   console.log(`✔ Seeded ${commentsData.length} QuotationComments.`);
 
   // --------------------------------------------------------------------------
-  // 16. Seed 500 ApprovalRequests
+  // 17. Seed 500 ApprovalRequests
   // --------------------------------------------------------------------------
   console.log('🛡 Generating 500 ApprovalRequests...');
   const approvalRequestIds: string[] = [];
@@ -752,7 +934,7 @@ async function main() {
   console.log(`✔ Seeded ${approvalRequestsData.length} ApprovalRequests.`);
 
   // --------------------------------------------------------------------------
-  // 17. Seed 500 ApprovalAuditLogs
+  // 18. Seed 500 ApprovalAuditLogs
   // --------------------------------------------------------------------------
   console.log('📜 Generating 500 ApprovalAuditLogs...');
   const auditLogsData: any[] = [];
@@ -780,7 +962,7 @@ async function main() {
   console.log(`✔ Seeded ${auditLogsData.length} ApprovalAuditLogs.`);
 
   // --------------------------------------------------------------------------
-  // 18. Seed 500 FulfillmentOrders (1 per Quotation)
+  // 19. Seed 500 FulfillmentOrders (1 per Quotation)
   // --------------------------------------------------------------------------
   console.log('🚚 Generating 500 FulfillmentOrders...');
   const fulfillmentOrderIds: string[] = [];
@@ -813,7 +995,7 @@ async function main() {
   console.log(`✔ Seeded ${fulfillmentOrdersData.length} FulfillmentOrders.`);
 
   // --------------------------------------------------------------------------
-  // 19. Seed 500 FulfillmentSplitItems
+  // 20. Seed 500 FulfillmentSplitItems
   // --------------------------------------------------------------------------
   console.log('📦 Generating 500 FulfillmentSplitItems...');
   const splitItemsData: any[] = [];
@@ -834,7 +1016,7 @@ async function main() {
   console.log(`✔ Seeded ${splitItemsData.length} FulfillmentSplitItems.`);
 
   // --------------------------------------------------------------------------
-  // 20. Seed 500 Subscriptions
+  // 21. Seed 500 Subscriptions
   // --------------------------------------------------------------------------
   console.log('🔄 Generating 500 Subscriptions...');
   const subscriptionIds: string[] = [];
@@ -870,7 +1052,7 @@ async function main() {
   console.log(`✔ Seeded ${subscriptionsData.length} Subscriptions.`);
 
   // --------------------------------------------------------------------------
-  // 21. Seed 500 SubscriptionProrationLogs
+  // 22. Seed 500 SubscriptionProrationLogs
   // --------------------------------------------------------------------------
   console.log('📊 Generating 500 SubscriptionProrationLogs...');
   const prorationLogsData: any[] = [];
@@ -897,7 +1079,7 @@ async function main() {
   console.log(`✔ Seeded ${prorationLogsData.length} SubscriptionProrationLogs.`);
 
   // --------------------------------------------------------------------------
-  // 22. Seed 500 Invoices
+  // 23. Seed 500 Invoices
   // --------------------------------------------------------------------------
   console.log('💳 Generating 500 Invoices...');
   const invoiceIds: string[] = [];
@@ -934,7 +1116,7 @@ async function main() {
   console.log(`✔ Seeded ${invoicesData.length} Invoices.`);
 
   // --------------------------------------------------------------------------
-  // 23. Seed 500 Payments
+  // 24. Seed 500 Payments
   // --------------------------------------------------------------------------
   console.log('💰 Generating 500 Payments...');
   const paymentsData: any[] = [];
@@ -954,7 +1136,7 @@ async function main() {
   console.log(`✔ Seeded ${paymentsData.length} Payments.`);
 
   // --------------------------------------------------------------------------
-  // 24. Seed 500 DealHealthAlerts
+  // 25. Seed 500 DealHealthAlerts
   // --------------------------------------------------------------------------
   console.log('🚨 Generating 500 DealHealthAlerts...');
   const healthAlertsData: any[] = [];
@@ -1009,6 +1191,7 @@ async function main() {
     { Table: 'Warehouse', Count: await prisma.warehouse.count(), Target: 500, Status: '✅ PASSED' },
     { Table: 'WarehouseStock', Count: await prisma.warehouseStock.count(), Target: 500, Status: '✅ PASSED' },
     { Table: 'ProductCoPurchaseRule', Count: await prisma.productCoPurchaseRule.count(), Target: 500, Status: '✅ PASSED' },
+    { Table: 'AdminCuratedUpsell', Count: await prisma.adminCuratedUpsell.count(), Target: 500, Status: '✅ PASSED' },
     { Table: 'SubscriptionPlanTemplate', Count: await prisma.subscriptionPlanTemplate.count(), Target: 500, Status: '✅ PASSED' },
     { Table: 'Quotation', Count: await prisma.quotation.count(), Target: 500, Status: '✅ PASSED' },
     { Table: 'QuotationLine', Count: await prisma.quotationLine.count(), Target: 500, Status: '✅ PASSED' },

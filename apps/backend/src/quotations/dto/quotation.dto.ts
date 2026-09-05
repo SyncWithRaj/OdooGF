@@ -68,6 +68,11 @@ export class CreateQuotationDto {
   @IsString()
   @IsOptional()
   initialComment?: string;
+
+  @ApiPropertyOptional({ example: '2026-10-15T00:00:00.000Z', description: 'Promised or customer-requested delivery date' })
+  @IsString()
+  @IsOptional()
+  promisedDeliveryDate?: string;
 }
 
 export class UpdateQuotationLinesDto {
@@ -83,12 +88,23 @@ export class UpdateQuotationLinesDto {
   @Max(100)
   @IsOptional()
   orderDiscountPercent?: number;
+
+  @ApiPropertyOptional({ example: '2026-10-15T00:00:00.000Z', description: 'Promised delivery date' })
+  @IsString()
+  @IsOptional()
+  promisedDeliveryDate?: string;
 }
 
 export class AddUpsellLineDto {
-  @ApiProperty({ example: 'prod-uuid-rec', description: 'Recommended product ID to add to quote' })
+  @ApiPropertyOptional({ example: 'prod-uuid-rec', description: 'Recommended product ID to add to quote' })
   @IsUUID()
-  recommendedProductId: string;
+  @IsOptional()
+  recommendedProductId?: string;
+
+  @ApiPropertyOptional({ example: 'prod-uuid-rec', description: 'Product ID to add to quote' })
+  @IsUUID()
+  @IsOptional()
+  productId?: string;
 
   @ApiPropertyOptional({ example: 1, description: 'Quantity to add', default: 1 })
   @IsNumber()

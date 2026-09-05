@@ -16,6 +16,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import {
   DispatchFulfillmentDto,
   ManualOverrideFulfillmentDto,
+  ProposeShortageDto,
 } from './dto/fulfillment.dto';
 import { FulfillmentsService } from './fulfillments.service';
 
@@ -96,4 +97,16 @@ export class FulfillmentsController {
   async consolidateBackorder(@Param('id') id: string) {
     return this.fulfillmentsService.consolidateRemainingBackorders(id);
   }
+
+  @Post(':id/propose-shortage')
+  @Roles(Role.ADMIN, Role.SALES_MANAGER, Role.FINANCE)
+  @ApiOperation({ summary: 'Engine 5: Ops/Finance Manager records offer to fulfill partial quantity X due to shortage' })
+  @ApiResponse({ status: 200, description: 'Shortage proposal saved and pushed to customer portal' })
+  async proposeShortage(
+    @Param('id') id: string,
+    @Body() dto: ProposeShortageDto,
+  ) {
+    return this.fulfillmentsService.proposeShortageOffer(id, dto.proposedQuantity);
+  }
 }
+

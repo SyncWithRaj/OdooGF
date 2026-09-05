@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
@@ -9,6 +10,14 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+
+export class ProposeShortageDto {
+  @ApiProperty({ example: 15, description: 'Proposed partial quantity that can be fulfilled immediately' })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  proposedQuantity: number;
+}
 
 export class OverrideSplitItemDto {
   @ApiProperty({ example: 'wh-uuid-1', description: 'Warehouse ID fulfilling this allocation' })

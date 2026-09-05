@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { AcceptQuoteDto, CounterProposalDto, PortalCommentDto } from './dto/portal.dto';
+import { AcceptQuoteDto, CounterProposalDto, PortalCommentDto, ShortageActionDto } from './dto/portal.dto';
 import { PortalService } from './portal.service';
 
 @ApiTags('Customer Self-Service Portal & Negotiation Loop (Screen 11 & Red-Dashed Loop, B8)')
@@ -57,4 +57,18 @@ export class PortalController {
   ) {
     return this.portalService.counterProposal(token, dto);
   }
+
+  @Post('quote/:token/shortage-action')
+  @ApiOperation({
+    summary:
+      'Engine 5: Customer decision on unfulfillable shortage offer (ACCEPT partial quantity X or REJECT/WAIT)',
+  })
+  @ApiResponse({ status: 200, description: 'Customer response to shortage proposal recorded' })
+  async respondToShortage(
+    @Param('token') token: string,
+    @Body() dto: ShortageActionDto,
+  ) {
+    return this.portalService.respondToShortageProposal(token, dto.action);
+  }
 }
+

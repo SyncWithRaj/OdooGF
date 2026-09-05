@@ -1,5 +1,20 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsDateString, IsEnum, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+
+export enum ShortageCustomerAction {
+  ACCEPT = 'ACCEPT',
+  REJECT = 'REJECT',
+}
+
+export class ShortageActionDto {
+  @ApiProperty({
+    enum: ShortageCustomerAction,
+    example: ShortageCustomerAction.ACCEPT,
+    description: "Customer decision: 'ACCEPT' to confirm partial dispatch, 'REJECT' to wait for full restock",
+  })
+  @IsEnum(ShortageCustomerAction)
+  action: ShortageCustomerAction;
+}
 
 export class CounterProposalDto {
   @ApiPropertyOptional({ example: 12.0, description: 'Customer proposed counter-discount percentage' })

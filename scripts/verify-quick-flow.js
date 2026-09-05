@@ -96,8 +96,8 @@ async function run() {
   const upsells = await upsellRes.json();
   const mouseSuggestion = Array.isArray(upsells) ? upsells[0] : null;
   if (mouseSuggestion) {
-    const suggestedId = mouseSuggestion.suggestedProductId || mouseSuggestion.recommendedProduct?.id;
-    const suggestedName = mouseSuggestion.suggestedProductName || mouseSuggestion.recommendedProduct?.name || 'Accessory';
+    const suggestedId = mouseSuggestion.suggestedProductId || mouseSuggestion.productId || mouseSuggestion.recommendedProduct?.id;
+    const suggestedName = mouseSuggestion.suggestedProductName || mouseSuggestion.name || mouseSuggestion.recommendedProduct?.name || 'Accessory';
     const addUpsellRes = await fetch(`${BASE_URL}/api/quotations/${quote.id}/lines/upsell`, {
       method: 'POST',
       headers: {

@@ -292,6 +292,14 @@ export const apiClient = {
     });
   },
 
+  // ==================== AI Recommendation Engine ====================
+  async getCartRecommendations(productIds) {
+    return apiRequest('/api/config/upsell-rules/cart-recommendations', {
+      method: 'POST',
+      body: JSON.stringify({ productIds }),
+    });
+  },
+
   // ==================== Deal Health & Analytics (Screen 14 / B9) ====================
   async getDealHealth() {
     return apiRequest('/api/analytics/deal-health');
