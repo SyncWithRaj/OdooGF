@@ -20,8 +20,76 @@ export default function AuthPage() {
   const [infoMessage, setInfoMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const { user, login, initiateSignup, verifySignup, logout, isAuthenticated } = useAuth();
+  // Password reset modal state
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [resetStep, setResetStep] = useState(1);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetOtp, setResetOtp] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
+  const [resetError, setResetError] = useState('');
+  const [resetSuccess, setResetSuccess] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+
+  const {
+    user,
+    login,
+    initiateSignup,
+    verifySignup,
+    initiatePasswordReset,
+    verifyPasswordReset,
+    logout,
+    isAuthenticated,
+  } = useAuth();
   const router = useRouter();
+
+  const handleInitiateReset = async (e) => {
+    e.preventDefault();
+    setResetError('');
+    if (!resetEmail.trim()) return setResetError('Please enter your account email.');
+    setResetLoading(true);
+    try {
+      const res = await initiatePasswordReset(resetEmail);
+      setResetStep(2);
+      setResetSuccess(res.message || 'Password reset OTP dispatched to your email.');
+    } catch (err) {
+      setResetError(err.message || 'Failed to dispatch reset OTP.');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleVerifyReset = async (e) => {
+    e.preventDefault();
+    setResetError('');
+    if (!resetOtp || resetOtp.trim().length !== 6) {
+      return setResetError('Please enter the 6-digit OTP.');
+    }
+    if (!resetNewPassword || resetNewPassword.length < 6) {
+      return setResetError('Password must be at least 6 characters.');
+    }
+    if (resetNewPassword !== resetConfirmPassword) {
+      return setResetError('Passwords do not match.');
+    }
+    setResetLoading(true);
+    try {
+      const res = await verifyPasswordReset(resetEmail, resetOtp, resetNewPassword, resetConfirmPassword);
+      setResetSuccess('Password reset successfully! You can now log in.');
+      setEmail(resetEmail);
+      setTimeout(() => {
+        setIsResetModalOpen(false);
+        setResetStep(1);
+        setResetOtp('');
+        setResetNewPassword('');
+        setResetConfirmPassword('');
+      }, 2000);
+    } catch (err) {
+      setResetError(err.message || 'Failed to reset password.');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
 
   // Where to route each persona upon authenticating
   const goHome = (u) => router.push(u?.role === 'customer' ? '/portal' : '/dashboard');
@@ -244,7 +312,12 @@ export default function AuthPage() {
                     {isLogin && (
                       <button
                         type="button"
-                        onClick={() => alert('Password reset link has been dispatched to your email.')}
+                        onClick={() => {
+                          setIsResetModalOpen(true);
+                          setResetEmail(email);
+                          setResetError('');
+                          setResetSuccess('');
+                        }}
                         className="text-sm text-gray-500 hover:text-gray-900 transition cursor-pointer"
                       >
                         Forgot password?
@@ -380,6 +453,131 @@ export default function AuthPage() {
           </figure>
         </div>
       </aside>
+
+      {/* PASSWORD RESET MODAL */}
+      {isResetModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 max-w-md w-full p-6 text-gray-900">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Reset Your Password</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {resetStep === 1
+                    ? 'Enter your email to receive a 6-digit verification code.'
+                    : 'Enter the verification code and choose a new password.'}
+                </p>
+              </div>
+              <button
+                onClick={() => setIsResetModalOpen(false)}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {resetError && (
+              <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs font-medium">
+                {resetError}
+              </div>
+            )}
+
+            {resetSuccess && (
+              <div className="mb-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
+                {resetSuccess}
+              </div>
+            )}
+
+            {resetStep === 1 ? (
+              <form onSubmit={handleInitiateReset} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Account Email</label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="you@example.com"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    className="w-full h-10 px-3 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsResetModalOpen(false)}
+                    className="px-4 py-2 rounded-md border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={resetLoading}
+                    className="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition disabled:opacity-50"
+                  >
+                    {resetLoading ? 'Sending...' : 'Send Verification Code'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleVerifyReset} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">6-Digit Verification Code</label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    placeholder="123456"
+                    value={resetOtp}
+                    onChange={(e) => setResetOtp(e.target.value)}
+                    className="w-full h-10 px-3 rounded-md border border-gray-200 text-center font-mono tracking-widest text-base focus:outline-none focus:ring-2 focus:ring-gray-200"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">New Password</label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="At least 6 characters"
+                    value={resetNewPassword}
+                    onChange={(e) => setResetNewPassword(e.target.value)}
+                    className="w-full h-10 px-3 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Confirm New Password</label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="Re-enter new password"
+                    value={resetConfirmPassword}
+                    onChange={(e) => setResetConfirmPassword(e.target.value)}
+                    className="w-full h-10 px-3 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setResetStep(1)}
+                    className="text-xs text-gray-500 hover:underline"
+                  >
+                    ← Back to email
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={resetLoading}
+                    className="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition disabled:opacity-50"
+                  >
+                    {resetLoading ? 'Updating...' : 'Set New Password'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

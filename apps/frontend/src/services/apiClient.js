@@ -232,4 +232,64 @@ export const apiClient = {
       body: JSON.stringify(ruleData),
     });
   },
+
+  async validateDiscountLine(data) {
+    return apiRequest('/api/config/discount-rules/validate-line', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async calculateBlendedRisk(data) {
+    return apiRequest('/api/config/discount-rules/calculate-blended-risk', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // ==================== Warehouses & Stock ====================
+  async getWarehouses() {
+    const res = await apiRequest('/api/warehouses');
+    return res.warehouses || res.data || [];
+  },
+
+  async getWarehouse(id) {
+    const res = await apiRequest(`/api/warehouses/${id}`);
+    return res.warehouse || res;
+  },
+
+  async createWarehouse(facilityData) {
+    return apiRequest('/api/warehouses', {
+      method: 'POST',
+      body: JSON.stringify(facilityData),
+    });
+  },
+
+  async updateWarehouse(id, updateData) {
+    return apiRequest(`/api/warehouses/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updateData),
+    });
+  },
+
+  async deleteWarehouse(id) {
+    return apiRequest(`/api/warehouses/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async adjustStock(stockData) {
+    return apiRequest('/api/warehouses/stock-adjustment', {
+      method: 'POST',
+      body: JSON.stringify(stockData),
+    });
+  },
+
+  async setReplenishmentRule(ruleData) {
+    return apiRequest('/api/warehouses/replenishment-rule', {
+      method: 'POST',
+      body: JSON.stringify(ruleData),
+    });
+  },
 };
+

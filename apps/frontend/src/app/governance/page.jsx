@@ -341,9 +341,230 @@ export default function GovernancePage() {
                 </table>
               </div>
             </div>
+
+            {/* Section 4: Real-time CPQ Discount Validator & Simulator */}
+            <DiscountSimulator />
           </div>
         )}
       </AppLayout>
     </RequireRole>
   );
 }
+
+function DiscountSimulator() {
+  const [tier, setTier] = useState('GOLD');
+  const [category, setCategory] = useState('SERVICES');
+  const [discount, setDiscount] = useState(18);
+  const [validationResult, setValidationResult] = useState(null);
+  const [simulating, setSimulating] = useState(false);
+
+  // Blended Risk state
+  const [blendedResult, setBlendedResult] = useState(null);
+  const [blendedLoading, setBlendedLoading] = useState(false);
+
+  const handleValidateLine = async () => {
+    setSimulating(true);
+    try {
+      const res = await apiClient.validateDiscountLine({
+        customerTier: tier,
+        category,
+        proposedDiscount: Number(discount),
+      });
+      setValidationResult(res.validation || res);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSimulating(false);
+    }
+  };
+
+  const handleRunBlendedSimulation = async () => {
+    setBlendedLoading(true);
+    try {
+      const res = await apiClient.calculateBlendedRisk({
+        customerTier: tier,
+        lines: [
+          {
+            productName: 'Hardware Bundle',
+            category: 'HARDWARE',
+            quantity: 5,
+            unitPrice: 1200,
+            baseCost: 850,
+            discountPercent: Number(discount),
+          },
+          {
+            productName: 'Enterprise SLA Support',
+            category: 'SERVICES',
+            quantity: 1,
+            unitPrice: 3500,
+            baseCost: 1500,
+            discountPercent: Math.max(0, Number(discount) - 5),
+          },
+        ],
+      });
+      setBlendedResult(res.blendedEvaluation || res);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setBlendedLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    handleValidateLine();
+  }, [tier, category, discount]);
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5">
+        <div>
+          <h3 className="text-base font-bold text-slate-900">Interactive CPQ Discount &amp; Risk Simulator</h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Test policy compliance in real-time against live NestJS validation endpoints.
+          </p>
+        </div>
+        <span className="text-[11px] font-semibold text-teal-700 bg-teal-50 border border-teal-200 px-2.5 py-1 rounded-full self-start sm:self-auto">
+          POST /api/config/discount-rules/validate-line
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left: Input Controls */}
+        <div className="p-4 rounded-xl bg-slate-50/70 border border-slate-200/80 space-y-4">
+          <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Test Line Parameters</p>
+          
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Customer Tier</label>
+              <select
+                value={tier}
+                onChange={(e) => setTier(e.target.value)}
+                className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-800 focus:outline-none"
+              >
+                <option value="GOLD">GOLD Tier</option>
+                <option value="SILVER">SILVER Tier</option>
+                <option value="BRONZE">BRONZE Tier</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Product Category</label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-800 focus:outline-none"
+              >
+                <option value="HARDWARE">Hardware</option>
+                <option value="SERVICES">Services</option>
+                <option value="SUBSCRIPTION">Subscription</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-medium text-slate-600">Proposed Line Discount</label>
+              <span className="text-sm font-black text-slate-900">{discount}%</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="40"
+              value={discount}
+              onChange={(e) => setDiscount(e.target.value)}
+              className="w-full accent-slate-900 cursor-pointer"
+            />
+          </div>
+
+          <div className="pt-2 flex items-center gap-2">
+            <button
+              onClick={handleRunBlendedSimulation}
+              disabled={blendedLoading}
+              className="w-full py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition"
+            >
+              {blendedLoading ? 'Evaluating Quotation...' : '⚡ Run Blended Quotation Risk Evaluation'}
+            </button>
+          </div>
+        </div>
+
+        {/* Right: Validation & Blended Results */}
+        <div className="space-y-4">
+          {validationResult && (
+            <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-xs">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-slate-700">Line Compliance Evaluation</span>
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                    validationResult.isOverLimit
+                      ? 'bg-rose-50 border-rose-200 text-rose-700'
+                      : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                  }`}
+                >
+                  {validationResult.statusBadge || (validationResult.isOverLimit ? 'OVER LIMIT' : 'COMPLIANT')}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 my-3 text-center text-xs">
+                <div className="p-2 rounded-lg bg-slate-50">
+                  <span className="text-[10px] text-slate-400 block">Tier Limit</span>
+                  <span className="font-bold text-slate-800">{validationResult.tierLimit}%</span>
+                </div>
+                <div className="p-2 rounded-lg bg-slate-50">
+                  <span className="text-[10px] text-slate-400 block">Category Limit</span>
+                  <span className="font-bold text-slate-800">{validationResult.categoryLimit}%</span>
+                </div>
+                <div className="p-2 rounded-lg bg-slate-50">
+                  <span className="text-[10px] text-slate-400 block">Allowed Ceiling</span>
+                  <span className="font-bold text-slate-900">{validationResult.allowedLimit}%</span>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                <strong>Routing:</strong> {validationResult.routingRecommendation}
+              </p>
+            </div>
+          )}
+
+          {blendedResult && (
+            <div className="p-4 rounded-xl border border-teal-200 bg-teal-50/40 shadow-xs">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-teal-900">Blended Risk Quotation Score</span>
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-xs font-black uppercase ${
+                    blendedResult.blendedRiskScore === 'HIGH'
+                      ? 'bg-rose-100 text-rose-800'
+                      : blendedResult.blendedRiskScore === 'MEDIUM'
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-emerald-100 text-emerald-800'
+                  }`}
+                >
+                  {blendedResult.blendedRiskScore} RISK
+                </span>
+              </div>
+
+              <p className="text-xs text-slate-700 mb-2">{blendedResult.flagReasonSummary}</p>
+
+              {blendedResult.financials && (
+                <div className="grid grid-cols-3 gap-2 text-center text-xs pt-2 border-t border-teal-100">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">Revenue</span>
+                    <span className="font-bold text-slate-900">${blendedResult.financials.totalRevenue?.toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">Discount</span>
+                    <span className="font-bold text-rose-600">-${blendedResult.financials.totalDiscountAmount?.toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">Net Margin</span>
+                    <span className="font-bold text-emerald-600">{blendedResult.financials.totalMarginPercent}%</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+

@@ -13,25 +13,71 @@ export default function ProductsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState(null);
 
-  // New product form
-  const [newProduct, setNewProduct] = useState({
-    sku: '',
-    name: '',
-    description: '',
-    category: 'HARDWARE',
-    unit: 'Each',
-    baseCost: 100,
-    basePrice: 150,
-    taxPercent: 15,
-    isSubscription: false,
-    recurringInterval: 'MONTHLY',
-    minMarginThreshold: 20,
+  // Variant management state
+  const [selectedProductForVariants, setSelectedProductForVariants] = useState(null);
+  const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
+  const [variantList, setVariantList] = useState([]);
+  const [variantLoading, setVariantLoading] = useState(false);
+  const [variantForm, setVariantForm] = useState({
+    attribute: 'RAM',
+    value: '',
+    extraPrice: 0,
+    skuSuffix: '',
   });
 
   const showToast = (message, type = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 4000);
   };
+
+  const handleOpenVariants = async (product) => {
+    setSelectedProductForVariants(product);
+    setIsVariantModalOpen(true);
+    setVariantLoading(true);
+    try {
+      const detail = await apiClient.getProduct(product.id);
+      setVariantList(detail.variants || []);
+    } catch (err) {
+      console.error(err);
+      showToast('Could not load product variants', 'error');
+    } finally {
+      setVariantLoading(false);
+    }
+  };
+
+  const handleAddVariant = async (e) => {
+    e.preventDefault();
+    if (!variantForm.attribute || !variantForm.value.trim()) {
+      alert('Please provide an attribute and value for this variant.');
+      return;
+    }
+    try {
+      await apiClient.addVariant(selectedProductForVariants.id, {
+        attribute: variantForm.attribute,
+        value: variantForm.value.trim(),
+        extraPrice: Number(variantForm.extraPrice) || 0,
+        skuSuffix: variantForm.skuSuffix?.trim() || undefined,
+      });
+      showToast(`Variant "${variantForm.attribute}: ${variantForm.value}" added!`);
+      setVariantForm({ attribute: 'RAM', value: '', extraPrice: 0, skuSuffix: '' });
+      const detail = await apiClient.getProduct(selectedProductForVariants.id);
+      setVariantList(detail.variants || []);
+    } catch (err) {
+      alert(err.message || 'Failed to add variant');
+    }
+  };
+
+  const handleDeleteVariant = async (variantId) => {
+    try {
+      await apiClient.deleteVariant(selectedProductForVariants.id, variantId);
+      showToast('Variant removed');
+      const detail = await apiClient.getProduct(selectedProductForVariants.id);
+      setVariantList(detail.variants || []);
+    } catch (err) {
+      alert(err.message || 'Failed to delete variant');
+    }
+  };
+
 
   const loadProducts = async () => {
     setLoading(true);
@@ -326,10 +372,17 @@ export default function ProductsPage() {
                       </td>
 
                       {/* Actions */}
-                      <td className="py-4 px-4 text-center whitespace-nowrap">
+                      <td className="py-4 px-4 text-center whitespace-nowrap space-x-1">
+                        <button
+                          onClick={() => handleOpenVariants(prod)}
+                          className="px-2 py-1 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900 text-[11px] font-semibold transition cursor-pointer"
+                          title="Manage Variants"
+                        >
+                          Variants
+                        </button>
                         <button
                           onClick={() => handleDeleteProduct(prod.id, prod.name)}
-                          className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                          className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer inline-flex items-center align-middle"
                           title="Delete Product"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -364,30 +417,16 @@ export default function ProductsPage() {
             </div>
 
             <form onSubmit={handleCreateProduct} className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">SKU *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. HW-LAP-PRO16"
-                    value={newProduct.sku}
-                    onChange={(e) => setNewProduct({ ...newProduct, sku: e.target.value })}
-                    className="w-full h-9 px-3 rounded-lg border border-slate-200 focus:outline-none focus:border-slate-400 font-mono text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Category *</label>
-                  <select
-                    value={newProduct.category}
-                    onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
-                    className="w-full h-9 px-3 rounded-lg border border-slate-200 focus:outline-none focus:border-slate-400 text-xs"
-                  >
-                    <option value="HARDWARE">Hardware</option>
-                    <option value="SERVICES">Services</option>
-                    <option value="SUBSCRIPTION">Subscription</option>
-                  </select>
-                </div>
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">SKU *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. HW-SRV-DELL"
+                  value={newProduct.sku}
+                  onChange={(e) => setNewProduct({ ...newProduct, sku: e.target.value })}
+                  className="w-full h-9 px-3 rounded-lg border border-slate-200 focus:outline-none focus:border-slate-400 font-mono text-xs"
+                />
               </div>
 
               <div>
@@ -395,7 +434,7 @@ export default function ProductsPage() {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Enterprise Workstation Pro"
+                  placeholder="e.g. Dell PowerEdge R750"
                   value={newProduct.name}
                   onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
                   className="w-full h-9 px-3 rounded-lg border border-slate-200 focus:outline-none focus:border-slate-400 text-xs"
@@ -406,36 +445,74 @@ export default function ProductsPage() {
                 <label className="font-semibold text-slate-700 block mb-1">Description</label>
                 <textarea
                   rows={2}
-                  placeholder="Product specifications and details..."
+                  placeholder="High-density compute rack server"
                   value={newProduct.description}
                   onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
-                  className="w-full p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:border-slate-400 text-xs resize-none"
+                  className="w-full p-3 rounded-lg border border-slate-200 focus:outline-none focus:border-slate-400 text-xs"
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Base Cost ($)</label>
+                  <label className="font-semibold text-slate-700 block mb-1">Category *</label>
+                  <select
+                    value={newProduct.category}
+                    onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
+                    className="w-full h-9 px-3 rounded-lg border border-slate-200 focus:outline-none focus:border-slate-400 text-xs font-medium"
+                  >
+                    <option value="HARDWARE">Hardware</option>
+                    <option value="SERVICES">Services</option>
+                    <option value="SUBSCRIPTION">Subscription</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Unit</label>
                   <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    required
-                    value={newProduct.baseCost}
-                    onChange={(e) => setNewProduct({ ...newProduct, baseCost: e.target.value })}
+                    type="text"
+                    value={newProduct.unit}
+                    onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value })}
                     className="w-full h-9 px-3 rounded-lg border border-slate-200 focus:outline-none focus:border-slate-400 text-xs"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Base Price ($)</label>
+                  <label className="font-semibold text-slate-700 block mb-1">Base Cost ($) *</label>
                   <input
                     type="number"
-                    min="0"
                     step="0.01"
+                    min="0"
+                    required
+                    value={newProduct.baseCost}
+                    onChange={(e) => setNewProduct({ ...newProduct, baseCost: e.target.value })}
+                    className="w-full h-9 px-3 rounded-lg border border-slate-200 focus:outline-none focus:border-slate-400 text-xs font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Base Selling Price ($) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
                     required
                     value={newProduct.basePrice}
                     onChange={(e) => setNewProduct({ ...newProduct, basePrice: e.target.value })}
-                    className="w-full h-9 px-3 rounded-lg border border-slate-200 focus:outline-none focus:border-slate-400 text-xs font-semibold text-slate-900"
+                    className="w-full h-9 px-3 rounded-lg border border-slate-200 focus:outline-none focus:border-slate-400 text-xs font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Tax Percent (%)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={newProduct.taxPercent}
+                    onChange={(e) => setNewProduct({ ...newProduct, taxPercent: e.target.value })}
+                    className="w-full h-9 px-3 rounded-lg border border-slate-200 focus:outline-none focus:border-slate-400 text-xs"
                   />
                 </div>
                 <div>
@@ -465,6 +542,139 @@ export default function ProductsPage() {
                   className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs transition cursor-pointer shadow-xs disabled:opacity-50"
                 >
                   {isSubmitting ? 'Saving...' : 'Create Product'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* VARIANT MANAGEMENT MODAL */}
+      {isVariantModalOpen && selectedProductForVariants && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 max-w-lg w-full p-6">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">
+                  Manage Variants: {selectedProductForVariants.name}
+                </h3>
+                <p className="text-xs text-slate-500 font-mono mt-0.5">
+                  SKU: {selectedProductForVariants.sku}
+                </p>
+              </div>
+              <button
+                onClick={() => setIsVariantModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Existing Variants List */}
+            <div className="mb-6">
+              <p className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                Existing Product Variants ({variantList.length})
+              </p>
+              {variantLoading ? (
+                <div className="py-6 text-center text-xs text-slate-400">Loading variants...</div>
+              ) : variantList.length === 0 ? (
+                <div className="py-6 text-center text-xs text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                  No variants configured yet for this product.
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {variantList.map((v) => (
+                    <div
+                      key={v.id}
+                      className="p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 flex items-center justify-between text-xs"
+                    >
+                      <div>
+                        <span className="font-bold text-slate-800">{v.attribute}: </span>
+                        <span className="text-slate-900">{v.value}</span>
+                        {v.skuSuffix && (
+                          <span className="ml-2 font-mono text-[10px] text-slate-400">
+                            ({v.skuSuffix})
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-semibold text-emerald-600">
+                          {v.extraPrice > 0 ? `+$${v.extraPrice}` : 'Included'}
+                        </span>
+                        <button
+                          onClick={() => handleDeleteVariant(v.id)}
+                          className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
+                          title="Delete variant"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Add New Variant Form */}
+            <form onSubmit={handleAddVariant} className="pt-4 border-t border-slate-100 space-y-3 text-xs">
+              <p className="font-bold text-slate-900 uppercase tracking-wider text-[11px]">
+                Add New Variant
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-600 font-medium mb-1">Attribute *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. RAM, Storage, Color"
+                    value={variantForm.attribute}
+                    onChange={(e) => setVariantForm({ ...variantForm, attribute: e.target.value })}
+                    className="w-full h-8 px-2.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-600 font-medium mb-1">Value *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 32GB, 1TB, Midnight"
+                    value={variantForm.value}
+                    onChange={(e) => setVariantForm({ ...variantForm, value: e.target.value })}
+                    className="w-full h-8 px-2.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-600 font-medium mb-1">Extra Price ($)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={variantForm.extraPrice}
+                    onChange={(e) => setVariantForm({ ...variantForm, extraPrice: e.target.value })}
+                    className="w-full h-8 px-2.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-600 font-medium mb-1">SKU Suffix</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. -32GB"
+                    value={variantForm.skuSuffix}
+                    onChange={(e) => setVariantForm({ ...variantForm, skuSuffix: e.target.value })}
+                    className="w-full h-8 px-2.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs shadow-xs transition"
+                >
+                  + Add Variant to Catalog
                 </button>
               </div>
             </form>
