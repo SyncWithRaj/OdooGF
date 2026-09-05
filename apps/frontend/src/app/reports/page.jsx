@@ -189,7 +189,7 @@ export default function ReportsPage() {
             <button
               onClick={() => handleExport('xls')}
               disabled={exporting}
-              className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-black text-white font-semibold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -199,7 +199,7 @@ export default function ReportsPage() {
             <button
               onClick={() => handleExport('pdf')}
               disabled={exporting}
-              className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-900 text-white font-semibold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -213,7 +213,7 @@ export default function ReportsPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 mb-6">
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Win / Close Rate</p>
-            <p className="text-xl font-black text-emerald-600 mt-1">{bi.winRate}%</p>
+            <p className="text-xl font-black text-zinc-900 mt-1">{bi.winRate}%</p>
             <p className="text-[10px] text-slate-400 mt-1">{bi.wonDealsCount} of {bi.totalDeals} quotations converted</p>
           </div>
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
@@ -257,7 +257,7 @@ export default function ReportsPage() {
                     <span className="text-slate-900">${bi.categories.servicesTotal.toLocaleString()}</span>
                   </div>
                   <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-600 rounded-full" style={{ width: '25%' }} />
+                    <div className="h-full bg-zinc-900 rounded-full" style={{ width: '25%' }} />
                   </div>
                 </div>
                 <div>
@@ -266,7 +266,7 @@ export default function ReportsPage() {
                     <span className="text-slate-900">${bi.categories.subscriptionTotal.toLocaleString()}</span>
                   </div>
                   <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-purple-600 rounded-full" style={{ width: '20%' }} />
+                    <div className="h-full bg-zinc-700 rounded-full" style={{ width: '20%' }} />
                   </div>
                 </div>
               </div>
@@ -279,7 +279,7 @@ export default function ReportsPage() {
               <div className="space-y-3 text-xs">
                 <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
                   <span className="text-slate-600 font-medium">Approval Turnaround</span>
-                  <span className="font-bold text-emerald-700">&lt; 4.2 Hours</span>
+                  <span className="font-bold text-zinc-900">&lt; 4.2 Hours</span>
                 </div>
                 <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
                   <span className="text-slate-600 font-medium">Policy Exception Rate</span>
@@ -287,7 +287,7 @@ export default function ReportsPage() {
                 </div>
                 <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
                   <span className="text-slate-600 font-medium">Multi-Tier Escalation</span>
-                  <span className="font-bold text-blue-700">98% Compliant</span>
+                  <span className="font-bold text-zinc-900">98% Compliant</span>
                 </div>
               </div>
             </div>
@@ -303,7 +303,7 @@ export default function ReportsPage() {
                 </div>
                 <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
                   <span className="text-slate-600 font-medium">DSO (Days Sales Outstanding)</span>
-                  <span className="font-bold text-emerald-700">24.5 Days</span>
+                  <span className="font-bold text-zinc-900">24.5 Days</span>
                 </div>
                 <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
                   <span className="text-slate-600 font-medium">Bad Debt Write-off</span>
@@ -353,7 +353,7 @@ export default function ReportsPage() {
                   bi.leaderboard.map((rep, idx) => (
                     <tr key={rep.id} className="hover:bg-slate-50/50 transition">
                       <td className="py-3.5 px-4 text-center font-bold text-slate-700">
-                        {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
+                        #{idx + 1}
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="font-bold text-slate-900">{rep.name}</div>
@@ -365,7 +365,7 @@ export default function ReportsPage() {
                       <td className="py-3.5 px-4 text-center font-semibold text-slate-900">
                         {rep.totalQuotes}
                       </td>
-                      <td className="py-3.5 px-4 text-center font-bold text-emerald-600">
+                      <td className="py-3.5 px-4 text-center font-bold text-zinc-900">
                         {rep.closedWon}
                       </td>
                       <td className="py-3.5 px-4 text-right font-black text-slate-900 whitespace-nowrap">
@@ -378,9 +378,9 @@ export default function ReportsPage() {
                         <span
                           className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                             idx === 0
-                              ? 'bg-amber-50 border-amber-200 text-amber-800'
+                              ? 'bg-zinc-900 border-zinc-900 text-white'
                               : rep.revenue > 0
-                              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                              ? 'bg-zinc-100 border-zinc-200 text-zinc-900'
                               : 'bg-slate-100 border-slate-300 text-slate-600'
                           }`}
                         >
