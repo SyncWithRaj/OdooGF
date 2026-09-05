@@ -1,0 +1,40 @@
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { AcceptQuoteDto, CounterProposalDto } from './dto/portal.dto';
+import { PortalService } from './portal.service';
+
+@ApiTags('Customer Self-Service Portal & Negotiation Loop (Screen 11 & Red-Dashed Loop, B8)')
+@Controller('api/portal')
+export class PortalController {
+  constructor(private readonly portalService: PortalService) {}
+
+  @Get('quote/:token')
+  @ApiOperation({ summary: 'Customer view of quotation (Margin and costs securely masked)' })
+  @ApiResponse({ status: 200, description: 'Customer quotation view' })
+  async getQuote(@Param('token') token: string) {
+    return this.portalService.getQuoteByToken(token);
+  }
+
+  @Post('quote/:token/accept')
+  @ApiOperation({ summary: 'Customer 1-click acceptance of quotation terms' })
+  @ApiResponse({ status: 200, description: 'Quotation confirmed' })
+  async acceptQuote(
+    @Param('token') token: string,
+    @Body() dto: AcceptQuoteDto,
+  ) {
+    return this.portalService.acceptQuote(token, dto);
+  }
+
+  @Post('quote/:token/counter')
+  @ApiOperation({
+    summary:
+      'Customer counter-proposal (Red-Dashed Loop: triggers re-approval if discount exceeds ceiling)',
+  })
+  @ApiResponse({ status: 200, description: 'Counter proposal recorded / re-approval triggered' })
+  async counterProposal(
+    @Param('token') token: string,
+    @Body() dto: CounterProposalDto,
+  ) {
+    return this.portalService.counterProposal(token, dto);
+  }
+}
