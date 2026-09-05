@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { apiClient } from '@/services/apiClient';
@@ -32,6 +32,21 @@ export default function InvoicesPage() {
   const [customers, setCustomers] = useState([]);
   const [quotations, setQuotations] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+
+  // Load Razorpay checkout script once on mount
+  useEffect(() => {
+    if (document.getElementById('razorpay-sdk')) {
+      setRazorpayLoaded(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.id = 'razorpay-sdk';
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => setRazorpayLoaded(true);
+    document.body.appendChild(script);
+  }, []);
 
   const showToast = (message, type = 'success') => {
     setNotification({ message, type });
@@ -174,6 +189,56 @@ export default function InvoicesPage() {
     });
     setIsPayModalOpen(true);
   };
+
+  // Razorpay checkout handler
+  const handleRazorpayPayment = useCallback(async (invoice) => {
+    if (!razorpayLoaded) {
+      showToast('Razorpay SDK not loaded yet. Please try again.', 'error');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const orderData = await apiClient.createRazorpayOrder(invoice.id, 'INR');
+
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'DealFlow360',
+        description: `Payment for ${invoice.invoiceNumber}`,
+        order_id: orderData.orderId,
+        handler: async function (response) {
+          try {
+            await apiClient.verifyRazorpayPayment(
+              invoice.id,
+              response.razorpay_order_id,
+              response.razorpay_payment_id,
+              response.razorpay_signature,
+            );
+            showToast(`Payment of $${invoice.amount.toLocaleString()} confirmed via Razorpay!`);
+            await loadInvoices();
+          } catch (err) {
+            showToast('Payment verification failed: ' + err.message, 'error');
+          }
+        },
+        prefill: {
+          name: invoice.customer?.name || '',
+          email: invoice.customer?.email || '',
+        },
+        theme: { color: '#0f172a' },
+        modal: {
+          ondismiss: () => showToast('Payment cancelled', 'error'),
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      showToast('Could not initiate payment: ' + err.message, 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  }, [razorpayLoaded, loadInvoices]);
 
   return (
     <RequireRole roles={['rep', 'manager', 'finance', 'admin']}>
@@ -341,12 +406,22 @@ export default function InvoicesPage() {
                       </td>
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         {inv.status !== 'PAID' ? (
-                          <button
-                            onClick={() => openPayModal(inv)}
-                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] shadow-2xs transition"
-                          >
-                            Record Payment
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => handleRazorpayPayment(inv)}
+                              disabled={submitting || !razorpayLoaded}
+                              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#072654] hover:bg-[#0a3a7a] text-white font-semibold text-[11px] shadow-xs transition disabled:opacity-50"
+                            >
+                              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M18.09 1H5.91C4.31 1 3 2.31 3 3.91V20.09C3 21.69 4.31 23 5.91 23H18.09C19.69 23 21 21.69 21 20.09V3.91C21 2.31 19.69 1 18.09 1ZM12 18.5C10.07 18.5 8.5 16.93 8.5 15C8.5 13.07 10.07 11.5 12 11.5C13.93 11.5 15.5 13.07 15.5 15C15.5 16.93 13.93 18.5 12 18.5ZM12 10C9.24 10 7 12.24 7 15C7 17.76 9.24 20 12 20C14.76 20 17 17.76 17 15C17 12.24 14.76 10 12 10ZM12 6.5C10.62 6.5 9.5 5.38 9.5 4C9.5 2.62 10.62 1.5 12 1.5C13.38 1.5 14.5 2.62 14.5 4C14.5 5.38 13.38 6.5 12 6.5Z"/></svg>
+                              Razorpay
+                            </button>
+                            <button
+                              onClick={() => openPayModal(inv)}
+                              className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold text-[11px] transition"
+                            >
+                              Manual
+                            </button>
+                          </div>
                         ) : (
                           <span className="text-[11px] font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100">
                             ✓ Settled
@@ -376,6 +451,31 @@ export default function InvoicesPage() {
               </div>
 
               <form onSubmit={handleRecordPayment} className="space-y-4 text-xs">
+                {/* Razorpay quick-pay option */}
+                <div className="p-3 rounded-xl bg-[#072654]/5 border border-[#072654]/20 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-bold text-[#072654] text-xs">Pay via Razorpay</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">Instant online payment — cards, UPI, netbanking & wallets</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsPayModalOpen(false);
+                      handleRazorpayPayment(selectedInvoice);
+                    }}
+                    disabled={submitting || !razorpayLoaded}
+                    className="flex-shrink-0 px-3 py-1.5 rounded-lg bg-[#072654] hover:bg-[#0a3a7a] text-white font-bold text-[11px] shadow-xs transition disabled:opacity-50"
+                  >
+                    Pay ₹{selectedInvoice?.amount?.toLocaleString()}
+                  </button>
+                </div>
+
+                <div className="relative flex items-center gap-2">
+                  <div className="flex-1 h-px bg-slate-200" />
+                  <span className="text-[10px] text-slate-400 font-medium">or record manually</span>
+                  <div className="flex-1 h-px bg-slate-200" />
+                </div>
+
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Settlement Amount ($) *</label>
                   <input

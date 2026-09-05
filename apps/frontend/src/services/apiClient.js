@@ -320,5 +320,19 @@ export const apiClient = {
     const qs = params.toString() ? `?${params.toString()}` : '';
     return apiRequest(`/api/analytics/reports${qs}`);
   },
-};
 
+  // ==================== Razorpay Payments ====================
+  async createRazorpayOrder(invoiceId, currency = 'INR') {
+    return apiRequest(`/api/invoices/${invoiceId}/create-razorpay-order`, {
+      method: 'POST',
+      body: JSON.stringify({ currency }),
+    });
+  },
+
+  async verifyRazorpayPayment(invoiceId, razorpayOrderId, razorpayPaymentId, razorpaySignature) {
+    return apiRequest(`/api/invoices/${invoiceId}/verify-razorpay-payment`, {
+      method: 'POST',
+      body: JSON.stringify({ razorpayOrderId, razorpayPaymentId, razorpaySignature }),
+    });
+  },
+};
