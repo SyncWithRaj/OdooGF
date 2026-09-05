@@ -19,17 +19,15 @@ export default function ProfilePage() {
     phone: '+1 (609) 972-22-22',
     department: 'No department',
     completionRate: 82,
-    teamsCount: 7,
-    projectsCount: 8,
   });
 
   const [avatarSrc, setAvatarSrc] = useState('/avatar.jpg');
   const [bannerSrc, setBannerSrc] = useState('/cover_banner.jpg');
   const [isConnected, setIsConnected] = useState(false);
-  const [activeTab, setActiveTab] = useState('profile');
   const [toastMessage, setToastMessage] = useState('');
 
-  // Password reset & security card state
+  // Reset Password Modal & form state
+  const [showResetModal, setShowResetModal] = useState(false);
   const [passwordMode, setPasswordMode] = useState('direct'); // 'direct' or 'otp'
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -38,36 +36,6 @@ export default function ProfilePage() {
   const [otpSent, setOtpSent] = useState(false);
   const [showPasswords, setShowPasswords] = useState(false);
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
-
-  // Projects list matching screenshot
-  const [projects, setProjects] = useState([
-    { id: 1, name: 'UI/UX', updated: 'Updated 2 hours ago', progress: 0, hours: '4:25', icon: '🎨' },
-    { id: 2, name: 'Get a complete audit store', updated: 'Updated 1 day ago', progress: 45, hours: '18:42', icon: '⚙️' },
-    { id: 3, name: 'Build stronger customer relationships', updated: 'Updated 2 days ago', progress: 59, hours: '9:01', icon: '👥' },
-    { id: 4, name: 'Update subscription method', updated: 'Updated 2 days ago', progress: 57, hours: '0:37', icon: '🔄' },
-    { id: 5, name: 'Create a new theme', updated: 'Updated 1 week ago', progress: 100, hours: '24:12', icon: '✨' },
-    { id: 6, name: 'Improve social banners', updated: 'Updated 1 week ago', progress: 0, hours: '8:08', icon: '🖼️' },
-  ]);
-
-  // Connections list matching screenshot
-  const [connections, setConnections] = useState([
-    { id: 1, name: 'Rachel Doe', connections: 25, isConnected: true, initial: 'R', color: 'bg-blue-100 text-blue-700' },
-    { id: 2, name: 'Isabella Finley', connections: 79, isConnected: false, avatar: '/avatar.jpg' },
-    { id: 3, name: 'David Harrison', connections: 0, isConnected: true, initial: 'D', color: 'bg-slate-900 text-white' },
-    { id: 4, name: 'Costa Quinn', connections: 9, isConnected: false, initial: 'C', color: 'bg-teal-100 text-teal-800' },
-  ]);
-
-  // Teams list matching screenshot
-  const teams = [
-    { id: 1, name: '#digitalmarketing', members: 8, icon: '👥' },
-    { id: 2, name: '#ethereum', members: 14, icon: '💲' },
-    { id: 3, name: '#conference', members: 3, icon: '📦' },
-    { id: 4, name: '#supportteam', members: 3, icon: '💬' },
-  ];
-
-  // New project modal state
-  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
-  const [newProjectName, setNewProjectName] = useState('');
 
   // Sync with Auth user if available
   useEffect(() => {
@@ -120,30 +88,7 @@ export default function ProfilePage() {
     showToast(!isConnected ? `Connected to ${profile.name}` : 'Connection removed');
   };
 
-  const handleToggleConnection = (id) => {
-    setConnections((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, isConnected: !c.isConnected } : c))
-    );
-  };
-
-  const handleCreateProject = (e) => {
-    e.preventDefault();
-    if (!newProjectName.trim()) return;
-    const newProj = {
-      id: Date.now(),
-      name: newProjectName.trim(),
-      updated: 'Just now',
-      progress: 0,
-      hours: '0:00',
-      icon: '🚀',
-    };
-    setProjects([newProj, ...projects]);
-    setNewProjectName('');
-    setShowNewProjectModal(false);
-    showToast(`Project "${newProj.name}" created`);
-  };
-
-  // Password reset handler
+  // Password reset submit handler
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     if (newPassword.length < 6) {
@@ -168,18 +113,17 @@ export default function ProfilePage() {
         }
         showToast('Password reset successful! Your account is secure.');
       } else {
-        // Direct password change
         if (verifyPasswordReset) {
-          // Dev mode fallback or direct reset
           await verifyPasswordReset(profile.email, '123456', newPassword, confirmPassword);
         }
-        showToast('Password changed and updated successfully!');
+        showToast('Password updated successfully!');
       }
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setOtpCode('');
       setOtpSent(false);
+      setShowResetModal(false);
     } catch (err) {
       showToast(err.message || 'Failed to update password');
     } finally {
@@ -221,7 +165,7 @@ export default function ProfilePage() {
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">User Profile</h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Manage your personal profile, security credentials, teams, and ongoing project status.
+            Manage your personal profile, credentials, and recent account activity.
           </p>
         </div>
       </div>
@@ -347,61 +291,16 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Bottom Nav Tabs & Actions Bar */}
+          {/* Bottom Actions Bar */}
           <div className="px-6 py-2.5 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-            {/* Tabs */}
-            <div className="flex items-center gap-6 text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => setActiveTab('profile')}
-                className={`py-2 transition relative cursor-pointer ${
-                  activeTab === 'profile'
-                    ? 'text-slate-900 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-slate-900'
-                    : 'text-slate-500 hover:text-slate-900'
-                }`}
-              >
-                Profile
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('security')}
-                className={`py-2 transition relative cursor-pointer ${
-                  activeTab === 'security'
-                    ? 'text-slate-900 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-slate-900'
-                    : 'text-slate-500 hover:text-slate-900'
-                }`}
-              >
-                Security & Password
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('teams')}
-                className={`py-2 transition relative cursor-pointer ${
-                  activeTab === 'teams'
-                    ? 'text-slate-900 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-slate-900'
-                    : 'text-slate-500 hover:text-slate-900'
-                }`}
-              >
-                Teams
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('projects')}
-                className={`py-2 flex items-center gap-1.5 transition relative cursor-pointer ${
-                  activeTab === 'projects'
-                    ? 'text-slate-900 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-slate-900'
-                    : 'text-slate-500 hover:text-slate-900'
-                }`}
-              >
-                <span>Projects</span>
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
-                  {projects.length}
-                </span>
-              </button>
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span>Active Account Profile</span>
             </div>
 
-            {/* Action Buttons: Connect + More Options */}
+            {/* Action Buttons: Connect + Reset Password + More Options */}
             <div className="flex items-center gap-2 self-end sm:self-auto">
+              {/* Connect Button */}
               <button
                 type="button"
                 onClick={handleConnectToggle}
@@ -421,6 +320,25 @@ export default function ProfilePage() {
                 <span>{isConnected ? 'Connected' : 'Connect'}</span>
               </button>
 
+              {/* Reset Password Button beside Connect */}
+              <button
+                type="button"
+                onClick={() => setShowResetModal(true)}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                title="Reset Password"
+              >
+                <svg className="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                  />
+                </svg>
+                <span>Reset</span>
+              </button>
+
+              {/* More Options Button */}
               <button
                 type="button"
                 onClick={() => showToast('Profile options opened')}
@@ -436,12 +354,12 @@ export default function ProfilePage() {
         </div>
 
         {/* ================================================================= */}
-        {/* MAIN CONTENT GRID                                                 */}
+        {/* MAIN CONTENT GRID (2 COLUMNS)                                     */}
         {/* ================================================================= */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
           {/* --------------------------------------------------------------- */}
-          {/* LEFT COLUMN: Profile Stats, About, Contacts, and RESET PASSWORD */}
+          {/* LEFT COLUMN: Profile Stats, About, Contacts                     */}
           {/* --------------------------------------------------------------- */}
           <div className="lg:col-span-4 space-y-6">
             
@@ -459,171 +377,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Card 2: RESET PASSWORD & SECURITY CARD */}
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-bold text-slate-900 leading-tight">Reset Password</h3>
-                    <p className="text-[10px] text-slate-400">Account security credentials</p>
-                  </div>
-                </div>
-
-                {/* Switch between Direct Change & OTP Reset */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPasswordMode(passwordMode === 'direct' ? 'otp' : 'direct');
-                    setOtpSent(false);
-                  }}
-                  className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 underline cursor-pointer"
-                >
-                  {passwordMode === 'direct' ? 'Use OTP' : 'Direct'}
-                </button>
-              </div>
-
-              {/* Password Form */}
-              <form onSubmit={handlePasswordSubmit} className="space-y-3">
-                {passwordMode === 'direct' ? (
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                      Current Password
-                    </label>
-                    <input
-                      type={showPasswords ? 'text' : 'password'}
-                      placeholder="••••••"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      className="w-full px-3 py-1.5 text-xs rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500 transition"
-                    />
-                  </div>
-                ) : (
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-[11px] font-semibold text-slate-700">
-                        6-Digit Reset Code
-                      </label>
-                      {!otpSent ? (
-                        <button
-                          type="button"
-                          onClick={handleSendResetCode}
-                          className="text-[10px] font-semibold text-blue-600 hover:underline"
-                        >
-                          Send Code
-                        </button>
-                      ) : (
-                        <span className="text-[10px] font-semibold text-emerald-600">Code Sent!</span>
-                      )}
-                    </div>
-                    <input
-                      type="text"
-                      maxLength={6}
-                      placeholder="123456"
-                      value={otpCode}
-                      onChange={(e) => setOtpCode(e.target.value)}
-                      className="w-full px-3 py-1.5 text-xs rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500 font-mono tracking-widest text-center"
-                    />
-                  </div>
-                )}
-
-                {/* New Password */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                    New Password
-                  </label>
-                  <input
-                    type={showPasswords ? 'text' : 'password'}
-                    placeholder="Min. 6 characters"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500 transition"
-                  />
-                  {/* Strength Bar */}
-                  {newPassword && (
-                    <div className="mt-1.5">
-                      <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
-                        <div
-                          className={`h-1 rounded-full transition-all duration-300 ${
-                            strength >= 75
-                              ? 'bg-emerald-500'
-                              : strength >= 50
-                              ? 'bg-amber-500'
-                              : 'bg-rose-500'
-                          }`}
-                          style={{ width: `${strength}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Confirm New Password */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Confirm New Password
-                  </label>
-                  <input
-                    type={showPasswords ? 'text' : 'password'}
-                    placeholder="Repeat new password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500 transition"
-                  />
-                </div>
-
-                {/* Show passwords checkbox */}
-                <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={showPasswords}
-                      onChange={(e) => setShowPasswords(e.target.checked)}
-                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
-                    />
-                    <span>Show passwords</span>
-                  </label>
-                  {passwordMode === 'direct' && (
-                    <button
-                      type="button"
-                      onClick={handleSendResetCode}
-                      className="text-slate-400 hover:text-blue-600 transition"
-                    >
-                      Forgot?
-                    </button>
-                  )}
-                </div>
-
-                {/* Action Button */}
-                <button
-                  type="submit"
-                  disabled={isSubmittingPassword}
-                  className="w-full py-2 px-3 rounded-xl bg-[#2563EB] hover:bg-blue-600 text-white font-semibold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  {isSubmittingPassword ? (
-                    <span>Saving...</span>
-                  ) : (
-                    <>
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span>Update Password</span>
-                    </>
-                  )}
-                </button>
-              </form>
-            </div>
-
-            {/* Card 3: About Details */}
+            {/* Card 2: About Details */}
             <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
               <div>
                 <h3 className="text-xs font-bold text-slate-900 mb-3 tracking-tight">About</h3>
@@ -669,42 +423,23 @@ export default function ProfilePage() {
                   </div>
                 </div>
               </div>
-
-              {/* Teams Subsection */}
-              <div className="pt-3 border-t border-slate-100">
-                <p className="text-[10px] font-bold tracking-wider uppercase text-slate-400 mb-2">Teams</p>
-                <div className="space-y-2 text-xs text-slate-700">
-                  <div className="flex items-center gap-2.5">
-                    <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    <span>Member of {profile.teamsCount} teams</span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                    </svg>
-                    <span>Working on {profile.projectsCount} projects</span>
-                  </div>
-                </div>
-              </div>
             </div>
 
           </div>
 
           {/* --------------------------------------------------------------- */}
-          {/* RIGHT COLUMN: Activity Stream, Connections, Teams, Projects     */}
+          {/* RIGHT COLUMN: Activity Stream                                    */}
           {/* --------------------------------------------------------------- */}
           <div className="lg:col-span-8 space-y-6">
             
-            {/* Activity Stream (Without the photo gallery part) */}
+            {/* Activity Stream */}
             <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs">
               <div className="flex items-center justify-between mb-5">
                 <h3 className="text-sm font-bold text-slate-900">Activity stream</h3>
                 <button
                   type="button"
                   onClick={() => showToast('Activity options')}
-                  className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+                  className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer"
                   aria-label="Activity options"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -800,243 +535,192 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Sub-grid: Connections & Teams side-by-side matching screenshot */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              
-              {/* Connections Card */}
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 mb-3">Connections</h3>
-                  <div className="space-y-3">
-                    {connections.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          {item.avatar ? (
-                            <img
-                              src={item.avatar}
-                              alt={item.name}
-                              className="w-8 h-8 rounded-full object-cover border border-slate-200"
-                            />
-                          ) : (
-                            <div
-                              className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
-                                item.color || 'bg-slate-100 text-slate-700'
-                              }`}
-                            >
-                              {item.initial}
-                            </div>
-                          )}
-                          <div>
-                            <p className="text-xs font-semibold text-slate-900 leading-tight">{item.name}</p>
-                            <p className="text-[10px] text-slate-400">{item.connections} connections</p>
-                          </div>
-                        </div>
-
-                        {/* Toggle Connection Button matching screenshot styling */}
-                        <button
-                          type="button"
-                          onClick={() => handleToggleConnection(item.id)}
-                          className={`w-7 h-7 rounded-xl flex items-center justify-center transition cursor-pointer shadow-2xs ${
-                            item.isConnected
-                              ? 'bg-blue-600 text-white hover:bg-blue-700'
-                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                          }`}
-                          title={item.isConnected ? 'Connected' : 'Add connection'}
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            {item.isConnected ? (
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
-                            ) : (
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                            )}
-                          </svg>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="pt-4 mt-3 border-t border-slate-100 text-center">
-                  <button
-                    type="button"
-                    onClick={() => showToast('Opening all connections...')}
-                    className="text-xs font-semibold text-slate-500 hover:text-slate-900 inline-flex items-center gap-1 transition cursor-pointer"
-                  >
-                    <span>View all connections</span>
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              {/* Teams Card */}
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 mb-3">Teams</h3>
-                  <div className="space-y-3">
-                    {teams.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-sm">
-                            {item.icon}
-                          </div>
-                          <div>
-                            <p className="text-xs font-semibold text-slate-900 leading-tight">{item.name}</p>
-                            <p className="text-[10px] text-slate-400">{item.members} members</p>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => showToast(`Opening channel ${item.name}`)}
-                          className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                          </svg>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="pt-4 mt-3 border-t border-slate-100 text-center">
-                  <button
-                    type="button"
-                    onClick={() => showToast('Opening all teams...')}
-                    className="text-xs font-semibold text-slate-500 hover:text-slate-900 inline-flex items-center gap-1 transition cursor-pointer"
-                  >
-                    <span>View all teams</span>
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Projects Table Card matching screenshot */}
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-              <div className="p-5 flex items-center justify-between border-b border-slate-100">
-                <h3 className="text-sm font-bold text-slate-900">Projects</h3>
-                <button
-                  type="button"
-                  onClick={() => setShowNewProjectModal(true)}
-                  className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-800 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                >
-                  <span>+</span>
-                  <span>New Project</span>
-                </button>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-[11px] font-semibold text-slate-400 uppercase tracking-wider bg-slate-50/50">
-                      <th className="py-2.5 px-5">Project</th>
-                      <th className="py-2.5 px-5">Progress</th>
-                      <th className="py-2.5 px-5 text-right">Hours Spent</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs">
-                    {projects.map((proj) => (
-                      <tr key={proj.id} className="hover:bg-slate-50/70 transition">
-                        <td className="py-3 px-5">
-                          <div className="flex items-center gap-3">
-                            <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-xs shrink-0">
-                              {proj.icon}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-semibold text-slate-900 truncate">{proj.name}</p>
-                              <p className="text-[10px] text-slate-400">{proj.updated}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-5 min-w-[140px]">
-                          <div className="flex items-center gap-3">
-                            <div className="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                              <div
-                                className={`h-1.5 rounded-full ${
-                                  proj.progress === 100
-                                    ? 'bg-emerald-500'
-                                    : proj.progress > 0
-                                    ? 'bg-slate-900'
-                                    : 'bg-transparent'
-                                }`}
-                                style={{ width: `${proj.progress}%` }}
-                              />
-                            </div>
-                            <span className="text-[11px] text-slate-500 font-medium w-8 text-right">
-                              {proj.progress}%
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-5 text-right font-mono font-medium text-slate-700">
-                          {proj.hours}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="p-4 border-t border-slate-100 text-center">
-                <button
-                  type="button"
-                  onClick={() => showToast(`Viewing all ${projects.length} active projects`)}
-                  className="text-xs font-semibold text-slate-500 hover:text-slate-900 inline-flex items-center gap-1 transition cursor-pointer"
-                >
-                  <span>View all projects</span>
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
           </div>
         </div>
       </div>
 
-      {/* New Project Modal */}
-      {showNewProjectModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold text-slate-900">Create New Project</h3>
+      {/* ================================================================= */}
+      {/* RESET PASSWORD MODAL WITH BLURRED BACKDROP                        */}
+      {/* ================================================================= */}
+      {showResetModal && (
+        <div
+          onClick={() => setShowResetModal(false)}
+          className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-100 relative animate-in zoom-in-95 duration-200"
+          >
+            {/* Modal Close Button */}
+            <button
+              type="button"
+              onClick={() => setShowResetModal(false)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1 text-lg leading-none cursor-pointer"
+              aria-label="Close modal"
+            >
+              ✕
+            </button>
+
+            {/* Header matching user's screenshot */}
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 pr-6">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 leading-tight">Reset Password</h3>
+                  <p className="text-[11px] text-slate-400">Account security credentials</p>
+                </div>
+              </div>
+
+              {/* Mode Switcher */}
               <button
                 type="button"
-                onClick={() => setShowNewProjectModal(false)}
-                className="text-slate-400 hover:text-slate-600 text-lg leading-none cursor-pointer"
+                onClick={() => {
+                  setPasswordMode(passwordMode === 'direct' ? 'otp' : 'direct');
+                  setOtpSent(false);
+                }}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700 underline cursor-pointer"
               >
-                ✕
+                {passwordMode === 'direct' ? 'Use OTP' : 'Direct'}
               </button>
             </div>
-            <form onSubmit={handleCreateProject} className="space-y-4">
+
+            {/* Password Form */}
+            <form onSubmit={handlePasswordSubmit} className="space-y-3.5">
+              {passwordMode === 'direct' ? (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Current Password
+                  </label>
+                  <input
+                    type={showPasswords ? 'text' : 'password'}
+                    placeholder="••••••"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500 transition"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-slate-700">
+                      6-Digit Reset Code
+                    </label>
+                    {!otpSent ? (
+                      <button
+                        type="button"
+                        onClick={handleSendResetCode}
+                        className="text-[11px] font-semibold text-blue-600 hover:underline cursor-pointer"
+                      >
+                        Send Code
+                      </button>
+                    ) : (
+                      <span className="text-[11px] font-semibold text-emerald-600">Code Sent!</span>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    placeholder="123456"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500 font-mono tracking-widest text-center font-bold"
+                  />
+                </div>
+              )}
+
+              {/* New Password */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Project Name</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  New Password
+                </label>
                 <input
-                  type="text"
-                  placeholder="e.g. Enterprise CRM Sync"
-                  value={newProjectName}
-                  onChange={(e) => setNewProjectName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500 transition"
-                  autoFocus
+                  type={showPasswords ? 'text' : 'password'}
+                  placeholder="Min. 6 characters"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500 transition"
+                />
+                {/* Strength Bar */}
+                {newPassword && (
+                  <div className="mt-1.5">
+                    <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
+                      <div
+                        className={`h-1 rounded-full transition-all duration-300 ${
+                          strength >= 75
+                            ? 'bg-emerald-500'
+                            : strength >= 50
+                            ? 'bg-amber-500'
+                            : 'bg-rose-500'
+                        }`}
+                        style={{ width: `${strength}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Confirm New Password */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Confirm New Password
+                </label>
+                <input
+                  type={showPasswords ? 'text' : 'password'}
+                  placeholder="Repeat new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500 transition"
                 />
               </div>
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowNewProjectModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
-                >
-                  Cancel
-                </button>
+
+              {/* Show passwords checkbox */}
+              <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showPasswords}
+                    onChange={(e) => setShowPasswords(e.target.checked)}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+                  />
+                  <span>Show passwords</span>
+                </label>
+                {passwordMode === 'direct' && (
+                  <button
+                    type="button"
+                    onClick={handleSendResetCode}
+                    className="text-slate-400 hover:text-blue-600 transition cursor-pointer"
+                  >
+                    Forgot?
+                  </button>
+                )}
+              </div>
+
+              {/* Action Button */}
+              <div className="pt-2">
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-950 hover:bg-slate-800 text-white transition shadow-xs cursor-pointer"
+                  disabled={isSubmittingPassword}
+                  className="w-full py-2.5 px-4 rounded-xl bg-[#2563EB] hover:bg-blue-600 text-white font-semibold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
-                  Create Project
+                  {isSubmittingPassword ? (
+                    <span>Saving...</span>
+                  ) : (
+                    <>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Update Password</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
