@@ -226,4 +226,44 @@ export class AnalyticsService {
       revenueByCustomerTier: tierRevenue,
     };
   }
+
+  // ----------------------------------------------------------------------------
+  // A7: EXPORT PIPELINE AS CSV SPREADSHEET
+  // ----------------------------------------------------------------------------
+  async exportPipelineCsv() {
+    const quotes = await this.prisma.quotation.findMany({
+      include: { customer: true, salesRep: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const headers = [
+      'Quote Number',
+      'Customer Name',
+      'Customer Tier',
+      'Sales Rep',
+      'Status',
+      'Blended Risk',
+      'Subtotal ($)',
+      'Total Discount ($)',
+      'Total Amount ($)',
+      'Total Margin (%)',
+      'Created Date',
+    ];
+
+    const rows = quotes.map((q) => [
+      `"${q.quoteNumber}"`,
+      `"${q.customer.name.replace(/"/g, '""')}"`,
+      `"${q.customer.tier}"`,
+      `"${q.salesRep.fullName.replace(/"/g, '""')}"`,
+      `"${q.status}"`,
+      `"${q.blendedRiskScore}"`,
+      q.subtotalAmount.toFixed(2),
+      q.totalDiscountAmount.toFixed(2),
+      q.totalAmount.toFixed(2),
+      q.totalMarginPercent.toFixed(2),
+      `"${q.createdAt.toISOString().split('T')[0]}"`,
+    ]);
+
+    return [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+  }
 }

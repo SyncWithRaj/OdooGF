@@ -3,8 +3,10 @@ import {
   Controller,
   Get,
   Post,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -60,5 +62,19 @@ export class AnalyticsController {
   @ApiResponse({ status: 200, description: 'Executive report aggregations' })
   async getReports() {
     return this.analyticsService.getReports();
+  }
+
+  @Get('export/csv')
+  @Roles(Role.ADMIN, Role.SALES_MANAGER, Role.FINANCE)
+  @ApiOperation({ summary: 'Export full sales pipeline report as CSV spreadsheet (Screen 15 / A7)' })
+  @ApiResponse({ status: 200, description: 'Downloadable CSV report' })
+  async exportCsv(@Res() res: Response) {
+    const csvData = await this.analyticsService.exportPipelineCsv();
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="dealflow360_pipeline_export_${Date.now()}.csv"`,
+    );
+    return res.status(200).send(csvData);
   }
 }
