@@ -19,6 +19,7 @@ import {
 } from './dto/auth.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { RateLimit } from '../common/decorators/rate-limit.decorator';
 
 @ApiTags('Authentication')
 @Controller('api/auth')
@@ -26,6 +27,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('signup/initiate')
+  @RateLimit({ limit: 5, ttl: 60 })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Step 1: Initiate signup by validating details and sending OTP email' })
   @ApiResponse({ status: 200, description: 'OTP sent successfully' })
@@ -35,6 +37,7 @@ export class AuthController {
   }
 
   @Post('signup/verify')
+  @RateLimit({ limit: 5, ttl: 60 })
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Step 2: Verify OTP and create user with tokens' })
   @ApiResponse({ status: 201, description: 'Account verified and tokens returned' })
@@ -44,6 +47,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @RateLimit({ limit: 5, ttl: 60 })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login with email (or identifier) and password (argon2 verified)' })
   @ApiResponse({ status: 200, description: 'Login successful, returns access and refresh tokens' })
@@ -53,6 +57,7 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @RateLimit({ limit: 15, ttl: 60 })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Rotate refresh token and generate new access token' })
   @ApiResponse({ status: 200, description: 'New access and refresh tokens generated' })
@@ -72,6 +77,7 @@ export class AuthController {
   }
 
   @Post('password-reset/initiate')
+  @RateLimit({ limit: 5, ttl: 60 })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Step 1: Request password reset OTP email' })
   @ApiResponse({ status: 200, description: 'Reset code dispatched if account exists' })
@@ -80,6 +86,7 @@ export class AuthController {
   }
 
   @Post('password-reset/verify')
+  @RateLimit({ limit: 5, ttl: 60 })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Step 2: Verify OTP and update password with argon2 hash' })
   @ApiResponse({ status: 200, description: 'Password reset successful' })

@@ -17,10 +17,14 @@ import { PortalModule } from './portal/portal.module';
 import { FulfillmentsModule } from './fulfillments/fulfillments.module';
 import { InvoicesModule } from './invoices/invoices.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { RedisModule } from './redis/redis.module';
+import { APP_GUARD } from '@nestjs/core';
+import { RateLimitGuard } from './common/guards/rate-limit.guard';
 
 @Module({
   imports: [
     PrismaModule,
+    RedisModule,
     MailModule,
     AuthModule,
     UsersModule,
@@ -38,6 +42,12 @@ import { AnalyticsModule } from './analytics/analytics.module';
     AnalyticsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: RateLimitGuard,
+    },
+  ],
 })
 export class AppModule {}

@@ -1,9 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service';
+import { RedisService } from './redis/redis.service';
 
 @Injectable()
 export class AppService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly redisService: RedisService,
+  ) {}
 
   async getHealth() {
     let dbStatus = 'disconnected';
@@ -28,14 +32,23 @@ export class AppService {
       };
     }
 
+    const redisStatus = this.redisService.isReady ? 'connected' : 'disconnected';
+
     return {
       status: 'ok',
       db: dbStatus,
       services: {
         backend: 'connected',
         database: dbStatus,
+        redis: redisStatus,
       },
-      details: dbDetails,
+      details: {
+        ...dbDetails,
+        redis: {
+          status: redisStatus,
+          url: 'redis://localhost:6379',
+        },
+      },
       timestamp: new Date().toISOString(),
     };
   }

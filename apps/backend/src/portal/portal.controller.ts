@@ -2,8 +2,10 @@ import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AcceptQuoteDto, CounterProposalDto, PortalCommentDto, ShortageActionDto } from './dto/portal.dto';
 import { PortalService } from './portal.service';
+import { RateLimit } from '../common/decorators/rate-limit.decorator';
 
 @ApiTags('Customer Self-Service Portal & Negotiation Loop (Screen 11 & Red-Dashed Loop, B8)')
+@RateLimit({ limit: 30, ttl: 60 })
 @Controller('api/portal')
 export class PortalController {
   constructor(private readonly portalService: PortalService) {}

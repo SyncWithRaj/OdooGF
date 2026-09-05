@@ -12,6 +12,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { Roles } from '../common/decorators/roles.decorator';
+import { RateLimit } from '../common/decorators/rate-limit.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { CreateUpsellRuleDto, UpdateUpsellRuleDto } from './dto/upsell-rule.dto';
@@ -94,6 +95,7 @@ export class UpsellRulesController {
   }
 
   @Post('cart-recommendations')
+  @RateLimit({ limit: 30, ttl: 60 })
   @Roles(Role.ADMIN, Role.SALES_REP, Role.SALES_MANAGER, Role.FINANCE)
   @ApiOperation({ summary: 'Generate hybrid recommendations for cart items (Admin Feed + FP-Growth Affinity)' })
   async getCartRecommendations(@Body('productIds') productIds: string[]) {
