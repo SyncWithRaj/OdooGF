@@ -48,4 +48,36 @@ export class UpdateUserDto {
   @IsString()
   @IsOptional()
   teamName?: string;
+
+  @ApiPropertyOptional({ example: '+1 (555) 012-4488' })
+  @IsString()
+  @IsOptional()
+  phone?: string;
+
+  @ApiPropertyOptional({ example: 'San Francisco, CA, US' })
+  @IsString()
+  @IsOptional()
+  location?: string;
+}
+
+export class UpdateProfileDto {
+  @ApiPropertyOptional({ example: 'Priya Patel' })
+  @IsString()
+  @IsOptional()
+  fullName?: string;
+
+  @ApiPropertyOptional({ example: 'Enterprise Sales' })
+  @IsString()
+  @IsOptional()
+  teamName?: string;
+
+  @ApiPropertyOptional({ example: '+1 (555) 012-4488' })
+  @IsString()
+  @IsOptional()
+  phone?: string;
+
+  @ApiPropertyOptional({ example: 'San Francisco, CA, US' })
+  @IsString()
+  @IsOptional()
+  location?: string;
 }
