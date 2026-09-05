@@ -5,6 +5,7 @@ import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { useAuth } from '@/context/AuthContext';
 import { quotationsService } from '@/services/quotationsService';
+import { apiClient } from '@/services/apiClient';
 
 export default function QuotationsPage() {
   const { user, login } = useAuth();
@@ -65,10 +66,18 @@ export default function QuotationsPage() {
           quotationsService.getGovernanceRules(),
           quotationsService.getQuotations(),
         ]);
-        setCustomers(custs);
-        setProducts(prods);
+        const validCusts = Array.isArray(custs) ? custs : [];
+        const validProds = Array.isArray(prods) ? prods : [];
+        const validList = Array.isArray(list) ? list : [];
+
+        setCustomers(validCusts);
+        setProducts(validProds);
         setGovernanceRules(rules);
-        setQuotations(list);
+        setQuotations(validList);
+
+        if (validCusts.length > 0) {
+          setNewQuoteCustomer((prev) => prev || validCusts[0]);
+        }
       } catch (err) {
         console.error('Failed to load quotation master data:', err);
       } finally {
@@ -244,9 +253,14 @@ export default function QuotationsPage() {
   }, [quotations]);
 
   // Add line to new quote
-  const handleAddLine = () => {
-    if (products.length === 0) return;
-    const defaultProduct = products[0];
+  const handleAddLine = async () => {
+    let prods = products;
+    if (!prods || prods.length === 0) {
+      prods = await quotationsService.getLiveProducts();
+      if (Array.isArray(prods)) setProducts(prods);
+    }
+    if (!prods || prods.length === 0) return;
+    const defaultProduct = prods[0];
     const initialLine = {
       productId: defaultProduct.id,
       productName: defaultProduct.name,
@@ -293,12 +307,24 @@ export default function QuotationsPage() {
   };
 
   // Open Create Quote Modal
-  const handleOpenCreateModal = () => {
-    if (customers.length > 0) {
-      setNewQuoteCustomer(customers[0]);
+  const handleOpenCreateModal = async () => {
+    let currentCusts = customers;
+    let currentProds = products;
+
+    if (!currentCusts || currentCusts.length === 0) {
+      currentCusts = await quotationsService.getLiveCustomers();
+      if (Array.isArray(currentCusts)) setCustomers(currentCusts);
     }
-    if (products.length > 0) {
-      const defaultProd = products[0];
+    if (!currentProds || currentProds.length === 0) {
+      currentProds = await quotationsService.getLiveProducts();
+      if (Array.isArray(currentProds)) setProducts(currentProds);
+    }
+
+    if (currentCusts && currentCusts.length > 0) {
+      setNewQuoteCustomer(currentCusts[0]);
+    }
+    if (currentProds && currentProds.length > 0) {
+      const defaultProd = currentProds[0];
       setNewQuoteLines([
         {
           productId: defaultProd.id,
@@ -407,17 +433,23 @@ export default function QuotationsPage() {
         updated = await quotationsService.submitForApproval(selectedQuote.id, user, actionComment);
         showToast(`Quotation ${selectedQuote.quoteNumber} submitted for approval.`);
       } else if (actionType === 'APPROVE') {
-        updated = await quotationsService.approveQuotation(selectedQuote.id, user, actionComment);
+        const arId = selectedQuote.approvalRequests?.[0]?.id;
+        if (!arId) { showToast('No active approval request for this quotation.', 'error'); return; }
+        updated = await apiClient.actionApproval(arId, 'APPROVED', actionComment);
         showToast(
-          updated.status === 'APPROVED'
-            ? `Quotation ${selectedQuote.quoteNumber} approved!`
-            : `Quotation ${selectedQuote.quoteNumber} approved at L1 and escalated to Finance Controller.`
+          updated.status === 'ESCALATED_TO_FINANCE'
+            ? `Quotation ${selectedQuote.quoteNumber} approved at L1 — escalated to Finance Controller.`
+            : `Quotation ${selectedQuote.quoteNumber} fully approved & sent to customer!`
         );
       } else if (actionType === 'REJECT') {
-        updated = await quotationsService.rejectQuotation(selectedQuote.id, user, actionComment);
+        const arId = selectedQuote.approvalRequests?.[0]?.id;
+        if (!arId) { showToast('No active approval request for this quotation.', 'error'); return; }
+        updated = await apiClient.actionApproval(arId, 'REJECTED', actionComment);
         showToast(`Quotation ${selectedQuote.quoteNumber} rejected.`);
       } else if (actionType === 'RETURN') {
-        updated = await quotationsService.returnForRevision(selectedQuote.id, user, actionComment);
+        const arId = selectedQuote.approvalRequests?.[0]?.id;
+        if (!arId) { showToast('No active approval request for this quotation.', 'error'); return; }
+        updated = await apiClient.actionApproval(arId, 'RETURNED_FOR_REVISION', actionComment);
         showToast(`Quotation ${selectedQuote.quoteNumber} returned to sales rep for revision.`);
       } else if (actionType === 'CONFIRM') {
         updated = await quotationsService.confirmOrder(selectedQuote.id, user);
@@ -1006,11 +1038,15 @@ export default function QuotationsPage() {
                     }}
                     className="w-full h-10 px-3.5 rounded-md bg-white border border-gray-200 text-gray-900 text-sm focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-200 transition"
                   >
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({c.email}) — {c.tier} Tier
-                      </option>
-                    ))}
+                    {customers.length === 0 ? (
+                      <option value="">Loading customer accounts...</option>
+                    ) : (
+                      customers.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} ({c.email}) — {c.tier} Tier
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 
@@ -1059,11 +1095,15 @@ export default function QuotationsPage() {
                                   onChange={(e) => handleUpdateLine(idx, 'productId', e.target.value)}
                                   className="w-full h-8 px-2 rounded-md text-xs bg-white border border-gray-200 text-gray-900 font-medium focus:outline-none focus:border-gray-400"
                                 >
-                                  {products.map((p) => (
-                                    <option key={p.id} value={p.id}>
-                                      {p.name} (${p.basePrice})
-                                    </option>
-                                  ))}
+                                  {products.length === 0 ? (
+                                    <option value="">Loading products...</option>
+                                  ) : (
+                                    products.map((p) => (
+                                      <option key={p.id} value={p.id}>
+                                        {p.name} (${p.basePrice})
+                                      </option>
+                                    ))
+                                  )}
                                 </select>
                               </td>
                               <td className="py-2 px-2">
@@ -1640,15 +1680,15 @@ export default function QuotationsPage() {
                 <div className="flex justify-between items-start border-b border-gray-200 pb-6">
                   <div>
                     <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block mb-1">Prepared For:</span>
-                    <h3 className="text-base font-semibold text-gray-900">{selectedQuote.customerName}</h3>
-                    <p className="text-gray-500">{selectedQuote.customerEmail}</p>
-                    <p className="text-gray-500 mt-1">Tier: <span className="font-medium text-gray-700">{selectedQuote.customerTier}</span></p>
+                    <h3 className="text-base font-semibold text-gray-900">{selectedQuote.customerName || selectedQuote.customer?.name || 'Direct Customer'}</h3>
+                    <p className="text-gray-500">{selectedQuote.customerEmail || selectedQuote.customer?.email}</p>
+                    <p className="text-gray-500 mt-1">Tier: <span className="font-medium text-gray-700">{selectedQuote.customerTier || selectedQuote.customer?.tier || 'BRONZE'}</span></p>
                   </div>
                   <div className="text-right">
                     <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block mb-1">Quotation Ref:</span>
                     <p className="font-mono font-semibold text-gray-900 text-sm">{selectedQuote.quoteNumber}</p>
                     <p className="text-gray-500">Date: {new Date(selectedQuote.createdAt).toLocaleDateString()}</p>
-                    <p className="text-gray-500">Rep: {selectedQuote.salesRepName}</p>
+                    <p className="text-gray-500">Rep: {selectedQuote.salesRepName || selectedQuote.salesRep?.fullName || 'Direct Sales'}</p>
                   </div>
                 </div>
 

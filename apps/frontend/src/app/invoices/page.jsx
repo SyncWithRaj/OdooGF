@@ -41,12 +41,11 @@ export default function InvoicesPage() {
   const loadInvoices = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/invoices');
-      const data = await res.json();
-      setInvoices(data.invoices || []);
+      const data = await apiClient.getInvoices();
+      setInvoices(data || []);
     } catch (err) {
       console.error(err);
-      showToast('Could not load invoices', 'error');
+      showToast('Could not load invoices from backend', 'error');
     } finally {
       setLoading(false);
     }
@@ -54,12 +53,12 @@ export default function InvoicesPage() {
 
   const loadDependencies = async () => {
     try {
-      const [custList, qData] = await Promise.all([
+      const [custList, qList] = await Promise.all([
         apiClient.getCustomers().catch(() => []),
-        fetch('/api/quotations').then((r) => r.json()).catch(() => ({ quotations: [] })),
+        apiClient.getQuotations().catch(() => []),
       ]);
       const validCusts = Array.isArray(custList) ? custList : [];
-      const validQuotes = qData.quotations || [];
+      const validQuotes = Array.isArray(qList) ? qList : [];
       setCustomers(validCusts);
       setQuotations(validQuotes);
 
@@ -117,24 +116,17 @@ export default function InvoicesPage() {
     if (!selectedInvoice) return;
     setSubmitting(true);
     try {
-      const res = await fetch('/api/invoices', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: selectedInvoice.id,
-          action: 'RECORD_PAYMENT',
-          amount: Number(paymentForm.amount) || selectedInvoice.amount,
-          paymentMethod: paymentForm.paymentMethod,
-          reference: paymentForm.reference || `WIRE-${Date.now().toString().slice(-4)}`,
-        }),
+      await apiClient.payInvoice(selectedInvoice.id, {
+        amount: Number(paymentForm.amount) || selectedInvoice.amount,
+        paymentMethod: paymentForm.paymentMethod || 'Wire Transfer',
+        reference: paymentForm.reference || `WIRE-${Date.now().toString().slice(-4)}`,
       });
 
-      if (!res.ok) throw new Error('Payment recording failed');
       showToast(`Payment of $${paymentForm.amount || selectedInvoice.amount} logged successfully!`);
       setIsPayModalOpen(false);
       await loadInvoices();
     } catch (err) {
-      alert(err.message);
+      alert(err.message || 'Payment recording failed');
     } finally {
       setSubmitting(false);
     }
@@ -142,26 +134,144 @@ export default function InvoicesPage() {
 
   const handleCreateInvoice = async (e) => {
     e.preventDefault();
-    if (!createForm.customerId || !createForm.quotationId || !createForm.amount) {
-      alert('Please fill in all invoice details.');
+    if (!createForm.quotationId) {
+      alert('Please select a quotation.');
       return;
     }
     setSubmitting(true);
     try {
-      const res = await fetch('/api/invoices', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(createForm),
-      });
-      if (!res.ok) throw new Error('Failed to create invoice');
-      showToast('Invoice generated and posted to ledger!');
+      await apiClient.generateInvoicesFromQuotation(createForm.quotationId);
+      showToast('Invoice generated from quotation successfully!');
       setIsCreateModalOpen(false);
       setCreateForm({ customerId: '', quotationId: '', amount: '', dueDate: '' });
       await loadInvoices();
     } catch (err) {
-      alert(err.message);
+      alert(err.message || 'Failed to generate invoice');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDownloadInvoice = (inv) => {
+    const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Invoice - ${inv.invoiceNumber}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0f172a; margin: 40px; background: #fff; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 24px; margin-bottom: 30px; }
+    .brand { font-size: 24px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px; }
+    .brand span { color: #10b981; }
+    .inv-title { text-align: right; }
+    .inv-number { font-size: 20px; font-weight: 800; color: #0f172a; font-family: monospace; }
+    .badge { display: inline-block; padding: 4px 12px; border-radius: 9999px; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-top: 6px; }
+    .badge-paid { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+    .badge-unpaid { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+    .badge-overdue { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
+    .grid { display: flex; justify-content: space-between; margin-bottom: 30px; gap: 20px; }
+    .col { flex: 1; font-size: 13px; line-height: 1.6; }
+    .col h4 { font-size: 11px; text-transform: uppercase; color: #64748b; margin-bottom: 6px; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 13px; }
+    th { text-align: left; background: #f8fafc; padding: 12px; border-bottom: 2px solid #e2e8f0; font-size: 11px; text-transform: uppercase; color: #64748b; }
+    td { padding: 12px; border-bottom: 1px solid #f1f5f9; }
+    .text-right { text-align: right; }
+    .totals { margin-left: auto; width: 300px; font-size: 13px; margin-bottom: 30px; }
+    .totals-row { display: flex; justify-content: space-between; padding: 6px 0; }
+    .totals-row.grand { border-top: 2px solid #0f172a; font-size: 16px; font-weight: 900; margin-top: 8px; padding-top: 10px; }
+    .remittance { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; font-size: 12px; color: #475569; }
+    .remittance h4 { font-size: 12px; font-weight: 800; color: #0f172a; margin-top: 0; margin-bottom: 6px; }
+    @media print { body { margin: 0; padding: 20px; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="brand">DealFlow<span>360</span></div>
+      <p style="font-size: 12px; color: #64748b; margin: 4px 0 0 0;">Enterprise CPQ &amp; Sales Operations Platform</p>
+      <p style="font-size: 11px; color: #94a3b8; margin: 2px 0 0 0;">100 Montgomery St, Suite 1400, San Francisco, CA</p>
+    </div>
+    <div class="inv-title">
+      <div style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;">Commercial Invoice</div>
+      <div class="inv-number">${inv.invoiceNumber}</div>
+      <span class="badge ${inv.status === 'PAID' ? 'badge-paid' : inv.status === 'OVERDUE' ? 'badge-overdue' : 'badge-unpaid'}">
+        ${inv.status}
+      </span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="col">
+      <h4>Billed To</h4>
+      <strong>${inv.customer?.name || 'Customer Account'}</strong><br>
+      ${inv.customer?.companyName ? inv.customer.companyName + '<br>' : ''}
+      ${inv.customer?.email ? inv.customer.email + '<br>' : ''}
+      Account Tier: <strong>${inv.customer?.tier || 'SILVER'}</strong>
+    </div>
+    <div class="col" style="text-align: right;">
+      <h4>Invoice Summary</h4>
+      Date Issued: <strong>${new Date(inv.createdAt).toLocaleDateString()}</strong><br>
+      Payment Due: <strong>${new Date(inv.dueDate).toLocaleDateString()}</strong><br>
+      Origin Quotation: <strong>${inv.quotation?.quoteNumber || 'Q-1506'}</strong><br>
+      Billing Type: <strong>${inv.invoiceType || 'ONE_TIME'}</strong>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Description / Billing Item</th>
+        <th>Type</th>
+        <th class="text-right">Unit Rate</th>
+        <th class="text-right">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <strong>Commercial Proposal Order (${inv.quotation?.quoteNumber || inv.invoiceNumber})</strong><br>
+          <span style="font-size: 11px; color: #64748b;">Enterprise CPQ contracted line items and SLA delivery</span>
+        </td>
+        <td>${inv.invoiceType || 'ONE_TIME'}</td>
+        <td class="text-right">$${inv.amount?.toLocaleString()}</td>
+        <td class="text-right"><strong>$${inv.amount?.toLocaleString()}</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <div class="totals-row">
+      <span>Net Subtotal:</span>
+      <span>$${inv.amount?.toLocaleString()}</span>
+    </div>
+    <div class="totals-row">
+      <span>Applicable Tax:</span>
+      <span>$0.00</span>
+    </div>
+    <div class="totals-row grand">
+      <span>Total Investment:</span>
+      <span>$${inv.amount?.toLocaleString()}</span>
+    </div>
+  </div>
+
+  <div class="remittance">
+    <h4>Payment &amp; Remittance Wire Instructions</h4>
+    <p style="margin: 0 0 6px 0;">Please wire payments quoting invoice number <strong>${inv.invoiceNumber}</strong> as remittance memo.</p>
+    <p style="margin: 0; font-family: monospace;">Silicon Valley Bank &bull; Routing: 121000358 &bull; Account: 9844-0192-3819 &bull; SWIFT: SVBUS6S</p>
+  </div>
+</body>
+</html>`;
+
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const printWin = window.open(url, '_blank');
+    if (printWin) {
+      printWin.focus();
+    } else {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Invoice-${inv.invoiceNumber}.html`;
+      a.click();
     }
   };
 
@@ -339,11 +449,22 @@ export default function InvoicesPage() {
                       <td className="py-3.5 px-4 whitespace-nowrap text-slate-500">
                         {inv.paidAt ? new Date(inv.paidAt).toLocaleDateString() : '—'}
                       </td>
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadInvoice(inv)}
+                          title="Download / Print Invoice"
+                          className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold text-[11px] transition inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                          Download
+                        </button>
                         {inv.status !== 'PAID' ? (
                           <button
                             onClick={() => openPayModal(inv)}
-                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] shadow-2xs transition"
+                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] shadow-2xs transition cursor-pointer"
                           >
                             Record Payment
                           </button>

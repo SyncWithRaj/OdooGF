@@ -5,6 +5,7 @@ import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { useAuth } from '@/context/AuthContext';
 import { quotationsService } from '@/services/quotationsService';
+import { apiClient } from '@/services/apiClient';
 
 export default function CustomerPortalPage() {
   const { user } = useAuth();
@@ -28,19 +29,10 @@ export default function CustomerPortalPage() {
   const loadCustomerQuotes = async () => {
     setLoading(true);
     try {
-      const all = await quotationsService.getQuotations();
-      // Show quotes where customer matches or all active quotes for demo customer preview
-      const customerQuotes = all.filter(
-        (q) =>
-          !user ||
-          user.role !== 'customer' ||
-          q.customer?.email === user.email ||
-          q.customerId === user.id ||
-          true // Allow demo preview
-      );
-      setQuotations(customerQuotes);
-      if (customerQuotes.length > 0 && !selectedQuote) {
-        setSelectedQuote(customerQuotes[0]);
+      const customerQuotes = await apiClient.getPortalQuotes();
+      setQuotations(customerQuotes || []);
+      if (customerQuotes && customerQuotes.length > 0) {
+        setSelectedQuote((prev) => prev ? customerQuotes.find((q) => q.id === prev.id) || customerQuotes[0] : customerQuotes[0]);
       }
     } catch (err) {
       console.error(err);
@@ -59,7 +51,13 @@ export default function CustomerPortalPage() {
       return;
     }
     try {
-      await quotationsService.confirmOrder(quote.id, user);
+      if (quote.portalToken) {
+        await apiClient.acceptPortalQuote(quote.portalToken, {
+          acknowledgementNote: `Digitally signed by ${user?.name || user?.email || 'Customer'}`,
+        });
+      } else {
+        await quotationsService.confirmOrder(quote.id, user);
+      }
       showToast(`Quotation ${quote.quoteNumber} accepted and confirmed! Delivery order queued.`);
       await loadCustomerQuotes();
     } catch (err) {
@@ -72,7 +70,16 @@ export default function CustomerPortalPage() {
     if (!selectedQuote) return;
     setSubmitting(true);
     try {
-      await quotationsService.updateQuotationStatus(selectedQuote.id, 'UNDER_NEGOTIATION', user);
+      if (selectedQuote.portalToken) {
+        await apiClient.counterPortalQuote(selectedQuote.portalToken, {
+          counterDiscountProposed: Number(counterDiscount),
+          counterDiscountPercent: Number(counterDiscount),
+          requestedDeliveryDate: deliveryDate ? new Date(deliveryDate).toISOString() : undefined,
+          message: negotiateNotes || 'Customer requested counter terms',
+        });
+      } else {
+        await quotationsService.updateQuotationStatus(selectedQuote.id, 'UNDER_NEGOTIATION', user);
+      }
       showToast(`Counter-proposal of ${counterDiscount}% discount submitted to your Account Executive!`);
       setIsNegotiateModalOpen(false);
       await loadCustomerQuotes();

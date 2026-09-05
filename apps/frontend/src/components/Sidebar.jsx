@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { apiClient } from '@/services/apiClient';
 
 export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggleCollapse }) {
   const { user } = useAuth();
@@ -14,12 +15,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
     let isCancelled = false;
     async function fetchPendingCount() {
       try {
-        const res = await fetch('/api/quotations');
-        if (res.ok) {
-          const data = await res.json();
-          const pending = (data.quotations || []).filter((q) => q.status === 'PENDING_APPROVAL');
-          if (!isCancelled) setPendingApprovalsCount(pending.length);
-        }
+        const quotes = await apiClient.getQuotations();
+        const pending = (quotes || []).filter((q) => q.status === 'PENDING_APPROVAL');
+        if (!isCancelled) setPendingApprovalsCount(pending.length);
       } catch (e) {
         // silent fallback
       }
