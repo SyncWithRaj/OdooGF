@@ -525,6 +525,8 @@ export class QuotationsService {
           ruleId: rule.id,
           baseProductId: rule.baseProductId,
           baseProductName: rule.baseProduct.name,
+          suggestedProductId: rule.recommendedProduct.id,
+          suggestedProductName: rule.recommendedProduct.name,
           recommendedProduct: rule.recommendedProduct,
           coPurchaseScore: rule.coPurchaseScore,
           marginDeltaBoost: rule.marginDeltaBoost,

@@ -405,52 +405,110 @@ export default function AuthPage() {
           </div>
         </div>
 
-        {/* Legal */}
+        {/* Platform Notice */}
         <div className="px-8 sm:px-12 lg:px-16 pb-8">
-          <p className="max-w-[480px] mx-auto text-xs text-gray-500 leading-relaxed text-center">
-            By continuing, you agree to DealFlow360&apos;s{' '}
-            <Link href="/terms" className="underline underline-offset-2 hover:text-gray-900">Terms of Service</Link> and{' '}
-            <Link href="/privacy" className="underline underline-offset-2 hover:text-gray-900">Privacy Policy</Link>, and to
-            receive periodic emails with updates.
+          <p className="max-w-[480px] mx-auto text-xs text-gray-400 leading-relaxed text-center">
+            DealFlow360 &bull; Enterprise-grade self-governing CPQ and sales operations platform.
           </p>
         </div>
       </div>
 
-      {/* ================= RIGHT COLUMN: Testimonial ================= */}
-      <aside className="hidden lg:flex flex-col bg-gray-50 min-h-screen">
-        {/* Documentation */}
-        <div className="flex justify-end px-12 pt-8">
+      {/* ================= RIGHT COLUMN: Demo Accounts & Capabilities ================= */}
+      <aside className="hidden lg:flex flex-col bg-slate-900 text-white min-h-screen p-12 justify-between">
+        {/* Top Header */}
+        <div className="flex items-center justify-between">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Live Seed Data Ready
+          </div>
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 h-9 px-3.5 rounded-md bg-white hover:bg-gray-50 text-gray-900 text-sm border border-gray-200 transition"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-medium transition border border-slate-700"
           >
-            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
-            <span>Documentation</span>
+            Explore Demo &rarr;
           </Link>
         </div>
 
-        {/* Quote */}
-        <div className="flex-1 flex items-center justify-center px-16">
-          <figure className="relative max-w-2xl">
-            <span
-              aria-hidden="true"
-              className="absolute -left-14 -top-6 text-[110px] leading-none font-serif italic text-gray-300 select-none"
-            >
-              &ldquo;
-            </span>
-            <blockquote className="text-[32px] leading-[1.25] font-normal text-gray-900 tracking-tight">
-              I&apos;m trying @dealflow360, sales operations alternative that uses automated approvals
-              (and real-time deal health tracking too) in the cloud. It&apos;s incredible 😍
-            </blockquote>
-            <figcaption className="mt-8 flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-gray-300 to-gray-500 border border-gray-200 flex items-center justify-center text-white font-semibold text-sm shadow-sm">
-                JP
-              </div>
-              <span className="text-lg text-gray-900">@JP__Gallegos</span>
-            </figcaption>
-          </figure>
+        {/* Quick Demo Login Cards */}
+        <div className="max-w-md w-full my-auto">
+          <h2 className="text-xl font-bold text-white tracking-tight mb-2">
+            1-Click Demo Profiles
+          </h2>
+          <p className="text-xs text-slate-400 mb-6">
+            Click any account below to autofill verified test credentials (password: <code className="text-emerald-400 font-mono">123456</code>)
+          </p>
+
+          <div className="space-y-2.5">
+            {[
+              {
+                role: 'Sales Rep',
+                email: 'rep@dealflow.com',
+                name: 'J. Rao (Direct Sales)',
+                badge: 'Quotations & Pipeline',
+                badgeCls: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+              },
+              {
+                role: 'Sales Manager',
+                email: 'manager@dealflow.com',
+                name: 'M. Shah (Sales Ops)',
+                badge: 'Approval Queue & Nudge',
+                badgeCls: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+              },
+              {
+                role: 'Finance Controller',
+                email: 'finance@dealflow.com',
+                name: 'R. Iyer (Finance & Ops)',
+                badge: 'Tier-2 Audit & Invoicing',
+                badgeCls: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+              },
+              {
+                role: 'Executive Admin',
+                email: 'admin@dealflow.com',
+                name: 'Aniket Dabhi (Admin)',
+                badge: 'Full Governance & Rules',
+                badgeCls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+              },
+              {
+                role: 'Client Portal',
+                email: 'customer@dealflow.com',
+                name: 'Vikram Mehta (Procurement)',
+                badge: 'Negotiation & Acceptance',
+                badgeCls: 'bg-teal-500/10 text-teal-400 border-teal-500/20',
+              },
+            ].map((item) => (
+              <button
+                key={item.email}
+                type="button"
+                onClick={() => {
+                  setEmail(item.email);
+                  setPassword('123456');
+                  setIsLogin(true);
+                  setError('');
+                }}
+                className="w-full text-left p-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 hover:border-slate-600 transition flex items-center justify-between group cursor-pointer"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors">
+                      {item.role}
+                    </span>
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-md border ${item.badgeCls}`}>
+                      {item.badge}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5 font-mono">{item.email}</p>
+                </div>
+                <span className="text-xs font-semibold text-slate-400 group-hover:text-white transition">
+                  Select &rarr;
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom Tagline */}
+        <div className="text-xs text-slate-500 border-t border-slate-800 pt-6">
+          DealFlow360 &bull; Automated CPQ & Governance Engine
         </div>
       </aside>
 

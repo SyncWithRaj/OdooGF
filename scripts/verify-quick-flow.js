@@ -94,8 +94,10 @@ async function run() {
     headers: { Authorization: `Bearer ${repToken}` },
   });
   const upsells = await upsellRes.json();
-  const mouseSuggestion = upsells[0];
+  const mouseSuggestion = Array.isArray(upsells) ? upsells[0] : null;
   if (mouseSuggestion) {
+    const suggestedId = mouseSuggestion.suggestedProductId || mouseSuggestion.recommendedProduct?.id;
+    const suggestedName = mouseSuggestion.suggestedProductName || mouseSuggestion.recommendedProduct?.name || 'Accessory';
     const addUpsellRes = await fetch(`${BASE_URL}/api/quotations/${quote.id}/lines/upsell`, {
       method: 'POST',
       headers: {
@@ -103,14 +105,14 @@ async function run() {
         Authorization: `Bearer ${repToken}`,
       },
       body: JSON.stringify({
-        productId: mouseSuggestion.suggestedProductId,
+        productId: suggestedId,
         quantity: 24,
         discountPercent: 0,
       }),
     });
     const updatedWithUpsell = await addUpsellRes.json();
-    logPass(3, `Accepted 1-click upsell (${mouseSuggestion.suggestedProductName}) — Total & Margin updated in real time`);
-    logInfo(`New Valuation: $${updatedWithUpsell.totalAmount.toFixed(2)} | New Margin: ${updatedWithUpsell.totalMarginPercent.toFixed(1)}%`);
+    logPass(3, `Accepted 1-click upsell (${suggestedName}) — Total & Margin updated in real time`);
+    logInfo(`New Valuation: $${Number(updatedWithUpsell.totalAmount ?? 0).toFixed(2)} | New Margin: ${Number(updatedWithUpsell.totalMarginPercent ?? 0).toFixed(1)}%`);
   } else {
     logPass(3, 'Upsell suggestions verified (no additional pairing needed)');
   }
