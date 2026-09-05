@@ -37,3 +37,27 @@ export class SubscriptionContractQueryDto {
   @IsOptional()
   customerId?: string;
 }
+
+export class CreateSubscriptionContractDto {
+  @ApiProperty({ example: 'cust-uuid-1' })
+  @IsUUID()
+  customerId: string;
+
+  @ApiProperty({ example: 'quote-uuid-1' })
+  @IsUUID()
+  quotationId: string;
+
+  @ApiProperty({ example: 'Enterprise Cloud License' })
+  @IsString()
+  planName: string;
+
+  @ApiProperty({ enum: RecurringInterval, default: RecurringInterval.MONTHLY })
+  @IsEnum(RecurringInterval)
+  cycle: RecurringInterval;
+
+  @ApiProperty({ example: 1500 })
+  @IsNumber()
+  @Min(0)
+  amount: number;
+}
+

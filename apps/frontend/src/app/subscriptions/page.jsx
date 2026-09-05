@@ -4,13 +4,13 @@ import { useState, useEffect, useMemo } from 'react';
 import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { apiClient } from '@/services/apiClient';
+import { toast } from 'react-toastify';
 
 export default function SubscriptionsPage() {
   const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeStatus, setActiveStatus] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
-  const [notification, setNotification] = useState(null);
 
   // Modal
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -27,19 +27,29 @@ export default function SubscriptionsPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const showToast = (message, type = 'success') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 4000);
+    if (type === 'error') {
+      toast.error(message);
+    } else if (type === 'info') {
+      toast.info(message);
+    } else {
+      toast.success(message);
+    }
   };
+
+  // Seat Adjustment modal state
+  const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
+  const [selectedSub, setSelectedSub] = useState(null);
+  const [adjustQuantity, setAdjustQuantity] = useState(2);
+  const [adjustReason, setAdjustReason] = useState('License expansion for sales expansion');
 
   const loadSubscriptions = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/subscriptions');
-      const data = await res.json();
-      setSubscriptions(data.subscriptions || []);
+      const data = await apiClient.getSubscriptions();
+      setSubscriptions(data || []);
     } catch (err) {
       console.error(err);
-      showToast('Could not load subscriptions', 'error');
+      showToast('Could not load subscriptions from backend', 'error');
     } finally {
       setLoading(false);
     }
@@ -47,12 +57,12 @@ export default function SubscriptionsPage() {
 
   const loadDependencies = async () => {
     try {
-      const [custList, qData] = await Promise.all([
+      const [custList, qList] = await Promise.all([
         apiClient.getCustomers().catch(() => []),
-        fetch('/api/quotations').then((r) => r.json()).catch(() => ({ quotations: [] })),
+        apiClient.getQuotations().catch(() => []),
       ]);
       const validCusts = Array.isArray(custList) ? custList : [];
-      const validQuotes = qData.quotations || [];
+      const validQuotes = Array.isArray(qList) ? qList : [];
       setCustomers(validCusts);
       setQuotations(validQuotes);
 
@@ -74,19 +84,37 @@ export default function SubscriptionsPage() {
     loadDependencies();
   }, []);
 
-  // Update status (pause / resume / cancel)
+  // Update status (pause / resume / cancel) via NestJS backend
   const handleUpdateStatus = async (id, newStatus) => {
     try {
-      const res = await fetch('/api/subscriptions', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, action: 'UPDATE_STATUS', newStatus }),
-      });
-      if (!res.ok) throw new Error('Status update failed');
+      if (newStatus === 'PAUSED') {
+        await apiClient.pauseSubscription(id);
+      } else if (newStatus === 'ACTIVE') {
+        await apiClient.resumeSubscription(id);
+      } else if (newStatus === 'CANCELLED') {
+        await apiClient.cancelSubscription(id, 'Admin cancellation with prorated refund');
+      }
       showToast(`Subscription status updated to ${newStatus}`);
       await loadSubscriptions();
     } catch (err) {
-      alert(err.message);
+      alert(err.message || 'Status update failed');
+    }
+  };
+
+  // Adjust seats with proration delta via NestJS backend
+  const handleAdjustSeats = async (e) => {
+    e.preventDefault();
+    if (!selectedSub) return;
+    setSubmitting(true);
+    try {
+      const res = await apiClient.adjustSubscriptionQuantity(selectedSub.id, adjustQuantity, adjustReason);
+      showToast(`Seats updated to ${adjustQuantity}! Prorated delta: $${res?.proratedDeltaAmount || 0}`);
+      setIsAdjustModalOpen(false);
+      await loadSubscriptions();
+    } catch (err) {
+      alert(err.message || 'Seat adjustment failed');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -133,18 +161,13 @@ export default function SubscriptionsPage() {
     }
     setSubmitting(true);
     try {
-      const res = await fetch('/api/subscriptions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(createForm),
-      });
-      if (!res.ok) throw new Error('Failed to create subscription');
+      await apiClient.createSubscription(createForm);
       showToast(`Subscription plan "${createForm.planName}" activated!`);
       setIsCreateModalOpen(false);
       setCreateForm({ customerId: '', quotationId: '', planName: '', cycle: 'MONTHLY', amount: '' });
       await loadSubscriptions();
     } catch (err) {
-      alert(err.message);
+      alert(err.message || 'Failed to create subscription');
     } finally {
       setSubmitting(false);
     }
@@ -153,14 +176,6 @@ export default function SubscriptionsPage() {
   return (
     <RequireRole roles={['rep', 'manager', 'finance', 'admin']}>
       <AppLayout>
-        {/* Flash Toast */}
-        {notification && (
-          <div className="fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-sm font-medium border border-slate-700 animate-in fade-in">
-            <span className={`w-2.5 h-2.5 rounded-full ${notification.type === 'error' ? 'bg-rose-500' : 'bg-emerald-400'}`}></span>
-            <span>{notification.message}</span>
-          </div>
-        )}
-
         {/* Header Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
@@ -192,7 +207,7 @@ export default function SubscriptionsPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 mb-6">
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Monthly Recurring (MRR)</p>
-            <p className="text-xl font-black text-emerald-600 mt-1">${metrics.mrr.toLocaleString()}</p>
+            <p className="text-xl font-black text-slate-900 mt-1">${metrics.mrr.toLocaleString()}</p>
             <p className="text-[10px] text-slate-400 mt-1">Normalized monthly recurring run</p>
           </div>
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
@@ -246,7 +261,7 @@ export default function SubscriptionsPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600">
+            <table className="w-full text-left text-xs text-slate-600 min-w-[700px]">
               <thead className="bg-slate-50/75 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
                 <tr>
                   <th className="py-3 px-4">Plan Name</th>
@@ -290,7 +305,7 @@ export default function SubscriptionsPage() {
                         <span
                           className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                             sub.status === 'ACTIVE'
-                              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                              ? 'bg-zinc-100 border-zinc-300 text-zinc-900'
                               : sub.status === 'PAUSED'
                               ? 'bg-amber-50 border-amber-200 text-amber-700'
                               : 'bg-slate-100 border-slate-300 text-slate-500'
@@ -303,17 +318,30 @@ export default function SubscriptionsPage() {
                         {new Date(sub.nextBillingDate).toLocaleDateString()}
                       </td>
                       <td className="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                        {sub.status === 'ACTIVE' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedSub(sub);
+                              setAdjustQuantity(2);
+                              setIsAdjustModalOpen(true);
+                            }}
+                            className="px-2 py-1 rounded-lg border border-slate-200 text-[11px] font-medium text-blue-600 hover:bg-blue-50 cursor-pointer"
+                          >
+                            Modify Seats
+                          </button>
+                        )}
                         {sub.status === 'ACTIVE' ? (
                           <button
                             onClick={() => handleUpdateStatus(sub.id, 'PAUSED')}
-                            className="px-2 py-1 rounded-lg border border-slate-200 text-[11px] font-medium text-slate-600 hover:bg-slate-50"
+                            className="px-2 py-1 rounded-lg border border-slate-200 text-[11px] font-medium text-slate-600 hover:bg-slate-50 cursor-pointer"
                           >
                             Pause
                           </button>
                         ) : sub.status === 'PAUSED' ? (
                           <button
                             onClick={() => handleUpdateStatus(sub.id, 'ACTIVE')}
-                            className="px-2 py-1 rounded-lg bg-emerald-600 text-white text-[11px] font-medium hover:bg-emerald-700"
+                            className="px-2 py-1 rounded-lg bg-zinc-900 text-white text-[11px] font-medium hover:bg-black cursor-pointer"
                           >
                             Resume
                           </button>
@@ -321,7 +349,7 @@ export default function SubscriptionsPage() {
                         {sub.status !== 'CANCELLED' && (
                           <button
                             onClick={() => handleUpdateStatus(sub.id, 'CANCELLED')}
-                            className="px-2 py-1 rounded-lg border border-slate-200 text-[11px] font-medium text-rose-600 hover:bg-rose-50"
+                            className="px-2 py-1 rounded-lg border border-slate-200 text-[11px] font-medium text-rose-600 hover:bg-rose-50 cursor-pointer"
                           >
                             Cancel
                           </button>
@@ -338,11 +366,11 @@ export default function SubscriptionsPage() {
         {/* Modal: New Subscription */}
         {isCreateModalOpen && (
           <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+            <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-200">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-bold text-slate-900">Provision Subscription</h3>
-                <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1">
-                  ✕
+                <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition" aria-label="Close">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>
 
@@ -354,11 +382,15 @@ export default function SubscriptionsPage() {
                     onChange={(e) => setCreateForm({ ...createForm, customerId: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-slate-900/10"
                   >
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({c.companyName || c.email})
-                      </option>
-                    ))}
+                    {customers.length === 0 ? (
+                      <option value="">Loading customer accounts...</option>
+                    ) : (
+                      customers.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} ({c.companyName || c.email})
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 
@@ -369,11 +401,15 @@ export default function SubscriptionsPage() {
                     onChange={(e) => setCreateForm({ ...createForm, quotationId: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-slate-900/10"
                   >
-                    {quotations.map((q) => (
-                      <option key={q.id} value={q.id}>
-                        {q.quoteNumber} — {q.customerName || 'Customer'} [${q.totalAmount?.toLocaleString()}]
-                      </option>
-                    ))}
+                    {quotations.length === 0 ? (
+                      <option value="">Loading quotations...</option>
+                    ) : (
+                      quotations.map((q) => (
+                        <option key={q.id} value={q.id}>
+                          {q.quoteNumber} — {q.customer?.name || q.customerName || 'Customer'} [${q.totalAmount?.toLocaleString()}]
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 
@@ -429,6 +465,78 @@ export default function SubscriptionsPage() {
                     className="px-4 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-semibold shadow-xs disabled:opacity-50"
                   >
                     {submitting ? 'Provisioning...' : 'Activate Subscription'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal: Adjust Seats & Proration */}
+        {isAdjustModalOpen && selectedSub && (
+          <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-200">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Adjust Subscription Seats</h3>
+                  <p className="text-xs text-slate-500 font-mono mt-0.5">{selectedSub.planName}</p>
+                </div>
+                <button onClick={() => setIsAdjustModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition cursor-pointer" aria-label="Close">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+
+              <form onSubmit={handleAdjustSeats} className="space-y-4 text-xs">
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 space-y-1">
+                  <div className="flex justify-between">
+                    <span>Current Recurring Rate:</span>
+                    <strong>${selectedSub.amount?.toLocaleString()}/{selectedSub.cycle?.toLowerCase()}</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Next Billing Cycle:</span>
+                    <span>{new Date(selectedSub.nextBillingDate).toLocaleDateString()}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Target Seat Count / Quantity</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    required
+                    value={adjustQuantity}
+                    onChange={(e) => setAdjustQuantity(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Backend automatically calculates mid-cycle days remaining and prorated delta charge.</p>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Reason for Adjustment</label>
+                  <input
+                    type="text"
+                    required
+                    value={adjustReason}
+                    onChange={(e) => setAdjustReason(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                  />
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAdjustModalOpen(false)}
+                    className="px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="px-4 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 text-white text-xs font-semibold transition cursor-pointer"
+                  >
+                    {submitting ? 'Calculating...' : 'Apply Mid-Cycle Proration'}
                   </button>
                 </div>
               </form>

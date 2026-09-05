@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { apiClient } from '@/services/apiClient';
+import { toast } from 'react-toastify';
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
@@ -12,7 +13,6 @@ export default function UsersPage() {
   const [activeRole, setActiveRole] = useState('ALL');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [notification, setNotification] = useState(null);
 
   // New User Form State
   const [newUser, setNewUser] = useState({
@@ -24,8 +24,13 @@ export default function UsersPage() {
   });
 
   const showToast = (message, type = 'success') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 4000);
+    if (type === 'error') {
+      toast.error(message);
+    } else if (type === 'info') {
+      toast.info(message);
+    } else {
+      toast.success(message);
+    }
   };
 
   const loadUsers = async () => {
@@ -119,7 +124,7 @@ export default function UsersPage() {
       case 'FINANCE':
         return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">Finance Controller</span>;
       case 'SALES_REP':
-        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">Sales Rep</span>;
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-900 border border-zinc-300">Sales Rep</span>;
       case 'CUSTOMER':
       default:
         return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">Customer</span>;
@@ -129,14 +134,6 @@ export default function UsersPage() {
   return (
     <RequireRole roles={['admin']}>
       <AppLayout>
-        {/* Flash Toast */}
-        {notification && (
-          <div className="fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-sm font-medium border border-slate-700 animate-in fade-in">
-            <span className={`w-2.5 h-2.5 rounded-full ${notification.type === 'error' ? 'bg-rose-500' : 'bg-emerald-400'}`}></span>
-            <span>{notification.message}</span>
-          </div>
-        )}
-
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
@@ -165,7 +162,7 @@ export default function UsersPage() {
           </div>
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
             <span className="text-xs font-medium text-slate-500">Sales Reps</span>
-            <div className="text-2xl font-bold text-emerald-600 mt-1">{metrics.reps}</div>
+            <div className="text-2xl font-bold text-slate-900 mt-1">{metrics.reps}</div>
             <span className="text-[11px] text-slate-400">Direct Sales</span>
           </div>
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
@@ -228,7 +225,7 @@ export default function UsersPage() {
         {/* Users Table */}
         <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden mb-8">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse min-w-[620px]">
               <thead>
                 <tr className="border-b border-slate-200/80 text-xs font-medium text-slate-600 select-none">
                   <th className="py-3.5 px-4">User</th>
@@ -279,8 +276,8 @@ export default function UsersPage() {
 
                       {/* Status */}
                       <td className="py-4 px-4 text-center whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border border-emerald-300 text-emerald-700 bg-emerald-50/40">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border border-zinc-300 text-zinc-900 bg-zinc-100">
+                          <span className="w-1.5 h-1.5 rounded-full bg-zinc-900"></span>
                           Active
                         </span>
                       </td>
@@ -308,7 +305,7 @@ export default function UsersPage() {
         {/* PROVISION USER MODAL */}
         {isCreateModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 max-w-md w-full p-6">
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 max-w-md w-full max-h-[90vh] overflow-y-auto p-6">
               <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
                 <div>
                   <h3 className="text-lg font-bold text-slate-900">Provision Internal User</h3>
@@ -317,8 +314,9 @@ export default function UsersPage() {
                 <button
                   onClick={() => setIsCreateModalOpen(false)}
                   className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                  aria-label="Close"
                 >
-                  ✕
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>
 

@@ -35,21 +35,21 @@ async function pushQuotationsToDb() {
 
   console.log('Cleared existing quotation records.');
 
-  // Quote 1: Draft for Aryan Sondharva (Bronze Tier)
+  // Quote 1: Pending Sales Manager L1 Approval for Aryan Sondharva (Bronze Tier)
   const q1 = await prisma.quotation.create({
     data: {
       quoteNumber: 'Q-1041',
       customerId: aryan.id,
       salesRepId: rep.id,
-      status: QuotationStatus.DRAFT,
-      blendedRiskScore: RiskLevel.LOW,
+      status: QuotationStatus.PENDING_APPROVAL,
+      blendedRiskScore: RiskLevel.MEDIUM,
       subtotalAmount: 1650.0,
-      totalDiscountAmount: 66.0,
-      orderDiscountPercent: 4.0,
+      totalDiscountAmount: 132.0,
+      orderDiscountPercent: 8.0,
       totalTaxAmount: 0.0,
-      totalAmount: 1584.0,
+      totalAmount: 1518.0,
       totalCost: 1150.0,
-      totalMarginPercent: 27.4,
+      totalMarginPercent: 24.24,
       lines: {
         create: [
           {
@@ -58,13 +58,13 @@ async function pushQuotationsToDb() {
             quantity: 1,
             unitPrice: 1200.0,
             unitCost: 800.0,
-            discountPercent: 4.0,
+            discountPercent: 8.0,
             allowedLimitPercent: 5.0,
-            isOverLimit: false,
-            overLimitPoints: 0.0,
-            lineTotal: 1152.0,
+            isOverLimit: true,
+            overLimitPoints: 3.0,
+            lineTotal: 1104.0,
             lineCostTotal: 800.0,
-            lineMarginPercent: 30.56,
+            lineMarginPercent: 27.54,
           },
           {
             productId: setup.id,
@@ -72,22 +72,40 @@ async function pushQuotationsToDb() {
             quantity: 1,
             unitPrice: 450.0,
             unitCost: 350.0,
-            discountPercent: 4.0,
+            discountPercent: 8.0,
             allowedLimitPercent: 5.0,
-            isOverLimit: false,
-            overLimitPoints: 0.0,
-            lineTotal: 432.0,
+            isOverLimit: true,
+            overLimitPoints: 3.0,
+            lineTotal: 414.0,
             lineCostTotal: 350.0,
-            lineMarginPercent: 18.98,
+            lineMarginPercent: 15.46,
           },
         ],
+      },
+      approvalRequests: {
+        create: {
+          currentStage: ApprovalStage.SALES_MANAGER,
+          blendedRiskLevel: RiskLevel.MEDIUM,
+          worstLineDeviation: 3.0,
+          flagReasonSummary: 'Blended Risk MEDIUM: Concession (+3pt over Bronze 5% limit). Requires Sales Manager approval (L1).',
+          isCompleted: false,
+          auditLogs: {
+            create: [
+              {
+                userId: rep.id,
+                action: ApprovalAction.SUBMITTED,
+                note: 'Submitted by Sales Rep for onboarding package approval.',
+              },
+            ],
+          },
+        },
       },
       comments: {
         create: [
           {
             authorRole: rep.role,
             authorName: rep.fullName,
-            message: 'Draft workstation proposal prepared for onboarding Aryan Sondharva within Bronze 5% ceiling.',
+            message: 'Workstation proposal exceeding Bronze 5% limit. Awaiting Manager sign-off.',
           },
         ],
       },
@@ -253,22 +271,22 @@ async function pushQuotationsToDb() {
     },
   });
 
-  // Quote 4: Confirmed Order for Delta LLC (Bronze Tier)
+  // Quote 4: Pending Finance L2 Approval for Delta LLC (Bronze Tier)
   const q4 = await prisma.quotation.create({
     data: {
       quoteNumber: 'Q-1040',
       customerId: delta.id,
       salesRepId: rep.id,
-      status: QuotationStatus.CONFIRMED,
-      blendedRiskScore: RiskLevel.LOW,
+      status: QuotationStatus.PENDING_APPROVAL,
+      blendedRiskScore: RiskLevel.HIGH,
       subtotalAmount: 1245.0,
-      totalDiscountAmount: 62.25,
-      orderDiscountPercent: 5.0,
+      totalDiscountAmount: 186.75,
+      orderDiscountPercent: 15.0,
       totalTaxAmount: 0.0,
-      totalAmount: 1182.75,
+      totalAmount: 1058.25,
       totalCost: 820.0,
-      totalMarginPercent: 30.67,
-      customerTermsConfirmed: true,
+      totalMarginPercent: 22.51,
+      customerTermsConfirmed: false,
       lines: {
         create: [
           {
@@ -277,13 +295,13 @@ async function pushQuotationsToDb() {
             quantity: 1,
             unitPrice: 1200.0,
             unitCost: 800.0,
-            discountPercent: 5.0,
+            discountPercent: 15.0,
             allowedLimitPercent: 5.0,
-            isOverLimit: false,
-            overLimitPoints: 0.0,
-            lineTotal: 1140.0,
+            isOverLimit: true,
+            overLimitPoints: 10.0,
+            lineTotal: 1020.0,
             lineCostTotal: 800.0,
-            lineMarginPercent: 29.82,
+            lineMarginPercent: 21.57,
           },
           {
             productId: mouse.id,
@@ -291,22 +309,45 @@ async function pushQuotationsToDb() {
             quantity: 1,
             unitPrice: 45.0,
             unitCost: 20.0,
-            discountPercent: 5.0,
+            discountPercent: 15.0,
             allowedLimitPercent: 5.0,
-            isOverLimit: false,
-            overLimitPoints: 0.0,
-            lineTotal: 42.75,
+            isOverLimit: true,
+            overLimitPoints: 10.0,
+            lineTotal: 38.25,
             lineCostTotal: 20.0,
-            lineMarginPercent: 53.22,
+            lineMarginPercent: 47.71,
           },
         ],
+      },
+      approvalRequests: {
+        create: {
+          currentStage: ApprovalStage.FINANCE,
+          blendedRiskLevel: RiskLevel.HIGH,
+          worstLineDeviation: 10.0,
+          flagReasonSummary: 'Blended Risk HIGH: Extreme concession (+10pt over Bronze 5% limit). Requires Finance Controller sign-off (L2).',
+          isCompleted: false,
+          auditLogs: {
+            create: [
+              {
+                userId: rep.id,
+                action: ApprovalAction.SUBMITTED,
+                note: 'High concession submitted for competitive retention.',
+              },
+              {
+                userId: manager.id,
+                action: ApprovalAction.APPROVED,
+                note: 'Approved by Sales Manager. Escalated to Finance Controller for margin review.',
+              },
+            ],
+          },
+        },
       },
       comments: {
         create: [
           {
-            authorRole: Role.CUSTOMER,
-            authorName: 'Delta LLC (Client Signer)',
-            message: 'E-signed and confirmed by client. Transferred to fulfillment dispatch queue.',
+            authorRole: rep.role,
+            authorName: rep.fullName,
+            message: 'Client requested 15% discount for long-term contract commitment. Requires Finance Controller review.',
           },
         ],
       },

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { apiClient } from '@/services/apiClient';
+import { toast } from 'react-toastify';
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState([]);
@@ -11,7 +12,6 @@ export default function CustomersPage() {
   const [activeTier, setActiveTier] = useState('ALL');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [notification, setNotification] = useState(null);
 
   // Customer Detail Drawer state
   const [selectedCustomerDetail, setSelectedCustomerDetail] = useState(null);
@@ -29,8 +29,13 @@ export default function CustomersPage() {
   });
 
   const showToast = (message, type = 'success') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 4000);
+    if (type === 'error') {
+      toast.error(message);
+    } else if (type === 'info') {
+      toast.info(message);
+    } else {
+      toast.success(message);
+    }
   };
 
   const handleOpenCustomerDetail = async (cust) => {
@@ -160,14 +165,6 @@ export default function CustomersPage() {
 
   return (
     <AppLayout>
-      {/* Toast Notification */}
-      {notification && (
-        <div className="fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-sm font-medium border border-slate-700 animate-in fade-in">
-          <span className={`w-2.5 h-2.5 rounded-full ${notification.type === 'error' ? 'bg-rose-500' : 'bg-emerald-400'}`}></span>
-          <span>{notification.message}</span>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
@@ -253,7 +250,7 @@ export default function CustomersPage() {
       {/* Customers Table */}
       <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden mb-8">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse min-w-[720px]">
             <thead>
               <tr className="border-b border-slate-200/80 text-xs font-medium text-slate-600 select-none">
                 <th className="py-3.5 px-4">Customer</th>
@@ -342,7 +339,7 @@ export default function CustomersPage() {
       {/* CREATE CUSTOMER MODAL */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 max-w-md w-full p-6">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 max-w-md w-full max-h-[90vh] overflow-y-auto p-6">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
               <div>
                 <h3 className="text-lg font-bold text-slate-900">Add Customer Profile</h3>
@@ -351,8 +348,9 @@ export default function CustomersPage() {
               <button
                 onClick={() => setIsCreateModalOpen(false)}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                aria-label="Close"
               >
-                ✕
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
 
@@ -455,7 +453,7 @@ export default function CustomersPage() {
       {/* CUSTOMER DETAIL PROFILE DRAWER */}
       {isDetailDrawerOpen && selectedCustomerDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 max-w-lg w-full p-6">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 max-w-lg w-full max-h-[90vh] overflow-y-auto p-6">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-sm shadow-xs">
@@ -469,8 +467,9 @@ export default function CustomersPage() {
               <button
                 onClick={() => setIsDetailDrawerOpen(false)}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                aria-label="Close"
               >
-                ✕
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
 

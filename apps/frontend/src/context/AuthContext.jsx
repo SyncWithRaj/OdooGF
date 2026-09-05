@@ -42,54 +42,67 @@ export function AuthProvider({ children }) {
       const savedUserStr = localStorage.getItem(STORAGE_KEY);
       const token = localStorage.getItem(TOKEN_KEY);
 
-      if (!savedUserStr) {
+      if (!savedUserStr || !token || token.startsWith('demo_')) {
+        if (token?.startsWith('demo_')) {
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem(REFRESH_KEY);
+        }
         setLoading(false);
         return;
       }
 
       try {
-        const savedUser = JSON.parse(savedUserStr);
-        // If we have a backend token, try verifying with backend /api/auth/me
-        if (token) {
-          try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 2000); // 2s timeout so UI never hangs
+        const res = await fetch(`${API_URL}/api/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-            const res = await fetch(`${API_URL}/api/auth/me`, {
-              headers: { Authorization: `Bearer ${token}` },
-              signal: controller.signal,
+        if (res.ok) {
+          const data = await res.json();
+          const restored = {
+            id: data.user.id,
+            email: data.user.email,
+            name: data.user.fullName,
+            role: normalizeRole(data.user.role),
+            teamName: data.user.teamName,
+            phone: data.user.phone,
+            location: data.user.location,
+            avatarUrl: data.user.avatarUrl,
+            bannerUrl: data.user.bannerUrl,
+          };
+          setUser(restored);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(restored));
+        } else {
+          // Token expired -> attempt refresh
+          const refreshToken = localStorage.getItem(REFRESH_KEY);
+          if (refreshToken && !refreshToken.startsWith('demo_')) {
+            const refreshRes = await fetch(`${API_URL}/api/auth/refresh`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ refreshToken }),
             });
-            clearTimeout(timeoutId);
-
-            if (res.ok) {
-              const data = await res.json();
-              const restored = {
-                id: data.user.id,
-                email: data.user.email,
-                name: data.user.fullName,
-                role: normalizeRole(data.user.role),
-                teamName: data.user.teamName,
-                phone: data.user.phone,
-                location: data.user.location,
-                avatarUrl: data.user.avatarUrl,
-                bannerUrl: data.user.bannerUrl,
-              };
-              setUser(restored);
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(restored));
-              setLoading(false);
-              return;
+            if (refreshRes.ok) {
+              const refreshData = await refreshRes.json();
+              if (refreshData.accessToken) {
+                localStorage.setItem(TOKEN_KEY, refreshData.accessToken);
+                if (refreshData.refreshToken) {
+                  localStorage.setItem(REFRESH_KEY, refreshData.refreshToken);
+                }
+                const savedUser = JSON.parse(savedUserStr);
+                setUser(savedUser);
+                setLoading(false);
+                return;
+              }
             }
-          } catch {
-            // Backend offline or timeout -> retain savedUser offline session
           }
-        }
-
-        // Restore offline cached user
-        if (savedUser && savedUser.role) {
-          setUser(savedUser);
+          // Expired and cannot refresh -> clear invalid session
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem(REFRESH_KEY);
+          setUser(null);
         }
       } catch (err) {
-        console.warn('Failed to parse saved session:', err);
+        console.warn('Failed to verify saved session with backend:', err);
       } finally {
         setLoading(false);
       }
@@ -106,72 +119,35 @@ export function AuthProvider({ children }) {
     return { success: true, user: u };
   };
 
-  // Login: tries real NestJS backend, falls back gracefully to demo personas if backend is offline
+  // Login: authenticates against real NestJS backend
   const login = async (email, password) => {
     const normalizedEmail = email.trim().toLowerCase();
 
-    // 1. Try real backend
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const res = await fetch(`${API_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: normalizedEmail, password }),
+    });
 
-      const res = await fetch(`${API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: normalizedEmail, password }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+    const data = await res.json();
 
-      const data = await res.json();
-
-      if (res.ok && data.user) {
-        const sessionUser = {
-          id: data.user.id,
-          email: data.user.email,
-          name: data.user.fullName,
-          role: normalizeRole(data.user.role),
-          teamName: data.user.teamName,
-          phone: data.user.phone,
-          location: data.user.location,
-          avatarUrl: data.user.avatarUrl,
-          bannerUrl: data.user.bannerUrl,
-        };
-        return saveSession(sessionUser, data.accessToken, data.refreshToken);
-      }
-
-      // If backend responded with a validation error, report it
-      if (!res.ok && data.message) {
-        const message = Array.isArray(data.message) ? data.message.join(', ') : data.message;
-        throw new Error(message);
-      }
-    } catch (err) {
-      // If error is an explicit backend rejection (e.g. invalid credentials), rethrow it
-      if (err.message && !err.message.includes('fetch') && !err.message.includes('abort') && !err.message.includes('NetworkError')) {
-        throw err;
-      }
-      // Backend is offline -> check fallback accounts
+    if (!res.ok || !data.user) {
+      const message = Array.isArray(data.message) ? data.message.join(', ') : data.message || 'Invalid email or password';
+      throw new Error(message);
     }
 
-    // 2. Fallback offline login for testing & presentation
-    const fallback = FALLBACK_DEMO_USERS[normalizedEmail];
-    if (fallback) {
-      return saveSession(fallback, 'demo_token_' + Date.now(), 'demo_refresh');
-    }
-
-    // Generic fallback for any email with standard password
-    if (password && password.length >= 6) {
-      const genericUser = {
-        id: 'usr_' + Date.now(),
-        email: normalizedEmail,
-        name: normalizedEmail.split('@')[0].toUpperCase(),
-        role: normalizedEmail.includes('admin') ? 'admin' : normalizedEmail.includes('rep') ? 'rep' : 'customer',
-        teamName: 'Operations',
-      };
-      return saveSession(genericUser, 'demo_token_' + Date.now(), 'demo_refresh');
-    }
-
-    throw new Error('Invalid email or password. Try demo accounts or create an account.');
+    const sessionUser = {
+      id: data.user.id,
+      email: data.user.email,
+      name: data.user.fullName,
+      role: normalizeRole(data.user.role),
+      teamName: data.user.teamName,
+      phone: data.user.phone,
+      location: data.user.location,
+      avatarUrl: data.user.avatarUrl,
+      bannerUrl: data.user.bannerUrl,
+    };
+    return saveSession(sessionUser, data.accessToken, data.refreshToken);
   };
 
   // Step 1: Initiate signup (dispatches 6-digit OTP email or generates dev OTP)

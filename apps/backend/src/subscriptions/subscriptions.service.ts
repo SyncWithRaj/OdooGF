@@ -12,6 +12,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   AdjustQuantityDto,
   CancelSubscriptionDto,
+  CreateSubscriptionContractDto,
   SubscriptionContractQueryDto,
 } from './dto/subscription-contract.dto';
 import {
@@ -140,6 +141,35 @@ export class SubscriptionsService {
     }
 
     return sub;
+  }
+
+  async createSubscriptionContract(dto: CreateSubscriptionContractDto) {
+    const nextBillingDate = new Date();
+    if (dto.cycle === RecurringInterval.WEEKLY) {
+      nextBillingDate.setDate(nextBillingDate.getDate() + 7);
+    } else if (dto.cycle === RecurringInterval.QUARTERLY) {
+      nextBillingDate.setMonth(nextBillingDate.getMonth() + 3);
+    } else if (dto.cycle === RecurringInterval.YEARLY) {
+      nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
+    } else {
+      nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+    }
+
+    return this.prisma.subscription.create({
+      data: {
+        customerId: dto.customerId,
+        quotationId: dto.quotationId,
+        planName: dto.planName,
+        cycle: dto.cycle || RecurringInterval.MONTHLY,
+        amount: Number(dto.amount),
+        status: SubscriptionStatus.ACTIVE,
+        nextBillingDate,
+      },
+      include: {
+        customer: true,
+        quotation: true,
+      },
+    });
   }
 
   async pauseSubscription(id: string) {

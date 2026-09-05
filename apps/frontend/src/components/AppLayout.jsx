@@ -35,7 +35,7 @@ export default function AppLayout({ children }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] text-slate-900 flex">
+    <div className="min-h-screen bg-[#FAFAFA] text-zinc-900 flex">
       {/* Navigation Sidebar: Toggles between full w-64 and slim w-16 single-line app icon rail */}
       <Sidebar
         isOpen={mobileOpen}

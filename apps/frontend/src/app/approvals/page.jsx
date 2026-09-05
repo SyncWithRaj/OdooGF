@@ -5,34 +5,70 @@ import Link from 'next/link';
 import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { useAuth } from '@/context/AuthContext';
-import { quotationsService } from '@/services/quotationsService';
+import { apiClient } from '@/services/apiClient';
+import { toast } from 'react-toastify';
 
 export default function ApprovalsPage() {
   const { user, login } = useAuth();
-  const currentRole = (user?.role || 'manager').toLowerCase();
+  const roleMap = { SALES_MANAGER: 'manager', FINANCE: 'finance', ADMIN: 'admin' };
+  const currentRole = roleMap[user?.role] || (user?.role || 'manager').toLowerCase();
 
   const [quotations, setQuotations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('all'); // all | manager | finance
+  const [activeTab, setActiveTab] = useState(currentRole === 'finance' ? 'finance' : currentRole === 'manager' ? 'manager' : 'all');
   const [searchQuery, setSearchQuery] = useState('');
   const [processingId, setProcessingId] = useState(null);
-  const [notification, setNotification] = useState(null);
   const [selectedQuote, setSelectedQuote] = useState(null);
   const [actionNote, setActionNote] = useState('');
 
   const showToast = (message, type = 'success') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 4000);
+    if (type === 'error') {
+      toast.error(message);
+    } else if (type === 'info') {
+      toast.info(message);
+    } else {
+      toast.success(message);
+    }
   };
 
-  // Load live quotations from PostgreSQL
+  // Load approval queue from backend (auto-filters by user role)
   const loadApprovals = async () => {
     setLoading(true);
     try {
-      const data = await quotationsService.getQuotations();
-      setQuotations(data);
+      // Fetch the real approval queue — backend filters by role automatically
+      const queue = await apiClient.getApprovalsQueue();
+      // Flatten ApprovalRequest → quote-like shape for the table
+      const flattened = queue.map((ar) => {
+        const q = ar.quotation || {};
+        return {
+          id: q.id,
+          quoteNumber: q.quoteNumber,
+          status: q.status,
+          customerName: q.customer?.name || q.customer?.companyName || 'Direct Client',
+          customerEmail: q.customer?.email || '',
+          customerTier: q.customer?.tier || 'BRONZE',
+          salesRepName: q.salesRep?.fullName || q.salesRep?.email || 'Direct Sales Rep',
+          totalAmount: q.totalAmount,
+          totalDiscountAmount: q.totalDiscountAmount,
+          orderDiscountPercent: q.orderDiscountPercent,
+          counterDiscountProposed: q.counterDiscountProposed,
+          requestedDeliveryDate: q.requestedDeliveryDate,
+          portalToken: q.portalToken,
+          totalMarginPercent: q.totalMarginPercent,
+          blendedRiskScore: q.blendedRiskScore || ar.blendedRiskLevel,
+          currentStage: ar.currentStage, // source of truth from ApprovalRequest
+          flagReasonSummary: ar.flagReasonSummary,
+          approvalRequests: [{ id: ar.id, currentStage: ar.currentStage, blendedRiskLevel: ar.blendedRiskLevel }],
+          customer: q.customer,
+          salesRep: q.salesRep,
+          lines: q.lines,
+          auditLogs: ar.auditLogs,
+          notes: q.notes,
+        };
+      });
+      setQuotations(flattened);
     } catch (err) {
-      console.error('Failed to load pending quotations:', err);
+      console.error('Failed to load approval queue:', err);
       showToast('Error loading approvals queue.', 'error');
     } finally {
       setLoading(false);
@@ -43,10 +79,8 @@ export default function ApprovalsPage() {
     loadApprovals();
   }, [user?.role]);
 
-  // Filter only quotations needing approval
-  const pendingQuotes = useMemo(() => {
-    return quotations.filter((q) => q.status === 'PENDING_APPROVAL');
-  }, [quotations]);
+  // All items from queue are already pending (no extra filter needed)
+  const pendingQuotes = quotations;
 
   const managerPending = useMemo(() => {
     return pendingQuotes.filter((q) => q.currentStage === 'SALES_MANAGER');
@@ -64,10 +98,11 @@ export default function ApprovalsPage() {
 
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
-        const matchesNumber = q.quoteNumber?.toLowerCase().includes(query);
-        const matchesCustomer = q.customerName?.toLowerCase().includes(query);
-        const matchesRep = q.salesRepName?.toLowerCase().includes(query);
-        return matchesNumber || matchesCustomer || matchesRep;
+        return (
+          q.quoteNumber?.toLowerCase().includes(query) ||
+          q.customerName?.toLowerCase().includes(query) ||
+          q.salesRepName?.toLowerCase().includes(query)
+        );
       }
       return true;
     });
@@ -75,31 +110,46 @@ export default function ApprovalsPage() {
 
 
 
-  // Governance Actions
+  // Governance Actions — route through /api/approvals/:approvalRequestId/action
   const handleAction = async (quote, actionType, customNote = '') => {
     setProcessingId(quote.id);
     try {
+      // Find the active approval request ID for this quotation
+      const approvalRequestId = quote.approvalRequests?.[0]?.id;
+      if (!approvalRequestId) {
+        showToast('No active approval request found for this quotation.', 'error');
+        return;
+      }
+
+      // Map frontend action names to backend ApprovalAction enum values
+      const actionMap = {
+        APPROVE: 'APPROVED',
+        REJECT: 'REJECTED',
+        RETURN: 'RETURNED_FOR_REVISION',
+      };
+      const backendAction = actionMap[actionType];
+
+      const res = await apiClient.actionApproval(approvalRequestId, backendAction, customNote);
+
       if (actionType === 'APPROVE') {
-        const res = await quotationsService.approveQuotation(quote.id, user, customNote);
         showToast(
-          res.status === 'APPROVED'
-            ? `Quotation ${quote.quoteNumber} approved!`
-            : `Quotation ${quote.quoteNumber} approved at L1 and sent to Finance.`
+          res.status === 'ESCALATED_TO_FINANCE'
+            ? `Quotation ${quote.quoteNumber} approved at L1 — escalated to Finance for Tier-2 sign-off.`
+            : `Quotation ${quote.quoteNumber} fully approved & sent to customer!`
         );
       } else if (actionType === 'RETURN') {
-        await quotationsService.returnForRevision(quote.id, user, customNote);
         showToast(`Quotation ${quote.quoteNumber} returned for revision.`);
       } else if (actionType === 'REJECT') {
-        await quotationsService.rejectQuotation(quote.id, user, customNote);
         showToast(`Quotation ${quote.quoteNumber} rejected.`, 'info');
       }
+
       if (selectedQuote?.id === quote.id) {
         setSelectedQuote(null);
       }
       await loadApprovals();
     } catch (err) {
       console.error('Governance action failed:', err);
-      showToast('Action failed. Please try again.', 'error');
+      showToast(err?.message || 'Action failed. Please try again.', 'error');
     } finally {
       setProcessingId(null);
     }
@@ -121,11 +171,11 @@ export default function ApprovalsPage() {
   const getRiskBadge = (risk) => {
     switch (risk) {
       case 'LOW':
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Low Risk</span>;
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-zinc-100 text-zinc-800 border border-zinc-200"><span className="w-1.5 h-1.5 rounded-full bg-zinc-700"></span>Low Risk</span>;
       case 'MEDIUM':
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Medium Risk</span>;
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Medium Risk</span>;
       case 'HIGH':
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-rose-50 text-rose-800 border border-rose-200"><span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>High Risk</span>;
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-rose-50 text-rose-800 border border-rose-200"><span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>High Risk</span>;
       default:
         return null;
     }
@@ -134,28 +184,20 @@ export default function ApprovalsPage() {
   return (
     <RequireRole roles={['manager', 'finance', 'admin']}>
       <AppLayout>
-        {/* FLASH TOAST */}
-        {notification && (
-          <div className="fixed top-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-md shadow-lg bg-gray-900 text-white text-xs font-medium border border-gray-800 animate-in fade-in slide-in-from-top-4">
-            <span className={`w-2 h-2 rounded-full ${notification.type === 'error' ? 'bg-rose-500' : notification.type === 'info' ? 'bg-blue-500' : 'bg-emerald-400'}`}></span>
-            <span>{notification.message}</span>
-          </div>
-        )}
-
         {/* HEADER */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-xl font-semibold text-gray-900 tracking-tight">Approvals</h1>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl font-semibold text-zinc-900 tracking-tight">Approvals</h1>
               <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${
                 pendingQuotes.length > 0
                   ? 'bg-amber-50 text-amber-800 border-amber-200'
-                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-zinc-100 text-zinc-800 border-zinc-200'
               }`}>
                 {pendingQuotes.length} Pending
               </span>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-zinc-500 mt-1">
               Review and authorize quotation discount requests and margin limits.
             </p>
           </div>
@@ -212,7 +254,7 @@ export default function ApprovalsPage() {
         {/* CONTENT */}
         {loading ? (
           <div className="p-10 rounded-md bg-white border border-gray-200 text-center shadow-xs">
-            <div className="w-5 h-5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+            <div className="w-5 h-5 border-2 border-zinc-900 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
             <p className="text-xs text-gray-500">Loading pending approvals...</p>
           </div>
         ) : displayedQuotes.length === 0 ? (
@@ -224,7 +266,7 @@ export default function ApprovalsPage() {
           /* SIMPLE CLASSIC TABLE VIEW */
           <div className="bg-white rounded-md border border-gray-200 shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="w-full text-left text-xs border-collapse min-w-[760px]">
                 <thead>
                   <tr className="bg-gray-50/80 border-b border-gray-200 text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     <th className="py-3 px-4">Quote</th>
@@ -258,7 +300,7 @@ export default function ApprovalsPage() {
                           <button
                             type="button"
                             onClick={() => setSelectedQuote(quote)}
-                            className="font-semibold text-gray-900 hover:text-emerald-700 hover:underline cursor-pointer text-left"
+                            className="font-semibold text-gray-900 hover:text-black hover:underline cursor-pointer text-left"
                           >
                             {quote.quoteNumber}
                           </button>
@@ -266,16 +308,20 @@ export default function ApprovalsPage() {
 
                         {/* Customer */}
                         <td className="py-3 px-4">
-                          <div className="font-medium text-gray-900">{quote.customerName}</div>
+                          <div className="font-medium text-gray-900">
+                            {quote.customerName || quote.customer?.name || quote.customer?.companyName || 'Direct Client'}
+                          </div>
                           <div className="flex items-center gap-1.5 mt-0.5">
-                            {getTierBadge(quote.customerTier)}
-                            <span className="text-[10px] text-gray-400 truncate max-w-[140px]">{quote.customerEmail}</span>
+                            {getTierBadge(quote.customerTier || quote.customer?.tier)}
+                            <span className="text-[10px] text-gray-400 truncate max-w-[140px]">
+                              {quote.customerEmail || quote.customer?.email}
+                            </span>
                           </div>
                         </td>
 
                         {/* Sales Rep */}
-                        <td className="py-3 px-4 text-gray-600">
-                          {quote.salesRepName}
+                        <td className="py-3 px-4 text-gray-700 font-medium">
+                          {quote.salesRepName || quote.salesRep?.fullName || quote.salesRep?.email || 'Direct Sales Rep'}
                         </td>
 
                         {/* Stage */}
@@ -298,6 +344,11 @@ export default function ApprovalsPage() {
                         <td className="py-3 px-4 text-right font-medium text-amber-700">
                           {quote.orderDiscountPercent}%
                           <span className="block text-[10px] text-gray-400">-${quote.totalDiscountAmount}</span>
+                          {quote.counterDiscountProposed > 0 && (
+                            <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                              Counter: {quote.counterDiscountProposed}%
+                            </span>
+                          )}
                         </td>
 
                         {/* Total Amount */}
@@ -321,7 +372,7 @@ export default function ApprovalsPage() {
                                   type="button"
                                   disabled={isProcessing}
                                   onClick={() => handleAction(quote, 'APPROVE')}
-                                  className="h-7 px-2.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs transition cursor-pointer shadow-xs disabled:opacity-50"
+                                  className="h-7 px-2.5 rounded bg-zinc-900 hover:bg-black text-white font-medium text-xs transition cursor-pointer shadow-xs disabled:opacity-50"
                                   title="Approve Quotation"
                                 >
                                   {isProcessing ? '...' : 'Approve'}
@@ -367,21 +418,21 @@ export default function ApprovalsPage() {
               {/* Header */}
               <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h2 className="text-base font-semibold text-gray-900">
                       {selectedQuote.quoteNumber}
                     </h2>
-                    {getTierBadge(selectedQuote.customerTier)}
+                    {getTierBadge(selectedQuote.customerTier || selectedQuote.customer?.tier)}
                     {getRiskBadge(selectedQuote.blendedRiskScore)}
                   </div>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Customer: {selectedQuote.customerName} ({selectedQuote.customerEmail})
+                    Customer: {selectedQuote.customerName || selectedQuote.customer?.name || selectedQuote.customer?.companyName} ({selectedQuote.customerEmail || selectedQuote.customer?.email}) &bull; Rep: {selectedQuote.salesRepName || selectedQuote.salesRep?.fullName || 'Direct Sales Rep'}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSelectedQuote(null)}
-                  className="p-1.5 text-gray-400 hover:text-gray-700 rounded hover:bg-gray-100 transition cursor-pointer"
+                  className="text-gray-400 hover:text-gray-600 p-1 rounded"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -390,54 +441,74 @@ export default function ApprovalsPage() {
               </div>
 
               {/* Body */}
-              <div className="p-5 overflow-y-auto space-y-4 text-xs flex-1">
-                {/* Financial Summary */}
-                <div className="grid grid-cols-4 gap-3 p-3 rounded bg-gray-50 border border-gray-200 text-center">
+              <div className="p-5 overflow-y-auto space-y-4 flex-1">
+                {/* Financials */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-gray-50 rounded border border-gray-100 text-xs">
                   <div>
-                    <span className="text-gray-500 block text-[11px]">Subtotal</span>
-                    <span className="font-semibold text-gray-900">${selectedQuote.subtotalAmount?.toLocaleString()}</span>
+                    <span className="text-gray-500 block">Total Value</span>
+                    <span className="font-semibold text-gray-900">${selectedQuote.totalAmount?.toLocaleString()}</span>
                   </div>
                   <div>
-                    <span className="text-gray-500 block text-[11px]">Discount ({selectedQuote.orderDiscountPercent}%)</span>
-                    <span className="font-semibold text-amber-700">-${selectedQuote.totalDiscountAmount}</span>
+                    <span className="text-gray-500 block">Requested Discount</span>
+                    <span className="font-semibold text-amber-700">{selectedQuote.orderDiscountPercent}%</span>
                   </div>
                   <div>
-                    <span className="text-gray-500 block text-[11px]">Total</span>
-                    <span className="font-semibold text-emerald-700">${selectedQuote.totalAmount?.toLocaleString()}</span>
+                    <span className="text-gray-500 block">Total Concession</span>
+                    <span className="font-semibold text-gray-900">-${selectedQuote.totalDiscountAmount}</span>
                   </div>
                   <div>
-                    <span className="text-gray-500 block text-[11px]">Margin</span>
+                    <span className="text-gray-500 block">Total Margin</span>
                     <span className="font-semibold text-gray-900">{selectedQuote.totalMarginPercent}%</span>
                   </div>
                 </div>
 
+                {/* Active Customer Counter-Proposal Notice */}
+                {selectedQuote.counterDiscountProposed > 0 && (
+                  <div className="p-3.5 bg-purple-50 rounded-lg border border-purple-200 text-xs text-purple-950 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold flex items-center gap-1.5 text-purple-900">
+                        <span className="w-2 h-2 rounded-full bg-purple-600 animate-pulse"></span>
+                        Red-Dashed Loop: Customer Counter-Proposal
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold text-[10px]">
+                        +{selectedQuote.counterDiscountProposed}% Concession Requested
+                      </span>
+                    </div>
+                    <p className="text-purple-800">
+                      Customer requested an additional discount of <strong>{selectedQuote.counterDiscountProposed}%</strong> (Delivery: {selectedQuote.requestedDeliveryDate ? new Date(selectedQuote.requestedDeliveryDate).toLocaleDateString() : 'Standard'}). Approving will advance the quote back to <strong>SENT_TO_CUSTOMER</strong> with the approved concession.
+                    </p>
+                  </div>
+                )}
+
                 {/* Line Items Table */}
                 {selectedQuote.lines && selectedQuote.lines.length > 0 && (
                   <div className="border border-gray-200 rounded overflow-hidden">
-                    <table className="w-full text-left">
-                      <thead className="bg-gray-50 text-[11px] font-medium text-gray-500 uppercase border-b border-gray-200">
-                        <tr>
-                          <th className="py-2 px-3">Product</th>
-                          <th className="py-2 px-2 text-center">Qty</th>
-                          <th className="py-2 px-3 text-right">Unit Price</th>
-                          <th className="py-2 px-3 text-right">Discount</th>
-                          <th className="py-2 px-3 text-right">Line Total</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100 text-gray-900">
-                        {selectedQuote.lines.map((l, i) => (
-                          <tr key={i}>
-                            <td className="py-2 px-3 font-medium">{l.productName}</td>
-                            <td className="py-2 px-2 text-center">{l.quantity}</td>
-                            <td className="py-2 px-3 text-right">${l.unitPrice}</td>
-                            <td className="py-2 px-3 text-right text-amber-700">{l.discountPercent}%</td>
-                            <td className="py-2 px-3 text-right font-semibold">
-                              ${l.lineRevenue || (l.quantity * l.unitPrice * (1 - l.discountPercent / 100)).toFixed(2)}
-                            </td>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left min-w-[500px]">
+                        <thead className="bg-gray-50 text-[11px] font-medium text-gray-500 uppercase border-b border-gray-200">
+                          <tr>
+                            <th className="py-2 px-3">Product</th>
+                            <th className="py-2 px-2 text-center">Qty</th>
+                            <th className="py-2 px-3 text-right">Unit Price</th>
+                            <th className="py-2 px-3 text-right">Discount</th>
+                            <th className="py-2 px-3 text-right">Line Total</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 text-gray-900">
+                          {selectedQuote.lines.map((l, i) => (
+                            <tr key={i}>
+                              <td className="py-2 px-3 font-medium">{l.productName}</td>
+                              <td className="py-2 px-2 text-center">{l.quantity}</td>
+                              <td className="py-2 px-3 text-right">${l.unitPrice}</td>
+                              <td className="py-2 px-3 text-right text-amber-700">{l.discountPercent}%</td>
+                              <td className="py-2 px-3 text-right font-semibold">
+                                ${l.lineRevenue || (l.quantity * l.unitPrice * (1 - l.discountPercent / 100)).toFixed(2)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
 
@@ -457,16 +528,16 @@ export default function ApprovalsPage() {
               </div>
 
               {/* Footer Actions */}
-              <div className="px-5 py-3 border-t border-gray-200 bg-gray-50/50 flex items-center justify-between">
+              <div className="px-5 py-3 border-t border-gray-200 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                 <button
                   type="button"
                   onClick={() => setSelectedQuote(null)}
-                  className="h-8 px-3 rounded text-xs font-medium text-gray-700 hover:bg-gray-100 transition cursor-pointer"
+                  className="h-8 px-3 rounded text-xs font-medium text-gray-700 hover:bg-gray-100 transition cursor-pointer self-start sm:self-auto"
                 >
                   Close
                 </button>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     disabled={processingId === selectedQuote.id}
@@ -487,7 +558,7 @@ export default function ApprovalsPage() {
                     type="button"
                     disabled={processingId === selectedQuote.id}
                     onClick={() => handleAction(selectedQuote, 'APPROVE', actionNote)}
-                    className="h-8 px-4 rounded text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition cursor-pointer shadow-xs"
+                    className="h-8 px-4 rounded text-xs font-medium text-white bg-zinc-900 hover:bg-black transition cursor-pointer shadow-xs"
                   >
                     {processingId === selectedQuote.id ? 'Processing...' : 'Approve'}
                   </button>

@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -134,7 +135,7 @@ export class QuotationsController {
   // ----------------------------------------------------------------------------
   // B5: 1-CLICK ADD UPSELL ITEM TO QUOTE
   // ----------------------------------------------------------------------------
-  @Post(':id/lines/upsell')
+  @Post([':id/lines/upsell', ':id/upsell'])
   @Roles(Role.ADMIN, Role.SALES_REP, Role.SALES_MANAGER)
   @ApiOperation({ summary: '1-click add recommended upsell product into quote lines' })
   @ApiResponse({ status: 201, description: 'Quotation updated with upsell line' })
@@ -186,6 +187,68 @@ export class QuotationsController {
       },
       dto,
     );
+  }
+
+  // ----------------------------------------------------------------------------
+  // DIRECT GOVERNANCE & PIPELINE ACTIONS
+  // ----------------------------------------------------------------------------
+  @Post(':id/approve')
+  @Roles(Role.ADMIN, Role.SALES_MANAGER, Role.FINANCE)
+  @ApiOperation({ summary: 'Approve quotation directly' })
+  @ApiResponse({ status: 200, description: 'Quotation approved' })
+  async approveQuotation(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() body: { note?: string },
+  ) {
+    return this.quotationsService.approveQuotation(
+      id,
+      {
+        id: user.id,
+        fullName: user.fullName || user.email,
+        role: user.role as Role,
+      },
+      body?.note,
+    );
+  }
+
+  @Post(':id/reject')
+  @Roles(Role.ADMIN, Role.SALES_MANAGER, Role.FINANCE)
+  @ApiOperation({ summary: 'Reject quotation directly' })
+  @ApiResponse({ status: 200, description: 'Quotation rejected' })
+  async rejectQuotation(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() body: { reason?: string },
+  ) {
+    return this.quotationsService.rejectQuotation(
+      id,
+      {
+        id: user.id,
+        fullName: user.fullName || user.email,
+        role: user.role as Role,
+      },
+      body?.reason,
+    );
+  }
+
+  @Post(':id/confirm')
+  @Roles(Role.ADMIN, Role.SALES_MANAGER, Role.FINANCE, Role.SALES_REP)
+  @ApiOperation({ summary: 'Confirm quotation into active order' })
+  @ApiResponse({ status: 200, description: 'Quotation confirmed' })
+  async confirmQuotation(@Param('id') id: string) {
+    return this.quotationsService.confirmQuotation(id);
+  }
+
+  @Patch(':id/status')
+  @Roles(Role.ADMIN, Role.SALES_MANAGER, Role.FINANCE, Role.SALES_REP)
+  @ApiOperation({ summary: 'Update quotation status (Kanban pipeline stage moves)' })
+  @ApiResponse({ status: 200, description: 'Quotation status updated' })
+  async updateStatus(
+    @Param('id') id: string,
+    @Body() body: { status: QuotationStatus },
+  ) {
+    return this.quotationsService.updateQuotationStatus(id, body.status);
   }
 
   // ----------------------------------------------------------------------------

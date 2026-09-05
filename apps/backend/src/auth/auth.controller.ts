@@ -47,7 +47,7 @@ export class AuthController {
   }
 
   @Post('login')
-  @RateLimit({ limit: 5, ttl: 60 })
+  @RateLimit({ limit: 100, ttl: 60 })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login with email (or identifier) and password (argon2 verified)' })
   @ApiResponse({ status: 200, description: 'Login successful, returns access and refresh tokens' })

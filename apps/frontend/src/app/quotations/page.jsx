@@ -5,6 +5,8 @@ import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { useAuth } from '@/context/AuthContext';
 import { quotationsService } from '@/services/quotationsService';
+import { apiClient } from '@/services/apiClient';
+import { toast } from 'react-toastify';
 
 export default function QuotationsPage() {
   const { user, login } = useAuth();
@@ -37,7 +39,6 @@ export default function QuotationsPage() {
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [actionComment, setActionComment] = useState('');
   const [isSubmittingAction, setIsSubmittingAction] = useState(false);
-  const [notification, setNotification] = useState(null);
 
   // New Quote Form State
   const [newQuoteCustomer, setNewQuoteCustomer] = useState(null);
@@ -48,10 +49,15 @@ export default function QuotationsPage() {
   const [aiRecommendations, setAiRecommendations] = useState([]);
   const [isLoadingAiRecs, setIsLoadingAiRecs] = useState(false);
 
-  // Flash notification helper
+  // Toast notification helper using react-toastify
   const showToast = (message, type = 'success') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 4000);
+    if (type === 'error') {
+      toast.error(message);
+    } else if (type === 'info') {
+      toast.info(message);
+    } else {
+      toast.success(message);
+    }
   };
 
   // Load initial backend data & quotations
@@ -65,10 +71,18 @@ export default function QuotationsPage() {
           quotationsService.getGovernanceRules(),
           quotationsService.getQuotations(),
         ]);
-        setCustomers(custs);
-        setProducts(prods);
+        const validCusts = Array.isArray(custs) ? custs : [];
+        const validProds = Array.isArray(prods) ? prods : [];
+        const validList = Array.isArray(list) ? list : [];
+
+        setCustomers(validCusts);
+        setProducts(validProds);
         setGovernanceRules(rules);
-        setQuotations(list);
+        setQuotations(validList);
+
+        if (validCusts.length > 0) {
+          setNewQuoteCustomer((prev) => prev || validCusts[0]);
+        }
       } catch (err) {
         console.error('Failed to load quotation master data:', err);
       } finally {
@@ -172,11 +186,12 @@ export default function QuotationsPage() {
 
   // Filtered Quotations
   const filteredQuotations = useMemo(() => {
-    return quotations.filter((q) => {
+    const filtered = quotations.filter((q) => {
       // Tab filter
       if (activeTab === 'drafts' && q.status !== 'DRAFT') return false;
       if (activeTab === 'manager' && (q.status !== 'PENDING_APPROVAL' || q.currentStage !== 'SALES_MANAGER')) return false;
       if (activeTab === 'finance' && (q.status !== 'PENDING_APPROVAL' || q.currentStage !== 'FINANCE')) return false;
+      if (activeTab === 'sent' && q.status !== 'SENT_TO_CUSTOMER' && q.status !== 'UNDER_NEGOTIATION' && q.status !== 'APPROVED') return false;
       if (activeTab === 'confirmed' && q.status !== 'CONFIRMED') return false;
 
       // Status dropdown filter
@@ -227,6 +242,7 @@ export default function QuotationsPage() {
     const totalPipeline = quotations.reduce((acc, q) => acc + (q.totalAmount || 0), 0);
     const pendingManagerCount = quotations.filter((q) => q.status === 'PENDING_APPROVAL' && q.currentStage === 'SALES_MANAGER').length;
     const pendingFinanceCount = quotations.filter((q) => q.status === 'PENDING_APPROVAL' && q.currentStage === 'FINANCE').length;
+    const sentCount = quotations.filter((q) => q.status === 'SENT_TO_CUSTOMER' || q.status === 'UNDER_NEGOTIATION' || q.status === 'APPROVED').length;
     const draftsCount = quotations.filter((q) => q.status === 'DRAFT').length;
     const confirmedCount = quotations.filter((q) => q.status === 'CONFIRMED').length;
     const avgMargin = quotations.length > 0
@@ -237,6 +253,7 @@ export default function QuotationsPage() {
       totalPipeline,
       pendingManagerCount,
       pendingFinanceCount,
+      sentCount,
       draftsCount,
       confirmedCount,
       avgMargin,
@@ -244,9 +261,14 @@ export default function QuotationsPage() {
   }, [quotations]);
 
   // Add line to new quote
-  const handleAddLine = () => {
-    if (products.length === 0) return;
-    const defaultProduct = products[0];
+  const handleAddLine = async () => {
+    let prods = products;
+    if (!prods || prods.length === 0) {
+      prods = await quotationsService.getLiveProducts();
+      if (Array.isArray(prods)) setProducts(prods);
+    }
+    if (!prods || prods.length === 0) return;
+    const defaultProduct = prods[0];
     const initialLine = {
       productId: defaultProduct.id,
       productName: defaultProduct.name,
@@ -293,12 +315,24 @@ export default function QuotationsPage() {
   };
 
   // Open Create Quote Modal
-  const handleOpenCreateModal = () => {
-    if (customers.length > 0) {
-      setNewQuoteCustomer(customers[0]);
+  const handleOpenCreateModal = async () => {
+    let currentCusts = customers;
+    let currentProds = products;
+
+    if (!currentCusts || currentCusts.length === 0) {
+      currentCusts = await quotationsService.getLiveCustomers();
+      if (Array.isArray(currentCusts)) setCustomers(currentCusts);
     }
-    if (products.length > 0) {
-      const defaultProd = products[0];
+    if (!currentProds || currentProds.length === 0) {
+      currentProds = await quotationsService.getLiveProducts();
+      if (Array.isArray(currentProds)) setProducts(currentProds);
+    }
+
+    if (currentCusts && currentCusts.length > 0) {
+      setNewQuoteCustomer(currentCusts[0]);
+    }
+    if (currentProds && currentProds.length > 0) {
+      const defaultProd = currentProds[0];
       setNewQuoteLines([
         {
           productId: defaultProd.id,
@@ -342,59 +376,52 @@ export default function QuotationsPage() {
 
       const quotePayload = {
         customerId: newQuoteCustomer.id,
-        customerName: newQuoteCustomer.name,
-        customerEmail: newQuoteCustomer.email,
-        customerTier: newQuoteCustomer.tier,
-        status: statusTarget,
-        currentStage: statusTarget === 'PENDING_APPROVAL' 
-          ? (evalData.blendedRiskScore === 'LOW' ? 'APPROVED' : 'SALES_MANAGER')
-          : 'SALES_REP',
-        blendedRiskScore: evalData.blendedRiskScore,
-        requiresManagerApproval: evalData.requiresManagerApproval,
-        requiresFinanceApproval: evalData.requiresFinanceApproval,
-        subtotalAmount: evalData.financials.totalSubtotal,
-        totalDiscountAmount: evalData.financials.totalDiscountAmount,
-        orderDiscountPercent: evalData.financials.totalSubtotal > 0
+        orderDiscountPercent: (evalData?.financials?.totalSubtotal > 0)
           ? Number(((evalData.financials.totalDiscountAmount / evalData.financials.totalSubtotal) * 100).toFixed(1))
           : 0,
-        totalAmount: evalData.financials.totalRevenue,
-        totalCost: evalData.financials.totalCost,
-        totalMarginPercent: evalData.financials.totalMarginPercent,
         notes: newQuoteNotes,
-        flagReasonSummary: evalData.flagReasonSummary,
-        lines: newQuoteLines.map((line, idx) => {
-          const evalLine = evalData.lines?.[idx] || {};
-          return {
-            ...line,
-            ...evalLine,
-            productId: line.productId,
-            productName: line.productName,
-          };
-        }),
+        lines: newQuoteLines.map((line) => ({
+          productId: line.productId,
+          quantity: Math.max(1, Number(line.quantity) || 1),
+          unitPrice: Number(line.unitPrice) || 0,
+          discountPercent: Number(line.discountPercent) || 0,
+          variantId: line.variantId || undefined,
+        })),
       };
 
       const created = await quotationsService.createQuotation(quotePayload, user);
+      if (statusTarget === 'PENDING_APPROVAL' && created?.id) {
+        await quotationsService.submitForApproval(created.id, user, newQuoteNotes);
+      }
       const updatedList = await quotationsService.getQuotations();
       setQuotations(updatedList);
       setIsCreateModalOpen(false);
       showToast(
         statusTarget === 'PENDING_APPROVAL'
-          ? `Quotation ${created.quoteNumber} created and submitted for governance approval!`
-          : `Draft ${created.quoteNumber} saved successfully!`
+          ? `Quotation ${created?.quoteNumber || ''} created and submitted for governance approval!`
+          : `Draft ${created?.quoteNumber || ''} saved successfully!`
       );
     } catch (e) {
       console.error('Failed to create quotation:', e);
-      showToast('Error saving quotation.', 'error');
+      showToast(e?.message || 'Error saving quotation.', 'error');
     } finally {
       setIsSubmittingAction(false);
     }
   };
 
   // Open details drawer
-  const handleOpenDetailDrawer = (quote) => {
+  const handleOpenDetailDrawer = async (quote) => {
     setSelectedQuote(quote);
     setActionComment('');
     setIsDetailDrawerOpen(true);
+    try {
+      const fresh = await apiClient.getQuotation(quote.id);
+      if (fresh && fresh.id) {
+        setSelectedQuote(fresh);
+      }
+    } catch (e) {
+      console.warn('Could not fetch fresh quotation details:', e);
+    }
   };
 
   // Handle Governance Actions (Approve, Reject, Return, Confirm)
@@ -407,21 +434,39 @@ export default function QuotationsPage() {
         updated = await quotationsService.submitForApproval(selectedQuote.id, user, actionComment);
         showToast(`Quotation ${selectedQuote.quoteNumber} submitted for approval.`);
       } else if (actionType === 'APPROVE') {
-        updated = await quotationsService.approveQuotation(selectedQuote.id, user, actionComment);
+        const arId = selectedQuote.approvalRequests?.[0]?.id;
+        if (arId) {
+          updated = await apiClient.actionApproval(arId, 'APPROVED', actionComment);
+        } else {
+          updated = await quotationsService.approveQuotation(selectedQuote.id, user, actionComment);
+        }
         showToast(
-          updated.status === 'APPROVED'
-            ? `Quotation ${selectedQuote.quoteNumber} approved!`
-            : `Quotation ${selectedQuote.quoteNumber} approved at L1 and escalated to Finance Controller.`
+          updated?.status === 'ESCALATED_TO_FINANCE'
+            ? `Quotation ${selectedQuote.quoteNumber} approved at L1 — escalated to Finance Controller.`
+            : `Quotation ${selectedQuote.quoteNumber} fully approved & sent to customer!`
         );
       } else if (actionType === 'REJECT') {
-        updated = await quotationsService.rejectQuotation(selectedQuote.id, user, actionComment);
+        const arId = selectedQuote.approvalRequests?.[0]?.id;
+        if (arId) {
+          updated = await apiClient.actionApproval(arId, 'REJECTED', actionComment);
+        } else {
+          updated = await apiClient.rejectQuotation(selectedQuote.id, actionComment);
+        }
         showToast(`Quotation ${selectedQuote.quoteNumber} rejected.`);
       } else if (actionType === 'RETURN') {
-        updated = await quotationsService.returnForRevision(selectedQuote.id, user, actionComment);
+        const arId = selectedQuote.approvalRequests?.[0]?.id;
+        if (arId) {
+          updated = await apiClient.actionApproval(arId, 'RETURNED_FOR_REVISION', actionComment);
+        } else {
+          updated = await apiClient.rejectQuotation(selectedQuote.id, actionComment || 'Returned for revision');
+        }
         showToast(`Quotation ${selectedQuote.quoteNumber} returned to sales rep for revision.`);
       } else if (actionType === 'CONFIRM') {
         updated = await quotationsService.confirmOrder(selectedQuote.id, user);
         showToast(`Quotation ${selectedQuote.quoteNumber} confirmed into an active Order!`);
+      } else if (actionType === 'SEND_TO_CUSTOMER') {
+        updated = await quotationsService.updateQuotationStatus(selectedQuote.id, 'SENT_TO_CUSTOMER', user);
+        showToast(`Quotation ${selectedQuote.quoteNumber} released to Customer Portal!`);
       }
 
       if (updated) {
@@ -433,7 +478,7 @@ export default function QuotationsPage() {
       }
     } catch (e) {
       console.error('Governance action error:', e);
-      showToast('Failed to perform action', 'error');
+      showToast(e?.message || 'Failed to perform action', 'error');
     } finally {
       setIsSubmittingAction(false);
     }
@@ -465,32 +510,44 @@ export default function QuotationsPage() {
     switch (status) {
       case 'CONFIRMED':
         return (
-          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-emerald-400 text-emerald-600 bg-transparent">
-            Delivered
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border border-zinc-900 text-zinc-900 bg-zinc-100">
+            Confirmed
+          </span>
+        );
+      case 'SENT_TO_CUSTOMER':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-blue-400 text-blue-700 bg-blue-50">
+            Sent to Customer
+          </span>
+        );
+      case 'UNDER_NEGOTIATION':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-purple-400 text-purple-700 bg-purple-50">
+            In Negotiation
           </span>
         );
       case 'PENDING_APPROVAL':
         return (
-          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-amber-400 text-amber-600 bg-transparent">
-            Pending
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-amber-400 text-amber-700 bg-amber-50">
+            In Approval
           </span>
         );
       case 'APPROVED':
         return (
-          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-blue-400 text-blue-600 bg-transparent">
-            Shipped
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border border-zinc-900 text-zinc-900 bg-zinc-100">
+            Approved
           </span>
         );
       case 'REJECTED':
         return (
-          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-rose-400 text-rose-600 bg-transparent">
-            Cancelled
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-rose-400 text-rose-700 bg-rose-50">
+            Rejected
           </span>
         );
       case 'DRAFT':
       default:
         return (
-          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-slate-300 text-slate-600 bg-transparent">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-zinc-300 text-zinc-600 bg-zinc-50">
             Draft
           </span>
         );
@@ -501,11 +558,11 @@ export default function QuotationsPage() {
   const getRiskBadge = (risk) => {
     switch (risk) {
       case 'LOW':
-        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Low Risk</span>;
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-100 text-zinc-800 border border-zinc-200"><span className="w-1.5 h-1.5 rounded-full bg-zinc-700"></span>Low Risk</span>;
       case 'MEDIUM':
-        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Medium Risk (L1)</span>;
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-300"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Medium Risk (L1)</span>;
       case 'HIGH':
-        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-300"><span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>High Risk (L2)</span>;
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-800 border border-rose-300"><span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>High Risk (L2)</span>;
       default:
         return null;
     }
@@ -527,30 +584,20 @@ export default function QuotationsPage() {
   return (
     <RequireRole roles={['rep', 'manager', 'finance', 'admin']}>
       <AppLayout>
-        {/* TOAST NOTIFICATION */}
-        {notification && (
-          <div className="fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-sm font-medium border border-slate-700 animate-in fade-in slide-in-from-top-4">
-            <span className={`w-2.5 h-2.5 rounded-full ${notification.type === 'error' ? 'bg-rose-500' : notification.type === 'info' ? 'bg-blue-500' : 'bg-emerald-400'}`}></span>
-            <span>{notification.message}</span>
-          </div>
-        )}
-
-        {/* TOP BAR: HEADER & ROLE PERSONA QUICK-SWITCHER */}
+        {/* TOP BAR: HEADER & ACTIONS */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Quotations</h1>
-            <p className="text-sm text-gray-500 mt-1">
+            <h1 className="text-2xl font-semibold text-zinc-900 tracking-tight">Quotations</h1>
+            <p className="text-sm text-zinc-500 mt-1">
               Manage client proposals, pricing policies, and approval workflows.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-
-
             {/* CREATE QUOTE BUTTON */}
             <button
               onClick={handleOpenCreateModal}
-              className="h-10 px-4 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm transition cursor-pointer shadow-sm flex items-center gap-2"
+              className="h-10 px-4 rounded-md bg-zinc-900 hover:bg-black text-white font-medium text-sm transition cursor-pointer shadow-sm flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
@@ -562,12 +609,12 @@ export default function QuotationsPage() {
 
         {/* KPI METRIC CARDS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="p-5 rounded-lg bg-white border border-gray-200 shadow-xs">
-            <div className="flex items-center justify-between text-xs font-medium text-gray-500 mb-1">
+          <div className="p-5 rounded-lg bg-white border border-zinc-200 shadow-xs">
+            <div className="flex items-center justify-between text-xs font-medium text-zinc-500 mb-1">
               <span>Pipeline Value</span>
-              <span className="text-emerald-700 font-semibold">Live</span>
+              <span className="text-zinc-900 font-semibold flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-zinc-900 animate-pulse"></span>Live</span>
             </div>
-            <div className="text-2xl font-semibold text-gray-900 tracking-tight">
+            <div className="text-2xl font-semibold text-zinc-900 tracking-tight">
               ${metrics.totalPipeline.toLocaleString()}
             </div>
             <div className="text-xs text-gray-500 mt-1">
@@ -662,16 +709,27 @@ export default function QuotationsPage() {
               )}
             </button>
             <button
+              onClick={() => setActiveTab('sent')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition cursor-pointer ${activeTab === 'sent' ? 'bg-blue-700 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+            >
+              <span>Sent to Client</span>
+              {metrics.sentCount > 0 && (
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-medium ${activeTab === 'sent' ? 'bg-white/30 text-white' : 'bg-blue-100 text-blue-800'}`}>
+                  {metrics.sentCount}
+                </span>
+              )}
+            </button>
+            <button
               onClick={() => setActiveTab('confirmed')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition cursor-pointer ${activeTab === 'confirmed' ? 'bg-blue-700 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition cursor-pointer ${activeTab === 'confirmed' ? 'bg-zinc-900 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
             >
               Confirmed ({metrics.confirmedCount})
             </button>
           </div>
 
-          {/* SEARCH & FILTERS */}
+          {/* SEARCH */}
           <div className="flex items-center gap-2">
-            <div className="relative flex-1 md:w-56">
+            <div className="relative flex-1 md:w-64">
               <svg className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
@@ -683,24 +741,13 @@ export default function QuotationsPage() {
                 className="w-full h-9 pl-9 pr-3 rounded-md text-xs bg-white border border-gray-200 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-200"
               />
             </div>
-
-            <select
-              value={riskFilter}
-              onChange={(e) => setRiskFilter(e.target.value)}
-              className="h-9 px-3 rounded-md text-xs bg-white border border-gray-200 font-medium text-gray-700 focus:outline-none focus:border-gray-400"
-            >
-              <option value="ALL">All Risks</option>
-              <option value="LOW">Low Risk</option>
-              <option value="MEDIUM">Medium Risk</option>
-              <option value="HIGH">High Risk</option>
-            </select>
           </div>
         </div>
 
         {/* QUOTATIONS LIST TABLE MATCHING TARGET DESIGN */}
         <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden mb-8">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse min-w-[760px]">
               <thead>
                 <tr className="border-b border-slate-200/80 text-xs font-medium text-slate-600 select-none">
                   {/* Checkbox */}
@@ -1006,11 +1053,15 @@ export default function QuotationsPage() {
                     }}
                     className="w-full h-10 px-3.5 rounded-md bg-white border border-gray-200 text-gray-900 text-sm focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-200 transition"
                   >
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({c.email}) — {c.tier} Tier
-                      </option>
-                    ))}
+                    {customers.length === 0 ? (
+                      <option value="">Loading customer accounts...</option>
+                    ) : (
+                      customers.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} ({c.email}) — {c.tier} Tier
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 
@@ -1023,7 +1074,7 @@ export default function QuotationsPage() {
                     <button
                       type="button"
                       onClick={handleAddLine}
-                      className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-2.5 py-1.5 rounded-md transition cursor-pointer"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-900 hover:text-black bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 px-2.5 py-1.5 rounded-md transition cursor-pointer"
                     >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
@@ -1033,7 +1084,8 @@ export default function QuotationsPage() {
                   </div>
 
                   <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
-                    <table className="w-full text-left text-xs border-collapse">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse min-w-[620px]">
                       <thead>
                         <tr className="bg-gray-50/80 border-b border-gray-200 text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                           <th className="py-2.5 px-3">Product</th>
@@ -1058,11 +1110,15 @@ export default function QuotationsPage() {
                                   onChange={(e) => handleUpdateLine(idx, 'productId', e.target.value)}
                                   className="w-full h-8 px-2 rounded-md text-xs bg-white border border-gray-200 text-gray-900 font-medium focus:outline-none focus:border-gray-400"
                                 >
-                                  {products.map((p) => (
-                                    <option key={p.id} value={p.id}>
-                                      {p.name} (${p.basePrice})
-                                    </option>
-                                  ))}
+                                  {products.length === 0 ? (
+                                    <option value="">Loading products...</option>
+                                  ) : (
+                                    products.map((p) => (
+                                      <option key={p.id} value={p.id}>
+                                        {p.name} (${p.basePrice})
+                                      </option>
+                                    ))
+                                  )}
                                 </select>
                               </td>
                               <td className="py-2 px-2">
@@ -1097,7 +1153,7 @@ export default function QuotationsPage() {
                                     +{evalLine.overLimitPoints}% Over
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-100 text-zinc-800 border border-zinc-200">
                                     Within {evalLine.allowedLimit || 5}%
                                   </span>
                                 )}
@@ -1126,26 +1182,29 @@ export default function QuotationsPage() {
                     </table>
                   </div>
                 </div>
+              </div>
 
                 {/* 2.5 AI UPSELL & CROSS-SELL RECOMMENDATIONS (Screen 4 / B5) */}
                 {newQuoteLines.length > 0 && (
                   <div className="p-3.5 rounded-lg bg-indigo-50/50 border border-indigo-100 space-y-2.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-indigo-600 text-white text-xs font-bold">
-                          ✨
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-zinc-900 text-white text-xs">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
                         </span>
                         <div>
-                          <h4 className="text-xs font-semibold text-indigo-950">
-                            AI Upsell & Cross-Sell Recommendations
+                          <h4 className="text-xs font-semibold text-zinc-900">
+                            AI Upsell &amp; Cross-Sell Recommendations
                           </h4>
-                          <p className="text-[11px] text-indigo-700/80">
-                            Ranked by FP-Growth Market Basket Analysis & Admin Governance Feeds
+                          <p className="text-[11px] text-zinc-500">
+                            Ranked by FP-Growth Market Basket Analysis &amp; Admin Governance Feeds
                           </p>
                         </div>
                       </div>
                       {isLoadingAiRecs && (
-                        <span className="text-[11px] text-indigo-600 animate-pulse font-medium">
+                        <span className="text-[11px] text-zinc-600 animate-pulse font-medium">
                           Mining patterns...
                         </span>
                       )}
@@ -1156,14 +1215,14 @@ export default function QuotationsPage() {
                         {aiRecommendations.slice(0, 3).map((rec) => (
                           <div
                             key={rec.productId}
-                            className="bg-white p-2.5 rounded-md border border-indigo-200/80 shadow-xs flex flex-col justify-between hover:border-indigo-400 transition"
+                            className="bg-white p-2.5 rounded-md border border-zinc-200 shadow-xs flex flex-col justify-between hover:border-zinc-400 transition"
                           >
                             <div>
                               <div className="flex items-center justify-between gap-1 mb-1">
-                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800">
-                                  {rec.source === 'ADMIN_CURATED' ? `👑 Priority #${rec.feedRank}` : `🤖 Score: ${rec.score}`}
+                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-800 border border-zinc-200">
+                                  {rec.source === 'ADMIN_CURATED' ? `Priority #${rec.feedRank}` : `Score: ${rec.score}`}
                                 </span>
-                                <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60">
+                                <span className="text-[10px] font-medium text-zinc-700 bg-zinc-50 px-1.5 py-0.5 rounded border border-zinc-200">
                                   {rec.promotionTag || `+${rec.marginPct || 25}% Margin`}
                                 </span>
                               </div>
@@ -1177,7 +1236,7 @@ export default function QuotationsPage() {
                             <button
                               type="button"
                               onClick={() => handleAddAiRecommendation(rec)}
-                              className="mt-2 w-full py-1 px-2 rounded text-[11px] font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-600 hover:text-white border border-indigo-200/80 hover:border-transparent transition flex items-center justify-center gap-1 cursor-pointer"
+                              className="mt-2 w-full py-1 px-2 rounded text-[11px] font-medium text-zinc-900 bg-zinc-100 hover:bg-zinc-900 hover:text-white border border-zinc-200 hover:border-transparent transition flex items-center justify-center gap-1 cursor-pointer"
                             >
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
@@ -1189,7 +1248,7 @@ export default function QuotationsPage() {
                       </div>
                     ) : (
                       !isLoadingAiRecs && (
-                        <p className="text-[11px] text-indigo-600/70 italic py-1">
+                        <p className="text-[11px] text-zinc-500 italic py-1">
                           No additional high-affinity pairings mined for current item combination.
                         </p>
                       )
@@ -1217,7 +1276,7 @@ export default function QuotationsPage() {
                               ? 'bg-rose-50 text-rose-700 border-rose-200'
                               : blendedEvaluation.blendedRiskScore === 'MEDIUM'
                               ? 'bg-amber-50 text-amber-700 border-amber-200'
-                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-zinc-100 text-zinc-800 border-zinc-200'
                           }`}
                         >
                           <span
@@ -1226,7 +1285,7 @@ export default function QuotationsPage() {
                                 ? 'bg-rose-500'
                                 : blendedEvaluation.blendedRiskScore === 'MEDIUM'
                                 ? 'bg-amber-500'
-                                : 'bg-emerald-500'
+                                : 'bg-zinc-700'
                             }`}
                           />
                           {blendedEvaluation.blendedRiskScore === 'LOW'
@@ -1249,7 +1308,7 @@ export default function QuotationsPage() {
                       </div>
                       <div className="bg-white p-3 rounded-md border border-gray-200">
                         <span className="text-xs text-gray-500 block">Net Order Value</span>
-                        <span className="text-base font-semibold text-emerald-700">${blendedEvaluation.financials.totalRevenue}</span>
+                        <span className="text-base font-semibold text-zinc-900">${blendedEvaluation.financials.totalRevenue}</span>
                       </div>
                       <div className="bg-white p-3 rounded-md border border-gray-200">
                         <span className="text-xs text-gray-500 block">Gross Margin</span>
@@ -1311,7 +1370,7 @@ export default function QuotationsPage() {
                   type="button"
                   disabled={isSubmittingAction}
                   onClick={() => handleSaveQuotation('PENDING_APPROVAL')}
-                  className="px-5 h-10 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm transition cursor-pointer shadow-sm disabled:opacity-50 flex items-center gap-2"
+                  className="px-5 h-10 rounded-md bg-zinc-900 hover:bg-black text-white font-medium text-sm transition cursor-pointer shadow-sm disabled:opacity-50 flex items-center gap-2"
                 >
                   {isSubmittingAction ? 'Submitting...' : 'Submit for Approval'}
                 </button>
@@ -1324,12 +1383,12 @@ export default function QuotationsPage() {
         {/* QUOTATION DETAIL & GOVERNANCE APPROVAL DRAWER                             */}
         {/* ========================================================================= */}
         {isDetailDrawerOpen && selectedQuote && (
-          <div className="fixed inset-0 z-50 overflow-hidden bg-gray-900/40 backdrop-blur-xs animate-in fade-in duration-150">
+                  <div className="fixed inset-0 z-50 overflow-hidden bg-gray-900/40 backdrop-blur-xs animate-in fade-in duration-150">
             <div className="absolute inset-y-0 right-0 max-w-2xl w-full bg-white shadow-xl flex flex-col border-l border-gray-200">
               {/* DRAWER HEADER */}
-              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-white">
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-white flex-wrap">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h2 className="text-xl font-semibold text-gray-900 tracking-tight">
                       {selectedQuote.quoteNumber}
                     </h2>
@@ -1360,24 +1419,24 @@ export default function QuotationsPage() {
                     <span className="text-sm font-semibold text-gray-900">${selectedQuote.subtotalAmount?.toLocaleString()}</span>
                   </div>
                   <div>
-                    <span className="text-xs text-gray-500 block">Discount ({selectedQuote.orderDiscountPercent}%)</span>
-                    <span className="text-sm font-semibold text-amber-700">-${selectedQuote.totalDiscountAmount}</span>
+                    <span className="text-xs text-gray-500 block">Concession Discount</span>
+                    <span className="text-sm font-semibold text-rose-700">-${selectedQuote.totalDiscountAmount?.toLocaleString()}</span>
                   </div>
                   <div>
-                    <span className="text-xs text-gray-500 block">Final Value</span>
-                    <span className="text-base font-semibold text-emerald-700">${selectedQuote.totalAmount?.toLocaleString()}</span>
+                    <span className="text-xs text-gray-500 block">Net Deal Total</span>
+                    <span className="text-sm font-semibold text-gray-900">${selectedQuote.totalAmount?.toLocaleString()}</span>
                   </div>
                   <div>
-                    <span className="text-xs text-gray-500 block">Gross Margin</span>
-                    <span className={`text-base font-semibold ${selectedQuote.totalMarginPercent < 20 ? 'text-rose-600' : 'text-gray-900'}`}>
+                    <span className="text-xs text-gray-500 block">Gross Margin %</span>
+                    <span className={`text-sm font-semibold ${selectedQuote.totalMarginPercent < 20 ? 'text-rose-600' : 'text-zinc-900'}`}>
                       {selectedQuote.totalMarginPercent}%
                     </span>
                   </div>
                 </div>
 
-                {/* GOVERNANCE ROUTING BANNER */}
+                {/* POLICY EVALUATION SUMMARY */}
                 {selectedQuote.flagReasonSummary && (
-                  <div className="p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
+                  <div className="p-3.5 rounded-lg bg-amber-50/70 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
                     <svg className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
@@ -1388,48 +1447,87 @@ export default function QuotationsPage() {
                   </div>
                 )}
 
+                {/* ACTIVE CUSTOMER COUNTER PROPOSAL BANNER */}
+                {(selectedQuote.counterDiscountProposed > 0 || selectedQuote.status === 'UNDER_NEGOTIATION') && (
+                  <div className="p-4 rounded-xl bg-purple-50 border border-purple-200 text-xs text-purple-950 space-y-2 shadow-2xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-purple-600 animate-pulse"></span>
+                        <span className="font-bold text-sm text-purple-950">Active Customer Counter-Proposal</span>
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold text-[10px] border border-purple-300">
+                        {selectedQuote.counterDiscountProposed}% Extra Discount Requested
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-600 pt-1 border-t border-purple-200/60">
+                      <div>
+                        <span className="text-[10px] text-purple-700 block font-semibold">Requested Concession:</span>
+                        <span className="font-bold text-purple-900">{selectedQuote.counterDiscountProposed}% discount</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-purple-700 block font-semibold">Requested Delivery Date:</span>
+                        <span className="font-semibold text-slate-800">
+                          {selectedQuote.requestedDeliveryDate
+                            ? new Date(selectedQuote.requestedDeliveryDate).toLocaleDateString()
+                            : 'Standard Delivery'}
+                        </span>
+                      </div>
+                    </div>
+                    {selectedQuote.comments && selectedQuote.comments.length > 0 && (
+                      <div className="pt-2 border-t border-purple-200/60 text-slate-700">
+                        <span className="text-[10px] text-purple-700 block font-semibold mb-1">Customer Note:</span>
+                        <p className="italic bg-white/80 p-2 rounded-lg border border-purple-100 text-slate-800">
+                          &ldquo;{selectedQuote.comments[0]?.message || selectedQuote.comments[0]}&rdquo;
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* LINE ITEMS */}
                 <div>
                   <h3 className="text-sm font-medium text-gray-900 mb-2">Order Line Items</h3>
                   <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-gray-50/80 text-[11px] font-medium text-gray-500 uppercase border-b border-gray-200">
-                        <tr>
-                          <th className="py-2.5 px-3">Product</th>
-                          <th className="py-2.5 px-2 text-center">Qty</th>
-                          <th className="py-2.5 px-3 text-right">Price</th>
-                          <th className="py-2.5 px-3 text-right">Disc %</th>
-                          <th className="py-2.5 px-3 text-right">Margin %</th>
-                          <th className="py-2.5 px-3 text-right">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100 text-gray-900">
-                        {selectedQuote.lines?.map((line, idx) => (
-                          <tr key={idx} className="hover:bg-gray-50/50">
-                            <td className="py-2.5 px-3">
-                              <span className="font-medium text-gray-900 block">{line.productName}</span>
-                              <span className="text-[10px] text-gray-400">{line.category}</span>
-                            </td>
-                            <td className="py-2.5 px-2 text-center font-medium">{line.quantity}</td>
-                            <td className="py-2.5 px-3 text-right">${line.unitPrice}</td>
-                            <td className="py-2.5 px-3 text-right">
-                              <span className={`font-medium ${line.isOverLimit ? 'text-rose-600' : 'text-gray-700'}`}>
-                                {line.discountPercent}%
-                              </span>
-                              {line.isOverLimit && (
-                                <span className="block text-[9px] font-semibold text-rose-500">OVER (+{line.overLimitPoints}pt)</span>
-                              )}
-                            </td>
-                            <td className="py-2.5 px-3 text-right font-medium text-gray-600">
-                              {line.lineMarginPercent}%
-                            </td>
-                            <td className="py-2.5 px-3 text-right font-semibold text-gray-900">
-                              ${line.lineRevenue || (line.quantity * line.unitPrice * (1 - line.discountPercent / 100)).toFixed(2)}
-                            </td>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs min-w-[540px]">
+                        <thead className="bg-gray-50/80 text-[11px] font-medium text-gray-500 uppercase border-b border-gray-200">
+                          <tr>
+                            <th className="py-2.5 px-3">Product</th>
+                            <th className="py-2.5 px-2 text-center">Qty</th>
+                            <th className="py-2.5 px-3 text-right">Price</th>
+                            <th className="py-2.5 px-3 text-right">Disc %</th>
+                            <th className="py-2.5 px-3 text-right">Margin %</th>
+                            <th className="py-2.5 px-3 text-right">Total</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 text-gray-900">
+                          {selectedQuote.lines?.map((line, idx) => (
+                            <tr key={idx} className="hover:bg-gray-50/50">
+                              <td className="py-2.5 px-3">
+                                <span className="font-medium text-gray-900 block">{line.productName}</span>
+                                <span className="text-[10px] text-gray-400">{line.category}</span>
+                              </td>
+                              <td className="py-2.5 px-2 text-center font-medium">{line.quantity}</td>
+                              <td className="py-2.5 px-3 text-right">${line.unitPrice}</td>
+                              <td className="py-2.5 px-3 text-right">
+                                <span className={`font-medium ${line.isOverLimit ? 'text-rose-600' : 'text-gray-700'}`}>
+                                  {line.discountPercent}%
+                                </span>
+                                {line.isOverLimit && (
+                                  <span className="block text-[9px] font-semibold text-rose-500">OVER (+{line.overLimitPoints}pt)</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-medium text-gray-600">
+                                {line.lineMarginPercent}%
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-semibold text-gray-900">
+                                ${line.lineRevenue || (line.quantity * line.unitPrice * (1 - line.discountPercent / 100)).toFixed(2)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
 
@@ -1474,9 +1572,9 @@ export default function QuotationsPage() {
                           type="button"
                           onClick={() => handlePerformAction('APPROVE')}
                           disabled={isSubmittingAction}
-                          className="h-9 px-4 rounded-md text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition cursor-pointer shadow-xs"
+                          className="h-9 px-4 rounded-md text-xs font-medium bg-zinc-900 text-white hover:bg-black transition cursor-pointer shadow-xs"
                         >
-                          ✓ Approve Quotation (Manager L1)
+                          Approve Quotation (Manager L1)
                         </button>
                         <button
                           type="button"
@@ -1504,9 +1602,9 @@ export default function QuotationsPage() {
                           type="button"
                           onClick={() => handlePerformAction('APPROVE')}
                           disabled={isSubmittingAction}
-                          className="h-9 px-4 rounded-md text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition cursor-pointer shadow-xs"
+                          className="h-9 px-4 rounded-md text-xs font-medium bg-zinc-900 text-white hover:bg-black transition cursor-pointer shadow-xs"
                         >
-                          ✓ Approve Terms (Finance L2)
+                          Approve Terms (Finance L2)
                         </button>
                         <button
                           type="button"
@@ -1527,18 +1625,30 @@ export default function QuotationsPage() {
                       </>
                     )}
 
-                    {/* CONFIRM ORDER ACTION (When Approved) */}
-                    {selectedQuote.status === 'APPROVED' && (
+                    {/* CONFIRM ORDER ACTION (When Approved or in Customer Negotiation) */}
+                    {(selectedQuote.status === 'APPROVED' || selectedQuote.status === 'SENT_TO_CUSTOMER' || selectedQuote.status === 'UNDER_NEGOTIATION') && (
                       <button
                         type="button"
                         onClick={() => handlePerformAction('CONFIRM')}
                         disabled={isSubmittingAction}
-                        className="h-9 px-4 rounded-md text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 transition cursor-pointer shadow-xs flex items-center gap-1.5"
+                        className="h-9 px-4 rounded-md text-xs font-medium bg-zinc-900 text-white hover:bg-black transition cursor-pointer shadow-xs flex items-center gap-1.5"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        Confirm &amp; Convert to Order
+                        {selectedQuote.status === 'UNDER_NEGOTIATION' ? 'Accept Counter & Confirm Order' : 'Confirm & Convert to Order'}
+                      </button>
+                    )}
+
+                    {/* RELEASE TO CUSTOMER PORTAL ACTION */}
+                    {selectedQuote.status === 'APPROVED' && (
+                      <button
+                        type="button"
+                        onClick={() => handlePerformAction('SEND_TO_CUSTOMER')}
+                        disabled={isSubmittingAction}
+                        className="h-9 px-3.5 rounded-md text-xs font-medium bg-zinc-900 text-white hover:bg-black transition cursor-pointer shadow-xs flex items-center gap-1.5"
+                      >
+                        Release to Client Portal
                       </button>
                     )}
 
@@ -1548,9 +1658,9 @@ export default function QuotationsPage() {
                         type="button"
                         onClick={() => handlePerformAction('APPROVE')}
                         disabled={isSubmittingAction}
-                        className="h-9 px-3 rounded-md text-xs font-medium bg-purple-600 text-white hover:bg-purple-700 transition cursor-pointer shadow-xs"
+                        className="h-9 px-3 rounded-md text-xs font-medium bg-zinc-800 text-white hover:bg-zinc-900 transition cursor-pointer shadow-xs"
                       >
-                        ⚡ Admin Override Approve
+                        Admin Override Approve
                       </button>
                     )}
                   </div>
@@ -1581,17 +1691,45 @@ export default function QuotationsPage() {
               </div>
 
               {/* DRAWER FOOTER */}
-              <div className="px-6 py-4 border-t border-gray-200 bg-gray-50/50 flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setIsPreviewModalOpen(true)}
-                  className="h-9 px-4 rounded-md text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 transition cursor-pointer flex items-center gap-1.5"
-                >
-                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                  Client Proposal View
-                </button>
+              <div className="px-6 py-4 border-t border-gray-200 bg-gray-50/50 flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setIsPreviewModalOpen(true)}
+                    className="h-9 px-3.5 rounded-md text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    Client Proposal View
+                  </button>
+
+                  {selectedQuote.portalToken && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const url = `${window.location.origin}/portal?token=${selectedQuote.portalToken}`;
+                          navigator.clipboard.writeText(url);
+                          showToast('Client Portal link copied to clipboard!');
+                        }}
+                        className="h-9 px-3 rounded-md text-xs font-medium text-zinc-900 bg-zinc-100 border border-zinc-200 hover:bg-zinc-200 transition cursor-pointer flex items-center gap-1"
+                        title="Copy direct portal link for this client"
+                      >
+                        Copy Portal Link
+                      </button>
+                      <a
+                        href={`/portal?token=${selectedQuote.portalToken}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="h-9 px-3 rounded-md text-xs font-medium text-zinc-700 bg-white border border-zinc-300 hover:bg-zinc-50 transition cursor-pointer flex items-center gap-1"
+                      >
+                        Open Portal
+                      </a>
+                    </>
+                  )}
+                </div>
+
                 <button
                   type="button"
                   onClick={() => setIsDetailDrawerOpen(false)}
@@ -1612,7 +1750,7 @@ export default function QuotationsPage() {
             <div className="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-xl border border-gray-200 flex flex-col">
               <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-white text-gray-900">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-md bg-emerald-600 flex items-center justify-center font-bold text-white text-xs">
+                  <div className="w-7 h-7 rounded-md bg-zinc-900 flex items-center justify-center font-bold text-white text-xs">
                     DF
                   </div>
                   <div>
@@ -1636,47 +1774,49 @@ export default function QuotationsPage() {
                 <div className="flex justify-between items-start border-b border-gray-200 pb-6">
                   <div>
                     <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block mb-1">Prepared For:</span>
-                    <h3 className="text-base font-semibold text-gray-900">{selectedQuote.customerName}</h3>
-                    <p className="text-gray-500">{selectedQuote.customerEmail}</p>
-                    <p className="text-gray-500 mt-1">Tier: <span className="font-medium text-gray-700">{selectedQuote.customerTier}</span></p>
+                    <h3 className="text-base font-semibold text-gray-900">{selectedQuote.customerName || selectedQuote.customer?.name || 'Direct Customer'}</h3>
+                    <p className="text-gray-500">{selectedQuote.customerEmail || selectedQuote.customer?.email}</p>
+                    <p className="text-gray-500 mt-1">Tier: <span className="font-medium text-gray-700">{selectedQuote.customerTier || selectedQuote.customer?.tier || 'BRONZE'}</span></p>
                   </div>
                   <div className="text-right">
                     <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block mb-1">Quotation Ref:</span>
                     <p className="font-mono font-semibold text-gray-900 text-sm">{selectedQuote.quoteNumber}</p>
                     <p className="text-gray-500">Date: {new Date(selectedQuote.createdAt).toLocaleDateString()}</p>
-                    <p className="text-gray-500">Rep: {selectedQuote.salesRepName}</p>
+                    <p className="text-gray-500">Rep: {selectedQuote.salesRepName || selectedQuote.salesRep?.fullName || 'Direct Sales'}</p>
                   </div>
                 </div>
 
                 {/* LINE ITEMS */}
                 <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <table className="w-full text-left">
-                    <thead className="bg-gray-50/80 text-[11px] font-medium text-gray-500 uppercase border-b border-gray-200">
-                      <tr>
-                        <th className="py-2.5 px-4">Item &amp; Description</th>
-                        <th className="py-2.5 px-3 text-center">Qty</th>
-                        <th className="py-2.5 px-4 text-right">Unit Price</th>
-                        <th className="py-2.5 px-4 text-right">Discount</th>
-                        <th className="py-2.5 px-4 text-right">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {selectedQuote.lines?.map((line, idx) => (
-                        <tr key={idx}>
-                          <td className="py-3 px-4">
-                            <span className="font-medium text-gray-900 block">{line.productName}</span>
-                            <span className="text-[11px] text-gray-500">{line.category} Category</span>
-                          </td>
-                          <td className="py-3 px-3 text-center font-medium">{line.quantity}</td>
-                          <td className="py-3 px-4 text-right">${line.unitPrice}</td>
-                          <td className="py-3 px-4 text-right text-amber-700 font-medium">{line.discountPercent}%</td>
-                          <td className="py-3 px-4 text-right font-semibold text-gray-900">
-                            ${line.lineRevenue || (line.quantity * line.unitPrice * (1 - line.discountPercent / 100)).toFixed(2)}
-                          </td>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left min-w-[540px]">
+                      <thead className="bg-gray-50/80 text-[11px] font-medium text-gray-500 uppercase border-b border-gray-200">
+                        <tr>
+                          <th className="py-2.5 px-4">Item &amp; Description</th>
+                          <th className="py-2.5 px-3 text-center">Qty</th>
+                          <th className="py-2.5 px-4 text-right">Unit Price</th>
+                          <th className="py-2.5 px-4 text-right">Discount</th>
+                          <th className="py-2.5 px-4 text-right">Amount</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {selectedQuote.lines?.map((line, idx) => (
+                          <tr key={idx}>
+                            <td className="py-3 px-4">
+                              <span className="font-medium text-gray-900 block">{line.productName}</span>
+                              <span className="text-[11px] text-gray-500">{line.category} Category</span>
+                            </td>
+                            <td className="py-3 px-3 text-center font-medium">{line.quantity}</td>
+                            <td className="py-3 px-4 text-right">${line.unitPrice}</td>
+                            <td className="py-3 px-4 text-right text-amber-700 font-medium">{line.discountPercent}%</td>
+                            <td className="py-3 px-4 text-right font-semibold text-gray-900">
+                              ${line.lineRevenue || (line.quantity * line.unitPrice * (1 - line.discountPercent / 100)).toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
                 {/* TOTALS */}
@@ -1692,7 +1832,7 @@ export default function QuotationsPage() {
                     </div>
                     <div className="flex justify-between text-sm font-semibold text-gray-900 border-t border-gray-200 pt-2">
                       <span>Total Payable:</span>
-                      <span className="text-emerald-700">${selectedQuote.totalAmount?.toLocaleString()} USD</span>
+                      <span className="text-zinc-900 font-bold">${selectedQuote.totalAmount?.toLocaleString()} USD</span>
                     </div>
                   </div>
                 </div>
