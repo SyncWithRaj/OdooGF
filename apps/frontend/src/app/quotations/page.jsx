@@ -54,16 +54,15 @@ export default function QuotationsPage() {
     async function loadData() {
       setLoading(true);
       try {
-        const [custs, prods, rules] = await Promise.all([
+        const [custs, prods, rules, list] = await Promise.all([
           quotationsService.getLiveCustomers(),
           quotationsService.getLiveProducts(),
           quotationsService.getGovernanceRules(),
+          quotationsService.getQuotations(),
         ]);
         setCustomers(custs);
         setProducts(prods);
         setGovernanceRules(rules);
-
-        const list = quotationsService.getQuotations(currentRole, user?.id);
         setQuotations(list);
       } catch (err) {
         console.error('Failed to load quotation master data:', err);
@@ -295,8 +294,9 @@ export default function QuotationsPage() {
         lines: evalData.lines || newQuoteLines,
       };
 
-      const created = quotationsService.createQuotation(quotePayload, user);
-      setQuotations(quotationsService.getQuotations(currentRole, user?.id));
+      const created = await quotationsService.createQuotation(quotePayload, user);
+      const updatedList = await quotationsService.getQuotations();
+      setQuotations(updatedList);
       setIsCreateModalOpen(false);
       showToast(
         statusTarget === 'PENDING_APPROVAL'
@@ -325,29 +325,31 @@ export default function QuotationsPage() {
     try {
       let updated = null;
       if (actionType === 'SUBMIT') {
-        updated = quotationsService.submitForApproval(selectedQuote.id, user, actionComment);
+        updated = await quotationsService.submitForApproval(selectedQuote.id, user, actionComment);
         showToast(`Quotation ${selectedQuote.quoteNumber} submitted for approval.`);
       } else if (actionType === 'APPROVE') {
-        updated = quotationsService.approveQuotation(selectedQuote.id, user, actionComment);
+        updated = await quotationsService.approveQuotation(selectedQuote.id, user, actionComment);
         showToast(
           updated.status === 'APPROVED'
             ? `Quotation ${selectedQuote.quoteNumber} approved!`
             : `Quotation ${selectedQuote.quoteNumber} approved at L1 and escalated to Finance Controller.`
         );
       } else if (actionType === 'REJECT') {
-        updated = quotationsService.rejectQuotation(selectedQuote.id, user, actionComment);
+        updated = await quotationsService.rejectQuotation(selectedQuote.id, user, actionComment);
         showToast(`Quotation ${selectedQuote.quoteNumber} rejected.`);
       } else if (actionType === 'RETURN') {
-        updated = quotationsService.returnForRevision(selectedQuote.id, user, actionComment);
+        updated = await quotationsService.returnForRevision(selectedQuote.id, user, actionComment);
         showToast(`Quotation ${selectedQuote.quoteNumber} returned to sales rep for revision.`);
       } else if (actionType === 'CONFIRM') {
-        updated = quotationsService.confirmOrder(selectedQuote.id, user);
+        updated = await quotationsService.confirmOrder(selectedQuote.id, user);
         showToast(`Quotation ${selectedQuote.quoteNumber} confirmed into an active Order!`);
       }
 
       if (updated) {
-        setSelectedQuote(updated);
-        setQuotations(quotationsService.getQuotations(currentRole, user?.id));
+        const updatedList = await quotationsService.getQuotations();
+        setQuotations(updatedList);
+        const refreshed = updatedList.find((q) => q.id === selectedQuote.id) || updated;
+        setSelectedQuote(refreshed);
         setActionComment('');
       }
     } catch (e) {
