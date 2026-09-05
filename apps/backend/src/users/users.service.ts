@@ -1,12 +1,16 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
+import { StorageService } from '../storage/storage.service';
+import { CreateUserDto, UpdateProfileDto, UpdateUserDto } from './dto/user.dto';
 import { Role, User } from '@prisma/client';
 import * as argon2 from 'argon2';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storageService: StorageService,
+  ) {}
 
   async create(dto: CreateUserDto) {
     const normalizedEmail = dto.email.toLowerCase().trim();
@@ -90,12 +94,86 @@ export class UsersService {
         ...(dto.fullName !== undefined ? { fullName: dto.fullName.trim() } : {}),
         ...(dto.role !== undefined ? { role: dto.role } : {}),
         ...(dto.teamName !== undefined ? { teamName: dto.teamName.trim() } : {}),
+        ...(dto.phone !== undefined ? { phone: dto.phone.trim() } : {}),
+        ...(dto.location !== undefined ? { location: dto.location.trim() } : {}),
       },
     });
 
     return {
       success: true,
       message: 'User successfully updated',
+      user: this.sanitizeUser(updated),
+    };
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    await this.findOne(userId);
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(dto.fullName !== undefined ? { fullName: dto.fullName.trim() } : {}),
+        ...(dto.teamName !== undefined ? { teamName: dto.teamName.trim() } : {}),
+        ...(dto.phone !== undefined ? { phone: dto.phone.trim() } : {}),
+        ...(dto.location !== undefined ? { location: dto.location.trim() } : {}),
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Profile successfully updated',
+      user: this.sanitizeUser(updated),
+    };
+  }
+
+  async updateAvatar(userId: string, file: Express.Multer.File) {
+    const userResponse = await this.findOne(userId);
+    const existingAvatarUrl = userResponse.user.avatarUrl;
+
+    // Upload to MinIO
+    const uploaded = await this.storageService.uploadFile(file, 'avatars', userId);
+
+    // Save MinIO public URL on user record
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { avatarUrl: uploaded.url },
+    });
+
+    // Optionally clean up previous file if it was hosted on MinIO
+    if (existingAvatarUrl && existingAvatarUrl.includes(this.storageService.bucketName)) {
+      await this.storageService.deleteFile(existingAvatarUrl);
+    }
+
+    return {
+      success: true,
+      message: 'Avatar uploaded successfully',
+      avatarUrl: uploaded.url,
+      user: this.sanitizeUser(updated),
+    };
+  }
+
+  async updateBanner(userId: string, file: Express.Multer.File) {
+    const userResponse = await this.findOne(userId);
+    const existingBannerUrl = userResponse.user.bannerUrl;
+
+    // Upload to MinIO
+    const uploaded = await this.storageService.uploadFile(file, 'banners', userId);
+
+    // Save MinIO public URL on user record
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { bannerUrl: uploaded.url },
+    });
+
+    // Optionally clean up previous file if it was hosted on MinIO
+    if (existingBannerUrl && existingBannerUrl.includes(this.storageService.bucketName)) {
+      await this.storageService.deleteFile(existingBannerUrl);
+    }
+
+    return {
+      success: true,
+      message: 'Cover banner uploaded successfully',
+      bannerUrl: uploaded.url,
       user: this.sanitizeUser(updated),
     };
   }
@@ -118,3 +196,4 @@ export class UsersService {
     return sanitized;
   }
 }
+

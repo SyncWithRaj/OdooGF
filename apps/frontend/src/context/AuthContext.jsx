@@ -69,6 +69,10 @@ export function AuthProvider({ children }) {
                 name: data.user.fullName,
                 role: normalizeRole(data.user.role),
                 teamName: data.user.teamName,
+                phone: data.user.phone,
+                location: data.user.location,
+                avatarUrl: data.user.avatarUrl,
+                bannerUrl: data.user.bannerUrl,
               };
               setUser(restored);
               localStorage.setItem(STORAGE_KEY, JSON.stringify(restored));
@@ -128,6 +132,10 @@ export function AuthProvider({ children }) {
           name: data.user.fullName,
           role: normalizeRole(data.user.role),
           teamName: data.user.teamName,
+          phone: data.user.phone,
+          location: data.user.location,
+          avatarUrl: data.user.avatarUrl,
+          bannerUrl: data.user.bannerUrl,
         };
         return saveSession(sessionUser, data.accessToken, data.refreshToken);
       }
@@ -297,12 +305,34 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const updateProfile = (data) => {
+  const updateProfile = async (data) => {
     const updated = user ? { ...user, ...data } : data;
     setUser(updated);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     } catch {}
+
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token) {
+      try {
+        await fetch(`${API_URL}/api/users/profile`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            fullName: data.name || data.fullName,
+            phone: data.phone,
+            teamName: data.teamName || data.department,
+            location: data.location,
+          }),
+        });
+      } catch (err) {
+        console.warn('Backend sync failed:', err);
+      }
+    }
+
     return updated;
   };
 

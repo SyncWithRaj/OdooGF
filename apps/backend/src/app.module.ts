@@ -18,6 +18,7 @@ import { FulfillmentsModule } from './fulfillments/fulfillments.module';
 import { InvoicesModule } from './invoices/invoices.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { RedisModule } from './redis/redis.module';
+import { StorageModule } from './storage/storage.module';
 import { APP_GUARD } from '@nestjs/core';
 import { RateLimitGuard } from './common/guards/rate-limit.guard';
 
@@ -25,6 +26,7 @@ import { RateLimitGuard } from './common/guards/rate-limit.guard';
   imports: [
     PrismaModule,
     RedisModule,
+    StorageModule,
     MailModule,
     AuthModule,
     UsersModule,
