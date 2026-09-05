@@ -6,13 +6,14 @@ import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { quotationsService } from '@/services/quotationsService';
 import { useAuth } from '@/context/AuthContext';
+import { toast } from 'react-toastify';
 
 const STAGES = [
   { id: 'DRAFT', label: 'Draft', color: 'slate', border: 'border-slate-300', bg: 'bg-slate-50' },
   { id: 'PENDING_APPROVAL', label: 'In Approval', color: 'amber', border: 'border-amber-300', bg: 'bg-amber-50/50' },
   { id: 'SENT_TO_CUSTOMER', label: 'Sent to Customer', color: 'blue', border: 'border-blue-300', bg: 'bg-blue-50/50' },
   { id: 'UNDER_NEGOTIATION', label: 'Negotiation', color: 'purple', border: 'border-purple-300', bg: 'bg-purple-50/50' },
-  { id: 'CONFIRMED', label: 'Confirmed / Won', color: 'emerald', border: 'border-emerald-300', bg: 'bg-emerald-50/50' },
+  { id: 'CONFIRMED', label: 'Confirmed / Won', color: 'zinc', border: 'border-zinc-300', bg: 'bg-zinc-50' },
 ];
 
 export default function PipelinePage() {
@@ -20,12 +21,16 @@ export default function PipelinePage() {
   const [quotations, setQuotations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [notification, setNotification] = useState(null);
   const [movingId, setMovingId] = useState(null);
 
   const showToast = (message, type = 'success') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 4000);
+    if (type === 'error') {
+      toast.error(message);
+    } else if (type === 'info') {
+      toast.info(message);
+    } else {
+      toast.success(message);
+    }
   };
 
   const loadQuotations = async () => {
@@ -94,14 +99,6 @@ export default function PipelinePage() {
   return (
     <RequireRole roles={['rep', 'manager', 'finance', 'admin']}>
       <AppLayout>
-        {/* Flash Toast */}
-        {notification && (
-          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-sm font-medium border border-slate-700 animate-in fade-in slide-in-from-bottom-4">
-            <span className={`w-2.5 h-2.5 rounded-full ${notification.type === 'error' ? 'bg-rose-500' : 'bg-emerald-400'}`}></span>
-            <span>{notification.message}</span>
-          </div>
-        )}
-
         {/* Header Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
@@ -125,7 +122,7 @@ export default function PipelinePage() {
             </div>
             <Link
               href="/quotations"
-              className="px-4 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-semibold text-xs shadow-xs transition whitespace-nowrap"
+              className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-black text-white font-semibold text-xs shadow-xs transition whitespace-nowrap"
             >
               + New Quotation
             </Link>
@@ -143,7 +140,7 @@ export default function PipelinePage() {
           </div>
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Closed Won Revenue</p>
-            <p className="text-xl font-black text-emerald-600 mt-1">
+            <p className="text-xl font-black text-zinc-900 mt-1">
               ${metrics.wonValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
             </p>
             <p className="text-[10px] text-slate-400 mt-1">{metrics.wonCount} finalized orders</p>
@@ -256,7 +253,7 @@ export default function PipelinePage() {
                                 <span className="text-[10px] text-slate-400 block leading-none">Margin</span>
                                 <span
                                   className={`font-bold mt-0.5 block ${
-                                    (deal.totalMarginPercent || 0) < 20 ? 'text-rose-600' : 'text-emerald-600'
+                                    (deal.totalMarginPercent || 0) < 20 ? 'text-rose-600' : 'text-zinc-900'
                                   }`}
                                 >
                                   {deal.totalMarginPercent || 0}%
@@ -271,8 +268,8 @@ export default function PipelinePage() {
                                   deal.blendedRiskScore === 'HIGH'
                                     ? 'bg-rose-50 text-rose-700 border border-rose-200'
                                     : deal.blendedRiskScore === 'MEDIUM'
-                                    ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                                    : 'bg-zinc-100 text-zinc-800 border border-zinc-200'
                                 }`}
                               >
                                 {deal.blendedRiskScore || 'LOW'} RISK
@@ -280,7 +277,7 @@ export default function PipelinePage() {
 
                               {deal.counterDiscountProposed > 0 && (
                                 <span className="px-1.5 py-0.5 rounded-md font-bold text-[9px] bg-purple-50 text-purple-700 border border-purple-200">
-                                  💬 {deal.counterDiscountProposed}% Counter
+                                  Counter: {deal.counterDiscountProposed}%
                                 </span>
                               )}
 
