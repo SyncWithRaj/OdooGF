@@ -249,4 +249,27 @@ export class PortalService {
         : 'Counter proposal submitted and recorded. Sales representative has been notified.',
     };
   }
+
+  // ----------------------------------------------------------------------------
+  // POST COMMENT FROM CUSTOMER PORTAL
+  // ----------------------------------------------------------------------------
+  async addComment(token: string, message: string) {
+    const quote = await this.prisma.quotation.findUnique({
+      where: { portalToken: token },
+      include: { customer: true },
+    });
+
+    if (!quote) {
+      throw new NotFoundException('Quotation link is invalid or expired');
+    }
+
+    return this.prisma.quotationComment.create({
+      data: {
+        quotationId: quote.id,
+        authorName: quote.customer.name,
+        authorRole: Role.CUSTOMER,
+        message,
+      },
+    });
+  }
 }

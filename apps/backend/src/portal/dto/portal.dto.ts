@@ -25,3 +25,9 @@ export class AcceptQuoteDto {
   @IsOptional()
   acknowledgementNote?: string;
 }
+
+export class PortalCommentDto {
+  @ApiProperty({ example: 'Can we schedule delivery for next Monday?' })
+  @IsString()
+  message: string;
+}

@@ -168,9 +168,37 @@ export class QuotationsController {
     );
   }
 
+  @Post(':id/submit-approval')
+  @Roles(Role.ADMIN, Role.SALES_REP, Role.SALES_MANAGER)
+  @ApiOperation({ summary: 'Submit quotation through the zero-click approval router (alias of /submit)' })
+  @ApiResponse({ status: 200, description: 'Submission decision' })
+  async submitApproval(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() dto: SubmitQuotationDto,
+  ) {
+    return this.quotationsService.submitQuotation(
+      id,
+      {
+        id: user.id,
+        fullName: user.fullName || user.email,
+        role: user.role as Role,
+      },
+      dto,
+    );
+  }
+
   // ----------------------------------------------------------------------------
   // COMMENTS / SALES NOTES
   // ----------------------------------------------------------------------------
+  @Get(':id/comments')
+  @Roles(Role.ADMIN, Role.SALES_REP, Role.SALES_MANAGER, Role.FINANCE)
+  @ApiOperation({ summary: 'Get all comments for a quotation' })
+  @ApiResponse({ status: 200, description: 'List of quotation comments' })
+  async getComments(@Param('id') id: string) {
+    return this.quotationsService.getComments(id);
+  }
+
   @Post(':id/comments')
   @Roles(Role.ADMIN, Role.SALES_REP, Role.SALES_MANAGER, Role.FINANCE)
   @ApiOperation({ summary: 'Add a comment / negotiation note to a quotation' })

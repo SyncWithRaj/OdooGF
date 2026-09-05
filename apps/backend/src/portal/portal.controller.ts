@@ -25,6 +25,26 @@ export class PortalController {
     return this.portalService.acceptQuote(token, dto);
   }
 
+  @Post('quote/:token/confirm')
+  @ApiOperation({ summary: 'Customer 1-click confirmation (alias of accept)' })
+  @ApiResponse({ status: 200, description: 'Quotation confirmed' })
+  async confirmQuote(
+    @Param('token') token: string,
+    @Body() dto: AcceptQuoteDto,
+  ) {
+    return this.portalService.acceptQuote(token, dto);
+  }
+
+  @Post('quote/:token/comment')
+  @ApiOperation({ summary: 'Customer posts a line or general negotiation comment via portal' })
+  @ApiResponse({ status: 201, description: 'Comment recorded' })
+  async addComment(
+    @Param('token') token: string,
+    @Body() dto: { message: string },
+  ) {
+    return this.portalService.addComment(token, dto.message);
+  }
+
   @Post('quote/:token/counter')
   @ApiOperation({
     summary:

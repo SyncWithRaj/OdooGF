@@ -747,4 +747,12 @@ export class QuotationsService {
       },
     });
   }
+
+  async getComments(id: string) {
+    await this.getQuotationById(id);
+    return this.prisma.quotationComment.findMany({
+      where: { quotationId: id },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
 }
