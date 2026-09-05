@@ -6,6 +6,7 @@ import RequireRole from '@/components/RequireRole';
 import { useAuth } from '@/context/AuthContext';
 import { quotationsService } from '@/services/quotationsService';
 import { apiClient } from '@/services/apiClient';
+import { toast } from 'react-toastify';
 
 export default function QuotationsPage() {
   const { user, login } = useAuth();
@@ -38,7 +39,6 @@ export default function QuotationsPage() {
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [actionComment, setActionComment] = useState('');
   const [isSubmittingAction, setIsSubmittingAction] = useState(false);
-  const [notification, setNotification] = useState(null);
 
   // New Quote Form State
   const [newQuoteCustomer, setNewQuoteCustomer] = useState(null);
@@ -49,10 +49,15 @@ export default function QuotationsPage() {
   const [aiRecommendations, setAiRecommendations] = useState([]);
   const [isLoadingAiRecs, setIsLoadingAiRecs] = useState(false);
 
-  // Flash notification helper
+  // Toast notification helper using react-toastify
   const showToast = (message, type = 'success') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 4000);
+    if (type === 'error') {
+      toast.error(message);
+    } else if (type === 'info') {
+      toast.info(message);
+    } else {
+      toast.success(message);
+    }
   };
 
   // Load initial backend data & quotations
@@ -505,44 +510,44 @@ export default function QuotationsPage() {
     switch (status) {
       case 'CONFIRMED':
         return (
-          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-emerald-400 text-emerald-700 bg-emerald-50">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border border-zinc-900 text-zinc-900 bg-zinc-100">
             Confirmed
           </span>
         );
       case 'SENT_TO_CUSTOMER':
         return (
-          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-blue-400 text-blue-700 bg-blue-50">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-blue-400 text-blue-700 bg-blue-50">
             Sent to Customer
           </span>
         );
       case 'UNDER_NEGOTIATION':
         return (
-          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-purple-400 text-purple-700 bg-purple-50">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-purple-400 text-purple-700 bg-purple-50">
             In Negotiation
           </span>
         );
       case 'PENDING_APPROVAL':
         return (
-          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-amber-400 text-amber-700 bg-amber-50">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-amber-400 text-amber-700 bg-amber-50">
             In Approval
           </span>
         );
       case 'APPROVED':
         return (
-          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-emerald-400 text-emerald-700 bg-emerald-50">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border border-zinc-900 text-zinc-900 bg-zinc-100">
             Approved
           </span>
         );
       case 'REJECTED':
         return (
-          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-rose-400 text-rose-700 bg-rose-50">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-rose-400 text-rose-700 bg-rose-50">
             Rejected
           </span>
         );
       case 'DRAFT':
       default:
         return (
-          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium border border-slate-300 text-slate-600 bg-slate-50">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-zinc-300 text-zinc-600 bg-zinc-50">
             Draft
           </span>
         );
@@ -553,11 +558,11 @@ export default function QuotationsPage() {
   const getRiskBadge = (risk) => {
     switch (risk) {
       case 'LOW':
-        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Low Risk</span>;
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-100 text-zinc-800 border border-zinc-200"><span className="w-1.5 h-1.5 rounded-full bg-zinc-700"></span>Low Risk</span>;
       case 'MEDIUM':
-        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Medium Risk (L1)</span>;
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-300"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Medium Risk (L1)</span>;
       case 'HIGH':
-        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-300"><span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>High Risk (L2)</span>;
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-800 border border-rose-300"><span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>High Risk (L2)</span>;
       default:
         return null;
     }
@@ -579,30 +584,20 @@ export default function QuotationsPage() {
   return (
     <RequireRole roles={['rep', 'manager', 'finance', 'admin']}>
       <AppLayout>
-        {/* TOAST NOTIFICATION */}
-        {notification && (
-          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-sm font-medium border border-slate-700 animate-in fade-in slide-in-from-bottom-4">
-            <span className={`w-2.5 h-2.5 rounded-full ${notification.type === 'error' ? 'bg-rose-500' : notification.type === 'info' ? 'bg-blue-500' : 'bg-emerald-400'}`}></span>
-            <span>{notification.message}</span>
-          </div>
-        )}
-
-        {/* TOP BAR: HEADER & ROLE PERSONA QUICK-SWITCHER */}
+        {/* TOP BAR: HEADER & ACTIONS */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Quotations</h1>
-            <p className="text-sm text-gray-500 mt-1">
+            <h1 className="text-2xl font-semibold text-zinc-900 tracking-tight">Quotations</h1>
+            <p className="text-sm text-zinc-500 mt-1">
               Manage client proposals, pricing policies, and approval workflows.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-
-
             {/* CREATE QUOTE BUTTON */}
             <button
               onClick={handleOpenCreateModal}
-              className="h-10 px-4 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm transition cursor-pointer shadow-sm flex items-center gap-2"
+              className="h-10 px-4 rounded-md bg-zinc-900 hover:bg-black text-white font-medium text-sm transition cursor-pointer shadow-sm flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
@@ -614,12 +609,12 @@ export default function QuotationsPage() {
 
         {/* KPI METRIC CARDS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="p-5 rounded-lg bg-white border border-gray-200 shadow-xs">
-            <div className="flex items-center justify-between text-xs font-medium text-gray-500 mb-1">
+          <div className="p-5 rounded-lg bg-white border border-zinc-200 shadow-xs">
+            <div className="flex items-center justify-between text-xs font-medium text-zinc-500 mb-1">
               <span>Pipeline Value</span>
-              <span className="text-emerald-700 font-semibold">Live</span>
+              <span className="text-zinc-900 font-semibold flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-zinc-900 animate-pulse"></span>Live</span>
             </div>
-            <div className="text-2xl font-semibold text-gray-900 tracking-tight">
+            <div className="text-2xl font-semibold text-zinc-900 tracking-tight">
               ${metrics.totalPipeline.toLocaleString()}
             </div>
             <div className="text-xs text-gray-500 mt-1">
@@ -726,7 +721,7 @@ export default function QuotationsPage() {
             </button>
             <button
               onClick={() => setActiveTab('confirmed')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition cursor-pointer ${activeTab === 'confirmed' ? 'bg-emerald-700 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition cursor-pointer ${activeTab === 'confirmed' ? 'bg-zinc-900 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
             >
               Confirmed ({metrics.confirmedCount})
             </button>
@@ -1079,7 +1074,7 @@ export default function QuotationsPage() {
                     <button
                       type="button"
                       onClick={handleAddLine}
-                      className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-2.5 py-1.5 rounded-md transition cursor-pointer"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-900 hover:text-black bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 px-2.5 py-1.5 rounded-md transition cursor-pointer"
                     >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
@@ -1158,7 +1153,7 @@ export default function QuotationsPage() {
                                     +{evalLine.overLimitPoints}% Over
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-100 text-zinc-800 border border-zinc-200">
                                     Within {evalLine.allowedLimit || 5}%
                                   </span>
                                 )}
@@ -1194,20 +1189,22 @@ export default function QuotationsPage() {
                   <div className="p-3.5 rounded-lg bg-indigo-50/50 border border-indigo-100 space-y-2.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-indigo-600 text-white text-xs font-bold">
-                          ✨
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-zinc-900 text-white text-xs">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
                         </span>
                         <div>
-                          <h4 className="text-xs font-semibold text-indigo-950">
-                            AI Upsell & Cross-Sell Recommendations
+                          <h4 className="text-xs font-semibold text-zinc-900">
+                            AI Upsell &amp; Cross-Sell Recommendations
                           </h4>
-                          <p className="text-[11px] text-indigo-700/80">
-                            Ranked by FP-Growth Market Basket Analysis & Admin Governance Feeds
+                          <p className="text-[11px] text-zinc-500">
+                            Ranked by FP-Growth Market Basket Analysis &amp; Admin Governance Feeds
                           </p>
                         </div>
                       </div>
                       {isLoadingAiRecs && (
-                        <span className="text-[11px] text-indigo-600 animate-pulse font-medium">
+                        <span className="text-[11px] text-zinc-600 animate-pulse font-medium">
                           Mining patterns...
                         </span>
                       )}
@@ -1218,14 +1215,14 @@ export default function QuotationsPage() {
                         {aiRecommendations.slice(0, 3).map((rec) => (
                           <div
                             key={rec.productId}
-                            className="bg-white p-2.5 rounded-md border border-indigo-200/80 shadow-xs flex flex-col justify-between hover:border-indigo-400 transition"
+                            className="bg-white p-2.5 rounded-md border border-zinc-200 shadow-xs flex flex-col justify-between hover:border-zinc-400 transition"
                           >
                             <div>
                               <div className="flex items-center justify-between gap-1 mb-1">
-                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800">
-                                  {rec.source === 'ADMIN_CURATED' ? `👑 Priority #${rec.feedRank}` : `🤖 Score: ${rec.score}`}
+                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-800 border border-zinc-200">
+                                  {rec.source === 'ADMIN_CURATED' ? `Priority #${rec.feedRank}` : `Score: ${rec.score}`}
                                 </span>
-                                <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60">
+                                <span className="text-[10px] font-medium text-zinc-700 bg-zinc-50 px-1.5 py-0.5 rounded border border-zinc-200">
                                   {rec.promotionTag || `+${rec.marginPct || 25}% Margin`}
                                 </span>
                               </div>
@@ -1239,7 +1236,7 @@ export default function QuotationsPage() {
                             <button
                               type="button"
                               onClick={() => handleAddAiRecommendation(rec)}
-                              className="mt-2 w-full py-1 px-2 rounded text-[11px] font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-600 hover:text-white border border-indigo-200/80 hover:border-transparent transition flex items-center justify-center gap-1 cursor-pointer"
+                              className="mt-2 w-full py-1 px-2 rounded text-[11px] font-medium text-zinc-900 bg-zinc-100 hover:bg-zinc-900 hover:text-white border border-zinc-200 hover:border-transparent transition flex items-center justify-center gap-1 cursor-pointer"
                             >
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
@@ -1251,7 +1248,7 @@ export default function QuotationsPage() {
                       </div>
                     ) : (
                       !isLoadingAiRecs && (
-                        <p className="text-[11px] text-indigo-600/70 italic py-1">
+                        <p className="text-[11px] text-zinc-500 italic py-1">
                           No additional high-affinity pairings mined for current item combination.
                         </p>
                       )
@@ -1279,7 +1276,7 @@ export default function QuotationsPage() {
                               ? 'bg-rose-50 text-rose-700 border-rose-200'
                               : blendedEvaluation.blendedRiskScore === 'MEDIUM'
                               ? 'bg-amber-50 text-amber-700 border-amber-200'
-                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-zinc-100 text-zinc-800 border-zinc-200'
                           }`}
                         >
                           <span
@@ -1288,7 +1285,7 @@ export default function QuotationsPage() {
                                 ? 'bg-rose-500'
                                 : blendedEvaluation.blendedRiskScore === 'MEDIUM'
                                 ? 'bg-amber-500'
-                                : 'bg-emerald-500'
+                                : 'bg-zinc-700'
                             }`}
                           />
                           {blendedEvaluation.blendedRiskScore === 'LOW'
@@ -1311,7 +1308,7 @@ export default function QuotationsPage() {
                       </div>
                       <div className="bg-white p-3 rounded-md border border-gray-200">
                         <span className="text-xs text-gray-500 block">Net Order Value</span>
-                        <span className="text-base font-semibold text-emerald-700">${blendedEvaluation.financials.totalRevenue}</span>
+                        <span className="text-base font-semibold text-zinc-900">${blendedEvaluation.financials.totalRevenue}</span>
                       </div>
                       <div className="bg-white p-3 rounded-md border border-gray-200">
                         <span className="text-xs text-gray-500 block">Gross Margin</span>
@@ -1373,7 +1370,7 @@ export default function QuotationsPage() {
                   type="button"
                   disabled={isSubmittingAction}
                   onClick={() => handleSaveQuotation('PENDING_APPROVAL')}
-                  className="px-5 h-10 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm transition cursor-pointer shadow-sm disabled:opacity-50 flex items-center gap-2"
+                  className="px-5 h-10 rounded-md bg-zinc-900 hover:bg-black text-white font-medium text-sm transition cursor-pointer shadow-sm disabled:opacity-50 flex items-center gap-2"
                 >
                   {isSubmittingAction ? 'Submitting...' : 'Submit for Approval'}
                 </button>
@@ -1431,7 +1428,7 @@ export default function QuotationsPage() {
                   </div>
                   <div>
                     <span className="text-xs text-gray-500 block">Gross Margin %</span>
-                    <span className={`text-sm font-semibold ${selectedQuote.totalMarginPercent < 20 ? 'text-rose-600' : 'text-emerald-700'}`}>
+                    <span className={`text-sm font-semibold ${selectedQuote.totalMarginPercent < 20 ? 'text-rose-600' : 'text-zinc-900'}`}>
                       {selectedQuote.totalMarginPercent}%
                     </span>
                   </div>
@@ -1575,9 +1572,9 @@ export default function QuotationsPage() {
                           type="button"
                           onClick={() => handlePerformAction('APPROVE')}
                           disabled={isSubmittingAction}
-                          className="h-9 px-4 rounded-md text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition cursor-pointer shadow-xs"
+                          className="h-9 px-4 rounded-md text-xs font-medium bg-zinc-900 text-white hover:bg-black transition cursor-pointer shadow-xs"
                         >
-                          ✓ Approve Quotation (Manager L1)
+                          Approve Quotation (Manager L1)
                         </button>
                         <button
                           type="button"
@@ -1605,9 +1602,9 @@ export default function QuotationsPage() {
                           type="button"
                           onClick={() => handlePerformAction('APPROVE')}
                           disabled={isSubmittingAction}
-                          className="h-9 px-4 rounded-md text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition cursor-pointer shadow-xs"
+                          className="h-9 px-4 rounded-md text-xs font-medium bg-zinc-900 text-white hover:bg-black transition cursor-pointer shadow-xs"
                         >
-                          ✓ Approve Terms (Finance L2)
+                          Approve Terms (Finance L2)
                         </button>
                         <button
                           type="button"
@@ -1634,7 +1631,7 @@ export default function QuotationsPage() {
                         type="button"
                         onClick={() => handlePerformAction('CONFIRM')}
                         disabled={isSubmittingAction}
-                        className="h-9 px-4 rounded-md text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 transition cursor-pointer shadow-xs flex items-center gap-1.5"
+                        className="h-9 px-4 rounded-md text-xs font-medium bg-zinc-900 text-white hover:bg-black transition cursor-pointer shadow-xs flex items-center gap-1.5"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1649,9 +1646,9 @@ export default function QuotationsPage() {
                         type="button"
                         onClick={() => handlePerformAction('SEND_TO_CUSTOMER')}
                         disabled={isSubmittingAction}
-                        className="h-9 px-3.5 rounded-md text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition cursor-pointer shadow-xs flex items-center gap-1.5"
+                        className="h-9 px-3.5 rounded-md text-xs font-medium bg-zinc-900 text-white hover:bg-black transition cursor-pointer shadow-xs flex items-center gap-1.5"
                       >
-                        📤 Release to Client Portal
+                        Release to Client Portal
                       </button>
                     )}
 
@@ -1661,9 +1658,9 @@ export default function QuotationsPage() {
                         type="button"
                         onClick={() => handlePerformAction('APPROVE')}
                         disabled={isSubmittingAction}
-                        className="h-9 px-3 rounded-md text-xs font-medium bg-purple-600 text-white hover:bg-purple-700 transition cursor-pointer shadow-xs"
+                        className="h-9 px-3 rounded-md text-xs font-medium bg-zinc-800 text-white hover:bg-zinc-900 transition cursor-pointer shadow-xs"
                       >
-                        ⚡ Admin Override Approve
+                        Admin Override Approve
                       </button>
                     )}
                   </div>
@@ -1716,18 +1713,18 @@ export default function QuotationsPage() {
                           navigator.clipboard.writeText(url);
                           showToast('Client Portal link copied to clipboard!');
                         }}
-                        className="h-9 px-3 rounded-md text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 hover:bg-purple-100 transition cursor-pointer flex items-center gap-1"
+                        className="h-9 px-3 rounded-md text-xs font-medium text-zinc-900 bg-zinc-100 border border-zinc-200 hover:bg-zinc-200 transition cursor-pointer flex items-center gap-1"
                         title="Copy direct portal link for this client"
                       >
-                        🔗 Copy Portal Link
+                        Copy Portal Link
                       </button>
                       <a
                         href={`/portal?token=${selectedQuote.portalToken}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="h-9 px-3 rounded-md text-xs font-medium text-slate-700 bg-white border border-gray-300 hover:bg-gray-50 transition cursor-pointer flex items-center gap-1"
+                        className="h-9 px-3 rounded-md text-xs font-medium text-zinc-700 bg-white border border-zinc-300 hover:bg-zinc-50 transition cursor-pointer flex items-center gap-1"
                       >
-                        🌐 Open Portal
+                        Open Portal
                       </a>
                     </>
                   )}
@@ -1753,7 +1750,7 @@ export default function QuotationsPage() {
             <div className="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-xl border border-gray-200 flex flex-col">
               <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-white text-gray-900">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-md bg-emerald-600 flex items-center justify-center font-bold text-white text-xs">
+                  <div className="w-7 h-7 rounded-md bg-zinc-900 flex items-center justify-center font-bold text-white text-xs">
                     DF
                   </div>
                   <div>
@@ -1835,7 +1832,7 @@ export default function QuotationsPage() {
                     </div>
                     <div className="flex justify-between text-sm font-semibold text-gray-900 border-t border-gray-200 pt-2">
                       <span>Total Payable:</span>
-                      <span className="text-emerald-700">${selectedQuote.totalAmount?.toLocaleString()} USD</span>
+                      <span className="text-zinc-900 font-bold">${selectedQuote.totalAmount?.toLocaleString()} USD</span>
                     </div>
                   </div>
                 </div>
