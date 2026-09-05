@@ -6,6 +6,7 @@ import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { useAuth } from '@/context/AuthContext';
 import { apiClient } from '@/services/apiClient';
+import { toast } from 'react-toastify';
 
 export default function ApprovalsPage() {
   const { user, login } = useAuth();
@@ -17,13 +18,17 @@ export default function ApprovalsPage() {
   const [activeTab, setActiveTab] = useState(currentRole === 'finance' ? 'finance' : currentRole === 'manager' ? 'manager' : 'all');
   const [searchQuery, setSearchQuery] = useState('');
   const [processingId, setProcessingId] = useState(null);
-  const [notification, setNotification] = useState(null);
   const [selectedQuote, setSelectedQuote] = useState(null);
   const [actionNote, setActionNote] = useState('');
 
   const showToast = (message, type = 'success') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 4000);
+    if (type === 'error') {
+      toast.error(message);
+    } else if (type === 'info') {
+      toast.info(message);
+    } else {
+      toast.success(message);
+    }
   };
 
   // Load approval queue from backend (auto-filters by user role)
@@ -166,11 +171,11 @@ export default function ApprovalsPage() {
   const getRiskBadge = (risk) => {
     switch (risk) {
       case 'LOW':
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Low Risk</span>;
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-zinc-100 text-zinc-800 border border-zinc-200"><span className="w-1.5 h-1.5 rounded-full bg-zinc-700"></span>Low Risk</span>;
       case 'MEDIUM':
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Medium Risk</span>;
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Medium Risk</span>;
       case 'HIGH':
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-rose-50 text-rose-800 border border-rose-200"><span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>High Risk</span>;
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-rose-50 text-rose-800 border border-rose-200"><span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>High Risk</span>;
       default:
         return null;
     }
@@ -179,28 +184,20 @@ export default function ApprovalsPage() {
   return (
     <RequireRole roles={['manager', 'finance', 'admin']}>
       <AppLayout>
-        {/* FLASH TOAST */}
-        {notification && (
-          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-xs font-medium border border-slate-700 animate-in fade-in slide-in-from-bottom-4">
-            <span className={`w-2 h-2 rounded-full ${notification.type === 'error' ? 'bg-rose-500' : notification.type === 'info' ? 'bg-blue-500' : 'bg-emerald-400'}`}></span>
-            <span>{notification.message}</span>
-          </div>
-        )}
-
         {/* HEADER */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-xl font-semibold text-gray-900 tracking-tight">Approvals</h1>
+              <h1 className="text-xl font-semibold text-zinc-900 tracking-tight">Approvals</h1>
               <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${
                 pendingQuotes.length > 0
                   ? 'bg-amber-50 text-amber-800 border-amber-200'
-                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-zinc-100 text-zinc-800 border-zinc-200'
               }`}>
                 {pendingQuotes.length} Pending
               </span>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-zinc-500 mt-1">
               Review and authorize quotation discount requests and margin limits.
             </p>
           </div>
@@ -257,7 +254,7 @@ export default function ApprovalsPage() {
         {/* CONTENT */}
         {loading ? (
           <div className="p-10 rounded-md bg-white border border-gray-200 text-center shadow-xs">
-            <div className="w-5 h-5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+            <div className="w-5 h-5 border-2 border-zinc-900 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
             <p className="text-xs text-gray-500">Loading pending approvals...</p>
           </div>
         ) : displayedQuotes.length === 0 ? (
@@ -303,7 +300,7 @@ export default function ApprovalsPage() {
                           <button
                             type="button"
                             onClick={() => setSelectedQuote(quote)}
-                            className="font-semibold text-gray-900 hover:text-emerald-700 hover:underline cursor-pointer text-left"
+                            className="font-semibold text-gray-900 hover:text-black hover:underline cursor-pointer text-left"
                           >
                             {quote.quoteNumber}
                           </button>
@@ -349,7 +346,7 @@ export default function ApprovalsPage() {
                           <span className="block text-[10px] text-gray-400">-${quote.totalDiscountAmount}</span>
                           {quote.counterDiscountProposed > 0 && (
                             <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
-                              💬 Counter: {quote.counterDiscountProposed}%
+                              Counter: {quote.counterDiscountProposed}%
                             </span>
                           )}
                         </td>
@@ -375,7 +372,7 @@ export default function ApprovalsPage() {
                                   type="button"
                                   disabled={isProcessing}
                                   onClick={() => handleAction(quote, 'APPROVE')}
-                                  className="h-7 px-2.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs transition cursor-pointer shadow-xs disabled:opacity-50"
+                                  className="h-7 px-2.5 rounded bg-zinc-900 hover:bg-black text-white font-medium text-xs transition cursor-pointer shadow-xs disabled:opacity-50"
                                   title="Approve Quotation"
                                 >
                                   {isProcessing ? '...' : 'Approve'}
@@ -437,7 +434,9 @@ export default function ApprovalsPage() {
                   onClick={() => setSelectedQuote(null)}
                   className="text-gray-400 hover:text-gray-600 p-1 rounded"
                 >
-                  ✕
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
 
@@ -469,7 +468,7 @@ export default function ApprovalsPage() {
                     <div className="flex items-center justify-between">
                       <span className="font-bold flex items-center gap-1.5 text-purple-900">
                         <span className="w-2 h-2 rounded-full bg-purple-600 animate-pulse"></span>
-                        ⚡ Red-Dashed Loop: Customer Counter-Proposal
+                        Red-Dashed Loop: Customer Counter-Proposal
                       </span>
                       <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold text-[10px]">
                         +{selectedQuote.counterDiscountProposed}% Concession Requested
@@ -559,7 +558,7 @@ export default function ApprovalsPage() {
                     type="button"
                     disabled={processingId === selectedQuote.id}
                     onClick={() => handleAction(selectedQuote, 'APPROVE', actionNote)}
-                    className="h-8 px-4 rounded text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition cursor-pointer shadow-xs"
+                    className="h-8 px-4 rounded text-xs font-medium text-white bg-zinc-900 hover:bg-black transition cursor-pointer shadow-xs"
                   >
                     {processingId === selectedQuote.id ? 'Processing...' : 'Approve'}
                   </button>
