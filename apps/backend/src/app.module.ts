@@ -16,6 +16,7 @@ import { ApprovalsModule } from './approvals/approvals.module';
 import { PortalModule } from './portal/portal.module';
 import { FulfillmentsModule } from './fulfillments/fulfillments.module';
 import { InvoicesModule } from './invoices/invoices.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { InvoicesModule } from './invoices/invoices.module';
     PortalModule,
     FulfillmentsModule,
     InvoicesModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
