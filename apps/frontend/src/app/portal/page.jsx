@@ -5,6 +5,7 @@ import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { useAuth } from '@/context/AuthContext';
 import { quotationsService } from '@/services/quotationsService';
+import { apiClient } from '@/services/apiClient';
 
 export default function CustomerPortalPage() {
   const { user } = useAuth();
@@ -83,6 +84,35 @@ export default function CustomerPortalPage() {
     }
   };
 
+  const handleShortageDecision = async (action) => {
+    if (!selectedQuote?.portalToken) {
+      alert('Missing portal authorization token for this quotation.');
+      return;
+    }
+    const label =
+      action === 'ACCEPT'
+        ? `accept partial immediate delivery of ${selectedQuote.proposedPartialQuantity} units`
+        : 'decline partial shipment and wait for complete restock';
+    if (!confirm(`Confirm decision to ${label}?`)) {
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await apiClient.respondToShortageAction(selectedQuote.portalToken, action);
+      showToast(
+        res?.message ||
+          (action === 'ACCEPT'
+            ? `Partial order of ${selectedQuote.proposedPartialQuantity} units confirmed!`
+            : 'Preference recorded: order will await inventory restock.')
+      );
+      await loadCustomerQuotes();
+    } catch (err) {
+      alert(err.message || 'Failed to submit decision on shortage proposal');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <RequireRole roles={['customer', 'admin', 'rep', 'manager']}>
       <AppLayout>
@@ -135,17 +165,24 @@ export default function CustomerPortalPage() {
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-mono text-xs font-bold">{q.quoteNumber}</span>
-                      <span
-                        className={`px-2 py-0.2 rounded-full text-[10px] font-bold border ${
-                          isSelected
-                            ? 'bg-white/10 text-white border-white/20'
-                            : q.status === 'CONFIRMED'
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : 'bg-amber-50 text-amber-700 border-amber-200'
-                        }`}
-                      >
-                        {q.status}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {q.isShortageReviewRequired && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-500 text-white animate-pulse">
+                            Shortage Action
+                          </span>
+                        )}
+                        <span
+                          className={`px-2 py-0.2 rounded-full text-[10px] font-bold border ${
+                            isSelected
+                              ? 'bg-white/10 text-white border-white/20'
+                              : q.status === 'CONFIRMED'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}
+                        >
+                          {q.status}
+                        </span>
+                      </div>
                     </div>
                     <p className={`text-xs font-semibold ${isSelected ? 'text-slate-200' : 'text-slate-800'}`}>
                       ${q.totalAmount?.toLocaleString()}
@@ -203,6 +240,111 @@ export default function CustomerPortalPage() {
                     )}
                   </div>
                 </div>
+
+                {/* Engine 5: Shortage Proposal Decision Banner */}
+                {selectedQuote.isShortageReviewRequired && selectedQuote.proposedPartialQuantity && (
+                  <div className="mb-6 p-4 rounded-xl border border-amber-300 bg-amber-50/80 shadow-xs space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-700 flex items-center justify-center font-bold text-base shrink-0">
+                        ⚠️
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-amber-900">Inventory Shortage Resolution Proposal</h4>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-200 text-amber-900 border border-amber-300">
+                            Action Required
+                          </span>
+                        </div>
+                        <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                          Due to warehouse stock constraints, full quantity cannot be fulfilled simultaneously. Operations has prepared an immediate split shipment offering{' '}
+                          <strong className="font-bold underline">{selectedQuote.proposedPartialQuantity} units</strong> right away.
+                          Please select whether you wish to receive the available partial shipment immediately, or hold order until complete replenishment arrives.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-amber-200/60 justify-end">
+                      <button
+                        type="button"
+                        disabled={submitting}
+                        onClick={() => handleShortageDecision('REJECT')}
+                        className="px-3.5 py-1.5 rounded-lg border border-amber-300 bg-white hover:bg-amber-100 text-amber-900 text-xs font-semibold transition shadow-2xs disabled:opacity-50"
+                      >
+                        ⏳ Decline &amp; Wait for Full Restock
+                      </button>
+                      <button
+                        type="button"
+                        disabled={submitting}
+                        onClick={() => handleShortageDecision('ACCEPT')}
+                        className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs disabled:opacity-50 flex items-center gap-1.5"
+                      >
+                        <span>✓</span> Accept Partial Delivery ({selectedQuote.proposedPartialQuantity} Units)
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Engine 5: Post-decision confirmation banners */}
+                {selectedQuote.customerShortageAction === 'ACCEPTED_PARTIAL' && (
+                  <div className="mb-6 p-3.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-900 text-xs flex items-center gap-2.5">
+                    <span className="text-base">✓</span>
+                    <div>
+                      <span className="font-bold">Partial Shipment Agreement Active:</span> You agreed to accept{' '}
+                      {selectedQuote.proposedPartialQuantity || 'partial'} units for immediate multi-facility dispatch.
+                    </div>
+                  </div>
+                )}
+
+                {selectedQuote.customerShortageAction === 'WAIT_RESTOCK' && (
+                  <div className="mb-6 p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-xs flex items-center gap-2.5">
+                    <span className="text-base">⏳</span>
+                    <div>
+                      <span className="font-bold">Restock Hold Active:</span> Order dispatch is deferred until complete inventory is replenished at the distribution hub.
+                    </div>
+                  </div>
+                )}
+
+                {/* Engine 4: Promised Delivery Date & Slippage Surveillance */}
+                {(selectedQuote.promisedDeliveryDate || selectedQuote.hasDeliverySlippage) && (
+                  <div
+                    className={`mb-6 p-3.5 rounded-xl border text-xs flex items-center justify-between gap-3 ${
+                      selectedQuote.hasDeliverySlippage
+                        ? 'bg-rose-50 border-rose-200 text-rose-900'
+                        : 'bg-blue-50 border-blue-200 text-blue-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">{selectedQuote.hasDeliverySlippage ? '🚨' : '🚚'}</span>
+                      <div>
+                        <span className="font-bold">
+                          Promised Delivery:{' '}
+                          {selectedQuote.promisedDeliveryDate
+                            ? new Date(selectedQuote.promisedDeliveryDate).toLocaleDateString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })
+                            : 'Standard'}
+                        </span>
+                        {selectedQuote.possibleDeliveryDate && (
+                          <span className="ml-2 text-slate-600">
+                            (Earliest Arrival:{' '}
+                            {new Date(selectedQuote.possibleDeliveryDate).toLocaleDateString(undefined, {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                            )
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {selectedQuote.hasDeliverySlippage && (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-rose-200 text-rose-800 border border-rose-300">
+                        +{selectedQuote.deliverySlippageDays}d Lead Time Slippage
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 {/* Line Items Table */}
                 <div className="mb-6">

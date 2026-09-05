@@ -121,6 +121,16 @@ export async function GET(request) {
           lineMarginPercent: l.lineMarginPercent,
         })),
         auditLogs: auditTrail,
+        portalToken: q.portalToken,
+        promisedDeliveryDate: q.promisedDeliveryDate,
+        possibleDeliveryDate: q.possibleDeliveryDate,
+        hasDeliverySlippage: q.hasDeliverySlippage,
+        deliverySlippageDays: q.deliverySlippageDays,
+        isShortageReviewRequired: q.isShortageReviewRequired,
+        proposedPartialQuantity: q.proposedPartialQuantity,
+        customerShortageAction: q.customerShortageAction,
+        lastActivityAt: q.lastActivityAt,
+        isStalled: q.isStalled,
         createdAt: q.createdAt,
         updatedAt: q.updatedAt,
       };
@@ -191,6 +201,28 @@ export async function POST(request) {
       })
     );
 
+    let promisedDate = body.promisedDeliveryDate ? new Date(body.promisedDeliveryDate) : null;
+    let possibleDate = null;
+    let hasDeliverySlippage = false;
+    let deliverySlippageDays = 0;
+    if (promisedDate) {
+      try {
+        const maxLeadWarehouse = await prisma.warehouse.findFirst({
+          orderBy: { defaultLeadDays: 'desc' },
+        });
+        const leadDays = maxLeadWarehouse?.defaultLeadDays ?? 3;
+        const transitDays = 2;
+        possibleDate = new Date();
+        possibleDate.setDate(possibleDate.getDate() + leadDays + transitDays);
+        if (possibleDate.getTime() > promisedDate.getTime()) {
+          hasDeliverySlippage = true;
+          deliverySlippageDays = Math.ceil((possibleDate.getTime() - promisedDate.getTime()) / (1000 * 60 * 60 * 24));
+        }
+      } catch (err) {
+        console.warn('Could not compute delivery lead time:', err);
+      }
+    }
+
     const created = await prisma.quotation.create({
       data: {
         quoteNumber,
@@ -205,6 +237,10 @@ export async function POST(request) {
         totalAmount: Number(body.totalAmount) || 0,
         totalCost: Number(body.totalCost) || 0,
         totalMarginPercent: Number(body.totalMarginPercent) || 0,
+        ...(promisedDate && { promisedDeliveryDate: promisedDate }),
+        ...(possibleDate && { possibleDeliveryDate: possibleDate }),
+        hasDeliverySlippage,
+        deliverySlippageDays,
         lines: {
           create: createdLines,
         },

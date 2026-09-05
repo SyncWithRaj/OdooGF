@@ -5,6 +5,7 @@ import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { useAuth } from '@/context/AuthContext';
 import { quotationsService } from '@/services/quotationsService';
+import { apiClient } from '@/services/apiClient';
 
 export default function QuotationsPage() {
   const { user, login } = useAuth();
@@ -39,10 +40,16 @@ export default function QuotationsPage() {
   const [isSubmittingAction, setIsSubmittingAction] = useState(false);
   const [notification, setNotification] = useState(null);
 
+  // Drawer Upsells & SLA State (Engine 1 & Engine 4)
+  const [drawerUpsells, setDrawerUpsells] = useState([]);
+  const [loadingDrawerUpsells, setLoadingDrawerUpsells] = useState(false);
+  const [addingUpsellLineId, setAddingUpsellLineId] = useState(null);
+
   // New Quote Form State
   const [newQuoteCustomer, setNewQuoteCustomer] = useState(null);
   const [newQuoteLines, setNewQuoteLines] = useState([]);
   const [newQuoteNotes, setNewQuoteNotes] = useState('');
+  const [newQuotePromisedDate, setNewQuotePromisedDate] = useState('');
   const [blendedEvaluation, setBlendedEvaluation] = useState(null);
   const [isCalculatingRisk, setIsCalculatingRisk] = useState(false);
   const [aiRecommendations, setAiRecommendations] = useState([]);
@@ -317,6 +324,7 @@ export default function QuotationsPage() {
       setNewQuoteLines([]);
     }
     setNewQuoteNotes('');
+    setNewQuotePromisedDate('');
     setBlendedEvaluation(null);
     setIsCreateModalOpen(true);
   };
@@ -361,6 +369,7 @@ export default function QuotationsPage() {
         totalCost: evalData.financials.totalCost,
         totalMarginPercent: evalData.financials.totalMarginPercent,
         notes: newQuoteNotes,
+        promisedDeliveryDate: newQuotePromisedDate || undefined,
         flagReasonSummary: evalData.flagReasonSummary,
         lines: newQuoteLines.map((line, idx) => {
           const evalLine = evalData.lines?.[idx] || {};
@@ -390,11 +399,51 @@ export default function QuotationsPage() {
     }
   };
 
+  // Fetch upsell recommendations for active quote in detail drawer (Engine 1)
+  const loadDrawerUpsells = async (quoteId) => {
+    setLoadingDrawerUpsells(true);
+    try {
+      const recs = await apiClient.getQuoteUpsellSuggestions(quoteId);
+      setDrawerUpsells(Array.isArray(recs) ? recs : []);
+    } catch (err) {
+      console.warn('Could not load quote upsell suggestions:', err);
+      setDrawerUpsells([]);
+    } finally {
+      setLoadingDrawerUpsells(false);
+    }
+  };
+
+  // 1-Click add AI recommended upsell to an existing open quotation (Engine 1)
+  const handleAddUpsellToExistingQuote = async (rec) => {
+    if (!selectedQuote) return;
+    const targetId = rec.suggestedProductId || rec.productId;
+    setAddingUpsellLineId(targetId);
+    try {
+      const res = await apiClient.addQuoteUpsellLine(selectedQuote.id, {
+        productId: targetId,
+        quantity: 1,
+        discountPercent: 0,
+      });
+      showToast(`Added ${rec.suggestedProductName || rec.name || 'item'} to quotation!`);
+      const updatedList = await quotationsService.getQuotations();
+      setQuotations(updatedList);
+      const refreshed = updatedList.find((q) => q.id === selectedQuote.id) || res;
+      setSelectedQuote(refreshed);
+      await loadDrawerUpsells(selectedQuote.id);
+    } catch (err) {
+      console.error('Failed to add upsell item:', err);
+      showToast(err.message || 'Failed to add upsell line', 'error');
+    } finally {
+      setAddingUpsellLineId(null);
+    }
+  };
+
   // Open details drawer
   const handleOpenDetailDrawer = (quote) => {
     setSelectedQuote(quote);
     setActionComment('');
     setIsDetailDrawerOpen(true);
+    loadDrawerUpsells(quote.id);
   };
 
   // Handle Governance Actions (Approve, Reject, Return, Confirm)
@@ -877,7 +926,25 @@ export default function QuotationsPage() {
 
                         {/* Order */}
                         <td className="py-4 px-4 font-normal text-slate-500 whitespace-nowrap">
-                          {formatOrderNumber(quote.quoteNumber)}
+                          <div className="flex items-center gap-1.5">
+                            <span>{formatOrderNumber(quote.quoteNumber)}</span>
+                            {quote.hasDeliverySlippage && (
+                              <span
+                                className="px-1.5 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-700 border border-rose-200"
+                                title={`Engine 4: Delivery Promise Slippage of +${quote.deliverySlippageDays} day(s)`}
+                              >
+                                🚨 +{quote.deliverySlippageDays}d slip
+                              </span>
+                            )}
+                            {quote.isShortageReviewRequired && (
+                              <span
+                                className="px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-200 animate-pulse"
+                                title="Engine 5: Unfulfillable inventory shortage awaiting customer decision"
+                              >
+                                ⚠️ Shortage
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Product with Squircle Thumbnail */}
@@ -1012,6 +1079,26 @@ export default function QuotationsPage() {
                       </option>
                     ))}
                   </select>
+                </div>
+
+                {/* PROMISED DELIVERY DATE (ENGINE 4) */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label htmlFor="quotePromisedDate" className="block text-sm font-medium text-gray-900">
+                      Promised Delivery Date (Engine 4 Lead Time SLA)
+                    </label>
+                    <span className="text-xs text-gray-400">Warehouse Lead (3d) + Transit (2d)</span>
+                  </div>
+                  <input
+                    id="quotePromisedDate"
+                    type="date"
+                    value={newQuotePromisedDate}
+                    onChange={(e) => setNewQuotePromisedDate(e.target.value)}
+                    className="w-full h-10 px-3.5 rounded-md bg-white border border-gray-200 text-gray-900 text-sm focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-200 transition"
+                  />
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Fulfillment lead-time is automatically verified against regional depot inventory. Earlier promises trigger real-time delivery slippage alerts.
+                  </p>
                 </div>
 
                 {/* 2. PRODUCT LINE ITEMS */}
@@ -1388,6 +1475,57 @@ export default function QuotationsPage() {
                   </div>
                 )}
 
+                {/* ENGINE 4: PROMISED DELIVERY & SLA TRACKING */}
+                {(selectedQuote.promisedDeliveryDate || selectedQuote.hasDeliverySlippage) && (
+                  <div
+                    className={`p-3.5 rounded-lg border text-xs flex items-center justify-between gap-3 ${
+                      selectedQuote.hasDeliverySlippage
+                        ? 'bg-rose-50 border-rose-200 text-rose-900'
+                        : 'bg-blue-50 border-blue-200 text-blue-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-base">{selectedQuote.hasDeliverySlippage ? '🚨' : '🚚'}</span>
+                      <div>
+                        <div className="font-bold">
+                          Promised Delivery:{' '}
+                          {selectedQuote.promisedDeliveryDate
+                            ? new Date(selectedQuote.promisedDeliveryDate).toLocaleDateString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })
+                            : 'Standard Depot Schedule'}
+                        </div>
+                        {selectedQuote.possibleDeliveryDate && (
+                          <div className="text-[11px] text-slate-600 mt-0.5">
+                            Earliest Possible Arrival:{' '}
+                            <span className="font-semibold text-slate-800">
+                              {new Date(selectedQuote.possibleDeliveryDate).toLocaleDateString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })}
+                            </span>{' '}
+                            (Lead + Transit SLA)
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      {selectedQuote.hasDeliverySlippage ? (
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-rose-200 text-rose-800 border border-rose-300">
+                          +{selectedQuote.deliverySlippageDays}d Slippage Breach
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          ✓ On Schedule
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* LINE ITEMS */}
                 <div>
                   <h3 className="text-sm font-medium text-gray-900 mb-2">Order Line Items</h3>
@@ -1419,6 +1557,14 @@ export default function QuotationsPage() {
                               {line.isOverLimit && (
                                 <span className="block text-[9px] font-semibold text-rose-500">OVER (+{line.overLimitPoints}pt)</span>
                               )}
+                              {line.discountPercent > 18 && (
+                                <span
+                                  className="block text-[9px] font-black text-amber-600 tracking-tight"
+                                  title="Engine 3: Discount breaches sales rep 90-day median (8.0%) by +10% or more"
+                                >
+                                  ⚠️ Rep Anomaly (+{(line.discountPercent - 8).toFixed(1)}pt)
+                                </span>
+                              )}
                             </td>
                             <td className="py-2.5 px-3 text-right font-medium text-gray-600">
                               {line.lineMarginPercent}%
@@ -1431,6 +1577,83 @@ export default function QuotationsPage() {
                       </tbody>
                     </table>
                   </div>
+                </div>
+
+                {/* ENGINE 1: HYBRID UPSELL & CROSS-SELL SUGGESTIONS */}
+                <div className="p-4 rounded-lg bg-indigo-50/40 border border-indigo-100 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">✨</span>
+                      <div>
+                        <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">
+                          AI Hybrid Upsell &amp; Cross-Sell Suggestions (Engine 1)
+                        </h4>
+                        <p className="text-[10px] text-gray-500">
+                          Curated Priority 1–5, FP-Growth Co-occurrence &amp; Margin Stock Fallbacks
+                        </p>
+                      </div>
+                    </div>
+                    {loadingDrawerUpsells && (
+                      <span className="text-[10px] text-indigo-600 animate-pulse font-medium">Scanning catalog...</span>
+                    )}
+                  </div>
+
+                  {drawerUpsells.length === 0 && !loadingDrawerUpsells ? (
+                    <div className="p-3 bg-white rounded-md border border-gray-200 text-center text-xs text-gray-400">
+                      No complementary upsells available for this cart configuration.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {drawerUpsells.slice(0, 4).map((rec, i) => (
+                        <div
+                          key={rec.suggestedProductId || rec.productId || i}
+                          className="p-3 rounded-lg bg-white border border-gray-200 shadow-2xs hover:border-indigo-300 transition flex flex-col justify-between gap-2"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-1 mb-1">
+                              <span className="font-semibold text-xs text-gray-900 line-clamp-1">
+                                {rec.suggestedProductName || rec.name}
+                              </span>
+                              {rec.curatedRank ? (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-100 text-purple-700 border border-purple-200 shrink-0">
+                                  ★ Curated #{rec.curatedRank}
+                                </span>
+                              ) : rec.affinityScore ? (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-blue-100 text-blue-700 border border-blue-200 shrink-0">
+                                  ⚡ {rec.affinityScore}% Co-bought
+                                </span>
+                              ) : (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 shrink-0">
+                                  📈 High Margin
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] text-gray-500">
+                              <span>${rec.basePrice || rec.recommendedProduct?.basePrice || 0}</span>
+                              <span>•</span>
+                              <span className="text-gray-400">{rec.category || rec.recommendedProduct?.category}</span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            disabled={
+                              selectedQuote.status === 'CONFIRMED' ||
+                              selectedQuote.status === 'FULFILLED' ||
+                              addingUpsellLineId === (rec.suggestedProductId || rec.productId)
+                            }
+                            onClick={() => handleAddUpsellToExistingQuote(rec)}
+                            className="w-full py-1.5 px-2 rounded-md bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-[11px] font-semibold transition cursor-pointer shadow-2xs flex items-center justify-center gap-1"
+                          >
+                            <span>+</span>
+                            {addingUpsellLineId === (rec.suggestedProductId || rec.productId)
+                              ? 'Adding...'
+                              : 'Add to Quotation'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* ROLE ACTIONS SECTION */}
