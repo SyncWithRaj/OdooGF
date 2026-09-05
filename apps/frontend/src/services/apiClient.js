@@ -320,5 +320,68 @@ export const apiClient = {
     const qs = params.toString() ? `?${params.toString()}` : '';
     return apiRequest(`/api/analytics/reports${qs}`);
   },
+
+  // ==================== Engine 1: Upsell & Pairing Services ====================
+  async getQuoteUpsellSuggestions(quotationId) {
+    return apiRequest(`/api/quotations/${quotationId}/upsell-suggestions`);
+  },
+
+  async addQuoteUpsellLine(quotationId, data) {
+    return apiRequest(`/api/quotations/${quotationId}/upsell-line`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async getCuratedUpsells(baseProductId) {
+    const qs = baseProductId ? `?baseProductId=${baseProductId}` : '';
+    return apiRequest(`/api/config/upsell-rules/curated/list${qs}`);
+  },
+
+  async createCuratedUpsell(data) {
+    return apiRequest('/api/config/upsell-rules/curated', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async deleteCuratedUpsell(id) {
+    return apiRequest(`/api/config/upsell-rules/curated/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // ==================== Engine 5: Fulfillment, Geo-Split & Shortage ====================
+  async getFulfillments(filter = {}) {
+    const params = new URLSearchParams();
+    if (filter.status) params.append('status', filter.status);
+    if (filter.hasBackorder !== undefined) params.append('hasBackorder', filter.hasBackorder);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    return apiRequest(`/api/fulfillments${qs}`);
+  },
+
+  async getFulfillmentByQuote(quotationId) {
+    return apiRequest(`/api/fulfillments/quotation/${quotationId}`);
+  },
+
+  async splitQuotation(quotationId) {
+    return apiRequest(`/api/fulfillments/quotation/${quotationId}/split`, {
+      method: 'POST',
+    });
+  },
+
+  async proposeShortage(fulfillmentOrderId, proposedQuantity) {
+    return apiRequest(`/api/fulfillments/${fulfillmentOrderId}/propose-shortage`, {
+      method: 'POST',
+      body: JSON.stringify({ proposedQuantity: Number(proposedQuantity) }),
+    });
+  },
+
+  async respondToShortageAction(portalToken, action) {
+    return apiRequest(`/api/portal/quote/${portalToken}/shortage-action`, {
+      method: 'POST',
+      body: JSON.stringify({ action }),
+    });
+  },
 };
 

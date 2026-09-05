@@ -24,9 +24,38 @@ export default function GovernancePage() {
     SUBSCRIPTION: 15,
   });
 
+  // Engine 1: Curated Upsells State (Ranks 1 to 5)
+  const [curatedUpsells, setCuratedUpsells] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [isCuratedModalOpen, setIsCuratedModalOpen] = useState(false);
+  const [savingCurated, setSavingCurated] = useState(false);
+  const [curatedForm, setCuratedForm] = useState({
+    baseProductId: '',
+    recommendedProductId: '',
+    rank: 1,
+  });
+
   const showToast = (message, type = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 4000);
+  };
+
+  const loadCuratedUpsells = async () => {
+    try {
+      const data = await apiClient.getCuratedUpsells();
+      setCuratedUpsells(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.warn('Failed to load curated upsells:', err);
+    }
+  };
+
+  const loadProducts = async () => {
+    try {
+      const data = await apiClient.getProducts();
+      setProducts(Array.isArray(data) ? data : data?.products || []);
+    } catch (err) {
+      console.warn('Failed to load products list:', err);
+    }
   };
 
   const loadRules = async () => {
@@ -61,7 +90,47 @@ export default function GovernancePage() {
 
   useEffect(() => {
     loadRules();
+    loadCuratedUpsells();
+    loadProducts();
   }, []);
+
+  const handleCreateCurated = async (e) => {
+    e.preventDefault();
+    if (!curatedForm.baseProductId || !curatedForm.recommendedProductId) {
+      alert('Please select both a base product and a recommended product.');
+      return;
+    }
+    if (curatedForm.baseProductId === curatedForm.recommendedProductId) {
+      alert('Base product and recommended product cannot be the same item.');
+      return;
+    }
+    setSavingCurated(true);
+    try {
+      await apiClient.createCuratedUpsell({
+        baseProductId: curatedForm.baseProductId,
+        recommendedProductId: curatedForm.recommendedProductId,
+        rank: Number(curatedForm.rank),
+      });
+      showToast(`Curated Upsell Rank #${curatedForm.rank} configured!`);
+      setIsCuratedModalOpen(false);
+      await loadCuratedUpsells();
+    } catch (err) {
+      alert(err.message || 'Failed to configure curated upsell');
+    } finally {
+      setSavingCurated(false);
+    }
+  };
+
+  const handleDeleteCurated = async (id) => {
+    if (!confirm('Are you sure you want to remove this curated priority rule?')) return;
+    try {
+      await apiClient.deleteCuratedUpsell(id);
+      showToast('Curated rule removed.');
+      await loadCuratedUpsells();
+    } catch (err) {
+      alert(err.message || 'Failed to delete rule');
+    }
+  };
 
   const handleUpdateTier = async (tier) => {
     setSavingKey(`tier-${tier}`);
@@ -342,8 +411,205 @@ export default function GovernancePage() {
               </div>
             </div>
 
-            {/* Section 4: Real-time CPQ Discount Validator & Simulator */}
+            {/* Section 4: Admin Curated Upsell Feeds (Engine 1: Ranks 1 to 5) */}
+            <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-slate-900">
+                      Admin Curated Upsells (Engine 1: Priority Ranks 1–5)
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-purple-100 text-purple-800 border border-purple-200">
+                      Top Priority Feed
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Manual priority pairings that always override algorithmic FP-Growth rules. Guaranteed to fill slots 1–5 in rep and customer drawers.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCuratedForm({
+                      baseProductId: products[0]?.id || '',
+                      recommendedProductId: products[1]?.id || '',
+                      rank: 1,
+                    });
+                    setIsCuratedModalOpen(true);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition cursor-pointer shadow-2xs flex items-center gap-1.5 self-start sm:self-auto"
+                >
+                  <span>+</span> Configure Curated Upsell
+                </button>
+              </div>
+
+              {curatedUpsells.length === 0 ? (
+                <div className="p-8 text-center text-slate-400 text-xs bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                  No curated upsell rules configured yet. Click above to define a priority pairing.
+                </div>
+              ) : (
+                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                  <table className="w-full text-left text-xs text-slate-600">
+                    <thead className="bg-slate-50 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200">
+                      <tr>
+                        <th className="py-2.5 px-3 w-28">Priority Rank</th>
+                        <th className="py-2.5 px-3">Base Cart Product</th>
+                        <th className="py-2.5 px-3">Recommended Product</th>
+                        <th className="py-2.5 px-3 text-right">Price</th>
+                        <th className="py-2.5 px-3 text-center">Engine Feed</th>
+                        <th className="py-2.5 px-3 text-right w-16">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {curatedUpsells.map((rule) => (
+                        <tr key={rule.id} className="hover:bg-slate-50/60">
+                          <td className="py-3 px-3">
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-purple-100 text-purple-800 border border-purple-200">
+                              Rank #{rule.rank}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 font-semibold text-slate-900">
+                            <div>{rule.baseProduct?.name || 'Base Product'}</div>
+                            <span className="text-[10px] text-slate-400 font-normal">
+                              {rule.baseProduct?.sku} • {rule.baseProduct?.category}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 font-semibold text-slate-900">
+                            <div>{rule.recommendedProduct?.name || 'Recommended Product'}</div>
+                            <span className="text-[10px] text-slate-400 font-normal">
+                              {rule.recommendedProduct?.sku} • {rule.recommendedProduct?.category}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-right font-bold text-slate-900">
+                            ${rule.recommendedProduct?.basePrice?.toLocaleString() || '0'}
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700">
+                              Feed 1: Curated
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCurated(rule.id)}
+                              className="text-rose-600 hover:text-rose-800 font-bold p-1 transition"
+                              title="Delete rule"
+                            >
+                              ✕
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Section 5: Real-time CPQ Discount Validator & Simulator */}
             <DiscountSimulator />
+          </div>
+        )}
+
+        {/* Modal: Configure Curated Priority Upsell (Engine 1) */}
+        {isCuratedModalOpen && (
+          <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+            <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Configure Curated Priority Upsell (Engine 1)
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Guaranteed priority slot (Rank 1 to 5) that always supersedes algorithmic suggestions.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsCuratedModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 p-1"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateCurated} className="space-y-4 text-xs">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Base Cart Product (Trigger)
+                  </label>
+                  <select
+                    value={curatedForm.baseProductId}
+                    onChange={(e) => setCuratedForm({ ...curatedForm, baseProductId: e.target.value })}
+                    required
+                    className="w-full h-9 px-3 rounded-xl border border-slate-200 bg-white font-medium text-slate-900 text-xs focus:outline-none"
+                  >
+                    <option value="">Select Base Product...</option>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.sku}) — ${p.basePrice} [{p.category}]
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Recommended Product (Top-Priority Upsell)
+                  </label>
+                  <select
+                    value={curatedForm.recommendedProductId}
+                    onChange={(e) => setCuratedForm({ ...curatedForm, recommendedProductId: e.target.value })}
+                    required
+                    className="w-full h-9 px-3 rounded-xl border border-slate-200 bg-white font-medium text-slate-900 text-xs focus:outline-none"
+                  >
+                    <option value="">Select Recommended Product...</option>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.sku}) — ${p.basePrice} [{p.category}]
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Priority Rank (Slots 1 to 5)
+                  </label>
+                  <select
+                    value={curatedForm.rank}
+                    onChange={(e) => setCuratedForm({ ...curatedForm, rank: Number(e.target.value) })}
+                    className="w-full h-9 px-3 rounded-xl border border-slate-200 bg-white font-bold text-slate-900 text-xs focus:outline-none"
+                  >
+                    <option value={1}>Rank #1 (Highest Priority)</option>
+                    <option value={2}>Rank #2</option>
+                    <option value={3}>Rank #3</option>
+                    <option value={4}>Rank #4</option>
+                    <option value={5}>Rank #5 (Fifth Priority Slot)</option>
+                  </select>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Slots 1–5 are permanently reserved for admin-curated items before FP-Growth or margin fallbacks run.
+                  </p>
+                </div>
+
+                <div className="pt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsCuratedModalOpen(false)}
+                    className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingCurated}
+                    className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold shadow-xs disabled:opacity-50"
+                  >
+                    {savingCurated ? 'Saving...' : 'Save Curated Pairing'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
       </AppLayout>

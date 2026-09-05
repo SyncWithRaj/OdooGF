@@ -128,7 +128,7 @@ export class UsersService {
 
   async updateAvatar(userId: string, file: Express.Multer.File) {
     const userResponse = await this.findOne(userId);
-    const existingAvatarUrl = userResponse.user.avatarUrl;
+    const existingAvatarUrl = (userResponse.user as any).avatarUrl;
 
     // Upload to MinIO
     const uploaded = await this.storageService.uploadFile(file, 'avatars', userId);
@@ -136,7 +136,7 @@ export class UsersService {
     // Save MinIO public URL on user record
     const updated = await this.prisma.user.update({
       where: { id: userId },
-      data: { avatarUrl: uploaded.url },
+      data: { avatarUrl: uploaded.url } as any,
     });
 
     // Optionally clean up previous file if it was hosted on MinIO
@@ -154,7 +154,7 @@ export class UsersService {
 
   async updateBanner(userId: string, file: Express.Multer.File) {
     const userResponse = await this.findOne(userId);
-    const existingBannerUrl = userResponse.user.bannerUrl;
+    const existingBannerUrl = (userResponse.user as any).bannerUrl;
 
     // Upload to MinIO
     const uploaded = await this.storageService.uploadFile(file, 'banners', userId);
@@ -162,7 +162,7 @@ export class UsersService {
     // Save MinIO public URL on user record
     const updated = await this.prisma.user.update({
       where: { id: userId },
-      data: { bannerUrl: uploaded.url },
+      data: { bannerUrl: uploaded.url } as any,
     });
 
     // Optionally clean up previous file if it was hosted on MinIO
