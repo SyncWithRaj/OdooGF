@@ -7,6 +7,7 @@ import RequireRole from '@/components/RequireRole';
 import { useAuth } from '@/context/AuthContext';
 import { quotationsService } from '@/services/quotationsService';
 import { apiClient } from '@/services/apiClient';
+import { toast } from 'react-toastify';
 
 function CustomerPortalInner() {
   const { user } = useAuth();
@@ -17,7 +18,6 @@ function CustomerPortalInner() {
   const [quotations, setQuotations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedQuote, setSelectedQuote] = useState(null);
-  const [notification, setNotification] = useState(null);
 
   // Negotiation Modal
   const [isNegotiateModalOpen, setIsNegotiateModalOpen] = useState(false);
@@ -34,8 +34,13 @@ function CustomerPortalInner() {
   const [handlingShortage, setHandlingShortage] = useState(false);
 
   const showToast = (message, type = 'success') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 5000);
+    if (type === 'error') {
+      toast.error(message);
+    } else if (type === 'info') {
+      toast.info(message);
+    } else {
+      toast.success(message);
+    }
   };
 
   const loadCustomerQuotes = async () => {
@@ -112,7 +117,7 @@ function CustomerPortalInner() {
       }
 
       if (res?.triggeredReApproval) {
-        showToast(`⚡ Red-Dashed Loop Triggered: Counter concession (+${res.deviation || 0}pt deviation) auto-routed to Sales Operations for management approval!`, 'info');
+        showToast(`Red-Dashed Loop Triggered: Counter concession (+${res.deviation || 0}pt deviation) auto-routed to Sales Operations for management approval!`, 'info');
       } else {
         showToast(`Counter-proposal of ${counterDiscount}% discount submitted to your Account Executive!`);
       }
@@ -161,40 +166,32 @@ function CustomerPortalInner() {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'CONFIRMED':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">✓ Accepted</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-zinc-900 text-white">Accepted</span>;
       case 'SENT_TO_CUSTOMER':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">Ready to Sign</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">Ready to Sign</span>;
       case 'UNDER_NEGOTIATION':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">In Negotiation</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-200">In Negotiation</span>;
       case 'PENDING_APPROVAL':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">Under Review</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200">Under Review</span>;
       case 'FULFILLED':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">Fulfilled</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-zinc-100 text-zinc-800 border border-zinc-200">Fulfilled</span>;
       default:
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">{status}</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-zinc-100 text-zinc-700 border border-zinc-200">{status}</span>;
     }
   };
 
   return (
     <RequireRole roles={['customer', 'admin', 'rep', 'manager']}>
       <AppLayout>
-        {/* Flash Toast */}
-        {notification && (
-          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-sm font-medium border border-slate-700 animate-in fade-in slide-in-from-bottom-4">
-            <span className={`w-2.5 h-2.5 rounded-full ${notification.type === 'error' ? 'bg-rose-500' : notification.type === 'info' ? 'bg-purple-400' : 'bg-emerald-400'}`}></span>
-            <span>{notification.message}</span>
-          </div>
-        )}
-
         {/* Header Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Customer Quote &amp; Acceptance Portal</h1>
-            <p className="text-xs text-slate-500 mt-1">
-              Account: <strong className="text-slate-800">{user?.name || 'Valued Client'}</strong> ({user?.email || 'customer@dealflow.com'})
+            <h1 className="text-2xl font-bold text-zinc-900 tracking-tight">Customer Quote &amp; Acceptance Portal</h1>
+            <p className="text-xs text-zinc-500 mt-1">
+              Account: <strong className="text-zinc-800">{user?.name || 'Valued Client'}</strong> ({user?.email || 'customer@dealflow.com'})
             </p>
           </div>
-          <span className="px-3.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold self-start sm:self-auto shadow-2xs">
+          <span className="px-3.5 py-1 rounded-full bg-zinc-100 text-zinc-900 border border-zinc-200 text-xs font-semibold self-start sm:self-auto shadow-2xs">
             Client Self-Service Portal
           </span>
         </div>
@@ -245,7 +242,7 @@ function CustomerPortalInner() {
                       </p>
                       {q.counterDiscountProposed > 0 && (
                         <span className={`text-[10px] font-bold ${isSelected ? 'text-purple-300' : 'text-purple-700'}`}>
-                          💬 {q.counterDiscountProposed}% Counter
+                          {q.counterDiscountProposed}% Counter
                         </span>
                       )}
                     </div>
@@ -292,24 +289,24 @@ function CustomerPortalInner() {
                           }}
                           className="px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
                         >
-                          💬 {selectedQuote.status === 'UNDER_NEGOTIATION' ? 'Adjust Counter Terms' : 'Request Counter Terms'}
+                          {selectedQuote.status === 'UNDER_NEGOTIATION' ? 'Adjust Counter Terms' : 'Request Counter Terms'}
                         </button>
                         <button
                           onClick={() => handleAcceptQuote(selectedQuote)}
                           disabled={selectedQuote.status === 'PENDING_APPROVAL'}
-                          className={`px-4 py-2 rounded-xl text-white text-xs font-bold shadow-xs transition cursor-pointer flex items-center gap-1.5 ${
+                          className={`px-4 py-2 rounded-xl text-white text-xs font-semibold shadow-xs transition cursor-pointer flex items-center gap-1.5 ${
                             selectedQuote.status === 'PENDING_APPROVAL'
-                              ? 'bg-slate-400 cursor-not-allowed opacity-60'
-                              : 'bg-emerald-600 hover:bg-emerald-700'
+                              ? 'bg-zinc-400 cursor-not-allowed opacity-60'
+                              : 'bg-zinc-900 hover:bg-black'
                           }`}
                         >
-                          {selectedQuote.status === 'PENDING_APPROVAL' ? '⏳ Awaiting Governance Approval' : '✓ Accept & Digitally Sign'}
+                          {selectedQuote.status === 'PENDING_APPROVAL' ? 'Awaiting Governance Approval' : 'Accept & Digitally Sign'}
                         </button>
                       </>
                     )}
                     {selectedQuote.status === 'CONFIRMED' && (
-                      <span className="px-3.5 py-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-xs flex items-center gap-1.5">
-                        ✓ Formally Accepted &amp; Digitally Signed
+                      <span className="px-3.5 py-2 rounded-xl bg-zinc-900 text-white font-semibold text-xs flex items-center gap-1.5">
+                        Formally Accepted &amp; Digitally Signed
                       </span>
                     )}
                   </div>
@@ -320,7 +317,7 @@ function CustomerPortalInner() {
                   <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-1.5 shadow-2xs">
                     <div className="flex items-center gap-2 font-bold text-amber-950 text-sm">
                       <span className="w-2.5 h-2.5 rounded-full bg-amber-600 animate-pulse"></span>
-                      <span>⚡ Red-Dashed Loop Governance Review in Progress</span>
+                      <span>Red-Dashed Loop Governance Review in Progress</span>
                     </div>
                     <p className="text-amber-800">
                       Your requested counter-concession of <strong className="font-semibold">{selectedQuote.counterDiscountProposed}%</strong> exceeds automated limits and is currently undergoing executive governance sign-off.
@@ -336,7 +333,7 @@ function CustomerPortalInner() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 font-bold text-purple-950 text-sm">
                         <span className="w-2.5 h-2.5 rounded-full bg-purple-600 animate-pulse"></span>
-                        <span>💬 Negotiation Active: Counter Terms Submitted</span>
+                        <span>Negotiation Active: Counter Terms Submitted</span>
                       </div>
                       <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold text-[10px] border border-purple-200">
                         {selectedQuote.counterDiscountProposed}% Requested Discount
@@ -352,12 +349,14 @@ function CustomerPortalInner() {
                 )}
 
                 {selectedQuote.status === 'SENT_TO_CUSTOMER' && selectedQuote.counterDiscountProposed > 0 && (
-                  <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 space-y-1 shadow-2xs">
-                    <div className="flex items-center gap-2 font-bold text-emerald-950 text-sm">
-                      <span>✓</span>
+                  <div className="p-4 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 space-y-1 shadow-2xs">
+                    <div className="flex items-center gap-2 font-bold text-zinc-950 text-sm">
+                      <svg className="w-4 h-4 text-zinc-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                      </svg>
                       <span>Counter Terms Approved by Leadership</span>
                     </div>
-                    <p className="text-emerald-800">
+                    <p className="text-zinc-700">
                       Management has approved your requested <strong>{selectedQuote.counterDiscountProposed}%</strong> discount concession! The updated commercial terms are ready for your digital signature.
                     </p>
                   </div>
@@ -367,7 +366,7 @@ function CustomerPortalInner() {
                 {selectedQuote.isShortageReviewRequired && (
                   <div className="p-4 rounded-xl bg-orange-50 border border-orange-200 text-xs text-orange-950 space-y-2.5 shadow-2xs">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-sm text-orange-950">📦 Immediate Dispatch Option (Inventory Shortage)</span>
+                      <span className="font-bold text-sm text-orange-950">Immediate Dispatch Option (Inventory Shortage)</span>
                       <span className="px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 font-bold text-[10px] border border-orange-200">
                         Shortage Review
                       </span>
@@ -539,7 +538,9 @@ function CustomerPortalInner() {
                   <p className="text-xs text-slate-500 font-mono mt-0.5">{selectedQuote.quoteNumber}</p>
                 </div>
                 <button onClick={() => setIsNegotiateModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
-                  ✕
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
 
