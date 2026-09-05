@@ -42,16 +42,25 @@
 ### 2.2 Backend REST API Endpoints
 
 ```text
-AUTH & USERS
+AUTH & USER MANAGEMENT (Admin & Roles)
 POST   /api/auth/login                       -> Authenticate internal users
 POST   /api/auth/signup                      -> Internal / Customer account creation
 GET    /api/auth/me                          -> Current user profile & permissions
+GET    /api/users                            -> List all users & assigned roles (Admin)
+POST   /api/users                            -> Admin creates employee & assigns role (Rep/Manager/Finance)
+PATCH  /api/users/:id/role                   -> Admin updates user role
+
+CUSTOMERS & TIERS
+GET    /api/customers                        -> List customers with tier & historical avg discount
+POST   /api/customers                        -> Create new customer master
+GET    /api/customers/:id                    -> Customer details & quotation history
 
 MASTER DATA & CATALOG
 GET    /api/products                         -> List catalog items with stock & variants
 POST   /api/products                         -> Create product (Admin)
 GET    /api/products/:id                     -> Product details with variants & pricing rules
 PUT    /api/products/:id                     -> Update product details
+POST   /api/products/:id/variants            -> Add variant (Color, RAM, Size with extra price)
 GET    /api/config/discount-rules            -> Fetch tier & category discount ceilings
 PUT    /api/config/discount-rules            -> Update approval routing rules & thresholds
 
@@ -62,6 +71,8 @@ GET    /api/quotations/:id                   -> Full quotation detail with calcu
 PUT    /api/quotations/:id                   -> Update lines, quantities, discounts
 POST   /api/quotations/:id/submit-approval   -> Calculate Blended Risk Score & route to Manager/Finance
 GET    /api/quotations/:id/upsell-suggestions-> Fetch AI/Rule-based upsell items with margin deltas
+GET    /api/quotations/:id/comments          -> Fetch negotiation comments (Rep view)
+POST   /api/quotations/:id/comments          -> Post reply to customer comment (Rep view)
 
 APPROVAL GOVERNANCE
 GET    /api/approvals                        -> List pending approvals filtered by role
