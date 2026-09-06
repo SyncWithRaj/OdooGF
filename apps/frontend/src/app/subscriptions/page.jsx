@@ -5,6 +5,8 @@ import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { apiClient } from '@/services/apiClient';
 import { toast } from 'react-toastify';
+import Pagination from '@/components/Pagination';
+import { usePagination } from '@/hooks/usePagination';
 
 export default function SubscriptionsPage() {
   const [subscriptions, setSubscriptions] = useState([]);
@@ -133,6 +135,20 @@ export default function SubscriptionsPage() {
       return true;
     });
   }, [subscriptions, activeStatus, searchQuery]);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems: paginatedSubs,
+    resetPage,
+  } = usePagination(filteredSubs, 10);
+
+  useEffect(() => {
+    resetPage();
+  }, [activeStatus, searchQuery]);
 
   // Financial MRR / ARR Metrics
   const metrics = useMemo(() => {
@@ -278,12 +294,12 @@ export default function SubscriptionsPage() {
                   <tr>
                     <td colSpan={7} className="py-8 text-center text-slate-400">Loading subscriptions...</td>
                   </tr>
-                ) : filteredSubs.length === 0 ? (
+                ) : paginatedSubs.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-8 text-center text-slate-400">No subscriptions found.</td>
                   </tr>
                 ) : (
-                  filteredSubs.map((sub) => (
+                  paginatedSubs.map((sub) => (
                     <tr key={sub.id} className="hover:bg-slate-50/50 transition">
                       <td className="py-3.5 px-4 font-bold text-slate-900 whitespace-nowrap">
                         {sub.planName}
@@ -361,6 +377,14 @@ export default function SubscriptionsPage() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            currentPage={currentPage}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[10, 25, 50]}
+          />
         </div>
 
         {/* Modal: New Subscription */}

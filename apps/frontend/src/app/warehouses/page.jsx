@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { apiClient } from '@/services/apiClient';
 import { toast } from 'react-toastify';
+import Pagination from '@/components/Pagination';
+import { usePagination } from '@/hooks/usePagination';
 
 export default function WarehousesPage() {
   const [warehouses, setWarehouses] = useState([]);
@@ -117,6 +119,20 @@ export default function WarehousesPage() {
         s.category?.toLowerCase().includes(q)
     );
   }, [warehouseDetail, searchQuery]);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems: paginatedStockLines,
+    resetPage,
+  } = usePagination(filteredStockLines, 10);
+
+  useEffect(() => {
+    resetPage();
+  }, [selectedWarehouseId, searchQuery]);
 
   // Handle Create Facility
   const handleCreateFacility = async (e) => {
@@ -437,14 +453,14 @@ export default function WarehousesPage() {
                     Loading facility inventory...
                   </td>
                 </tr>
-              ) : filteredStockLines.length === 0 ? (
+              ) : paginatedStockLines.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-8 text-center text-slate-400">
                     No product stock lines found for this facility.
                   </td>
                 </tr>
               ) : (
-                filteredStockLines.map((stock) => (
+                paginatedStockLines.map((stock) => (
                   <tr key={stock.stockId} className="hover:bg-slate-50/50 transition">
                     <td className="py-3 px-4">
                       <div className="font-bold text-slate-900">{stock.productName}</div>
@@ -501,6 +517,14 @@ export default function WarehousesPage() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          pageSizeOptions={[10, 25, 50]}
+        />
       </div>
 
       {/* Modal: Register Facility */}

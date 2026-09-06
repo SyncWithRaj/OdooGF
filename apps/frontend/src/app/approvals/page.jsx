@@ -7,6 +7,8 @@ import RequireRole from '@/components/RequireRole';
 import { useAuth } from '@/context/AuthContext';
 import { apiClient } from '@/services/apiClient';
 import { toast } from 'react-toastify';
+import Pagination from '@/components/Pagination';
+import { usePagination } from '@/hooks/usePagination';
 
 export default function ApprovalsPage() {
   const { user, login } = useAuth();
@@ -107,6 +109,20 @@ export default function ApprovalsPage() {
       return true;
     });
   }, [pendingQuotes, activeTab, searchQuery]);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems: paginatedQuotes,
+    resetPage,
+  } = usePagination(displayedQuotes, 10);
+
+  useEffect(() => {
+    resetPage();
+  }, [activeTab, searchQuery]);
 
 
 
@@ -281,7 +297,7 @@ export default function ApprovalsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 text-gray-700">
-                  {displayedQuotes.map((quote) => {
+                  {paginatedQuotes.map((quote) => {
                     const isProcessing = processingId === quote.id;
                     const isManagerStage = quote.currentStage === 'SALES_MANAGER';
                     const isFinanceStage = quote.currentStage === 'FINANCE';
@@ -408,6 +424,14 @@ export default function ApprovalsPage() {
                 </tbody>
               </table>
             </div>
+            <Pagination
+              currentPage={currentPage}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+              pageSizeOptions={[10, 25, 50]}
+            />
           </div>
         )}
 

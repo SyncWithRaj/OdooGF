@@ -6,6 +6,8 @@ import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { apiClient } from '@/services/apiClient';
 import { toast } from 'react-toastify';
+import Pagination from '@/components/Pagination';
+import { usePagination } from '@/hooks/usePagination';
 
 export default function FulfillmentPage() {
   const [warehouses, setWarehouses] = useState([]);
@@ -118,6 +120,20 @@ export default function FulfillmentPage() {
       return true;
     });
   }, [fulfillments, activeTab, searchQuery]);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems: paginatedOrders,
+    resetPage,
+  } = usePagination(filteredOrders, 10);
+
+  useEffect(() => {
+    resetPage();
+  }, [activeTab, searchQuery]);
 
   // Quotations eligible for split (confirmed or approved quotes that haven't been split yet)
   const readyToSplitQuotes = useMemo(() => {
@@ -236,12 +252,12 @@ export default function FulfillmentPage() {
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-slate-400">Loading fulfillment orders...</td>
                   </tr>
-                ) : filteredOrders.length === 0 ? (
+                ) : paginatedOrders.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-slate-400">No fulfillment orders matching filter.</td>
                   </tr>
                 ) : (
-                  filteredOrders.map((order) => {
+                  paginatedOrders.map((order) => {
                     const splitCount = (order.splitItems || []).length;
                     const totalFulfilled = (order.splitItems || []).reduce((sum, item) => sum + (item.quantityFulfilled || 0), 0);
                     const totalBackordered = (order.splitItems || []).reduce((sum, item) => sum + (item.quantityBackordered || 0), 0);
@@ -322,6 +338,14 @@ export default function FulfillmentPage() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            currentPage={currentPage}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[10, 25, 50]}
+          />
         </div>
 
         {/* Facilities overview */}
