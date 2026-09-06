@@ -11,7 +11,7 @@ import Pagination from '@/components/Pagination';
 import { usePagination } from '@/hooks/usePagination';
 
 export default function QuotationsPage() {
-  const { user, login } = useAuth();
+  const { user } = useAuth();
 
   // Active persona role (defaults to authenticated user role or rep)
   const currentRole = useMemo(() => {
@@ -41,6 +41,9 @@ export default function QuotationsPage() {
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [actionComment, setActionComment] = useState('');
   const [isSubmittingAction, setIsSubmittingAction] = useState(false);
+  const [historyTab, setHistoryTab] = useState('negotiation');
+  const [newRemarkText, setNewRemarkText] = useState('');
+  const [isSubmittingRemark, setIsSubmittingRemark] = useState(false);
 
   // New Quote Form State
   const [newQuoteCustomer, setNewQuoteCustomer] = useState(null);
@@ -429,14 +432,49 @@ export default function QuotationsPage() {
   const handleOpenDetailDrawer = async (quote) => {
     setSelectedQuote(quote);
     setActionComment('');
+    setNewRemarkText('');
+    setHistoryTab(quote.comments?.length > 0 || quote.status === 'UNDER_NEGOTIATION' ? 'negotiation' : 'audit');
     setIsDetailDrawerOpen(true);
     try {
       const fresh = await apiClient.getQuotation(quote.id);
       if (fresh && fresh.id) {
         setSelectedQuote(fresh);
+        if (fresh.comments && fresh.comments.length > 0) {
+          setHistoryTab('negotiation');
+        } else if (fresh.auditLogs && fresh.auditLogs.length > 0) {
+          setHistoryTab('audit');
+        }
       }
     } catch (e) {
       console.warn('Could not fetch fresh quotation details:', e);
+    }
+  };
+
+  // Post a negotiation comment / internal remark
+  const handlePostRemark = async (e) => {
+    if (e) e.preventDefault();
+    if (!newRemarkText.trim() || !selectedQuote) return;
+    setIsSubmittingRemark(true);
+    try {
+      const added = await apiClient.addQuotationComment(selectedQuote.id, newRemarkText.trim());
+      const newComment = {
+        id: added?.id || `comment-${Date.now()}`,
+        authorName: added?.authorName || user?.name || user?.email || 'Sales Team',
+        authorRole: added?.authorRole || user?.role || 'SALES_REP',
+        message: newRemarkText.trim(),
+        createdAt: new Date().toISOString(),
+      };
+      setSelectedQuote((prev) => ({
+        ...prev,
+        comments: [...(prev?.comments || []), newComment],
+      }));
+      setNewRemarkText('');
+      showToast('Negotiation remark posted to conversation.');
+    } catch (err) {
+      console.error('Failed to post remark:', err);
+      showToast(err?.message || 'Failed to post remark.', 'error');
+    } finally {
+      setIsSubmittingRemark(false);
     }
   };
 
@@ -488,8 +526,13 @@ export default function QuotationsPage() {
       if (updated) {
         const updatedList = await quotationsService.getQuotations();
         setQuotations(updatedList);
-        const refreshed = updatedList.find((q) => q.id === selectedQuote.id) || updated;
-        setSelectedQuote(refreshed);
+        try {
+          const fresh = await apiClient.getQuotation(selectedQuote.id);
+          setSelectedQuote(fresh);
+        } catch {
+          const refreshed = updatedList.find((q) => q.id === selectedQuote.id) || updated;
+          setSelectedQuote(refreshed);
+        }
         setActionComment('');
       }
     } catch (e) {
@@ -1692,27 +1735,166 @@ export default function QuotationsPage() {
                   </div>
                 </div>
 
-                {/* AUDIT TRAIL TIMELINE */}
-                <div>
-                  <h3 className="text-sm font-medium text-gray-900 mb-3">Audit Trail</h3>
-                  <div className="space-y-3 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200">
-                    {selectedQuote.auditLogs?.map((log, idx) => (
-                      <div key={idx} className="relative flex items-start gap-3 pl-1">
-                        <span className="w-2.5 h-2.5 rounded-full bg-gray-900 border-2 border-white shadow-xs shrink-0 mt-1"></span>
-                        <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 text-xs flex-1">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-semibold text-gray-900">
-                              {log.actorName} <span className="text-[10px] text-gray-500 font-normal">({log.actorRole})</span>
-                            </span>
-                            <span className="text-[10px] text-gray-400">
-                              {new Date(log.timestamp).toLocaleDateString()} {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-                          <p className="text-gray-600 font-normal">{log.comment}</p>
-                        </div>
-                      </div>
-                    ))}
+                {/* ACTIVITY, NEGOTIATION CONVERSATION & AUDIT HISTORY HUB */}
+                <div className="pt-4 border-t border-zinc-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-1.5 p-0.5 bg-zinc-100 rounded-lg border border-zinc-200 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setHistoryTab('negotiation')}
+                        className={`px-3 py-1 rounded-md font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                          historyTab === 'negotiation'
+                            ? 'bg-white text-zinc-900 shadow-2xs'
+                            : 'text-zinc-600 hover:text-zinc-900'
+                        }`}
+                      >
+                        <span>Negotiation History</span>
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                          historyTab === 'negotiation' ? 'bg-zinc-900 text-white' : 'bg-zinc-200 text-zinc-700'
+                        }`}>
+                          {selectedQuote.comments?.length || 0}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setHistoryTab('audit')}
+                        className={`px-3 py-1 rounded-md font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                          historyTab === 'audit'
+                            ? 'bg-white text-zinc-900 shadow-2xs'
+                            : 'text-zinc-600 hover:text-zinc-900'
+                        }`}
+                      >
+                        <span>Audit Trail</span>
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                          historyTab === 'audit' ? 'bg-zinc-900 text-white' : 'bg-zinc-200 text-zinc-700'
+                        }`}>
+                          {selectedQuote.auditLogs?.length || 0}
+                        </span>
+                      </button>
+                    </div>
                   </div>
+
+                  {/* TAB 1: NEGOTIATION CONVERSATION */}
+                  {historyTab === 'negotiation' && (
+                    <div className="space-y-3">
+                      <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                        {(!selectedQuote.comments || selectedQuote.comments.length === 0) ? (
+                          <div className="p-4 rounded-xl bg-zinc-50 border border-zinc-200 text-center">
+                            <p className="text-xs text-zinc-600 font-medium">
+                              No negotiation remarks recorded yet.
+                            </p>
+                            <p className="text-[11px] text-zinc-400 mt-1">
+                              Post internal deal notes or clarify terms with the client below.
+                            </p>
+                          </div>
+                        ) : (
+                          selectedQuote.comments.map((c, i) => {
+                            const isCustomer = (c.authorRole || '').toUpperCase() === 'CUSTOMER';
+                            return (
+                              <div
+                                key={c.id || i}
+                                className={`p-3 rounded-xl border text-xs space-y-1.5 ${
+                                  isCustomer
+                                    ? 'bg-zinc-50 border-zinc-300'
+                                    : 'bg-white border-zinc-200 shadow-2xs'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between text-[11px]">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                      isCustomer
+                                        ? 'bg-zinc-200 text-zinc-800 border border-zinc-300'
+                                        : 'bg-zinc-900 text-white'
+                                    }`}>
+                                      {c.authorRole || (isCustomer ? 'Customer' : 'Sales Rep')}
+                                    </span>
+                                    <span className="font-semibold text-zinc-900">
+                                      {c.authorName || 'Participant'}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] text-zinc-400">
+                                    {c.createdAt
+                                      ? `${new Date(c.createdAt).toLocaleDateString()} ${new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                                      : ''}
+                                  </span>
+                                </div>
+                                <p className="text-zinc-800 whitespace-pre-wrap leading-relaxed">
+                                  {c.message}
+                                </p>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {/* Comment Composer */}
+                      <form onSubmit={handlePostRemark} className="pt-2 border-t border-zinc-100 flex gap-2">
+                        <input
+                          type="text"
+                          value={newRemarkText}
+                          onChange={(e) => setNewRemarkText(e.target.value)}
+                          placeholder="Type negotiation note or response..."
+                          className="flex-1 h-9 px-3 text-xs rounded-lg bg-white border border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isSubmittingRemark || !newRemarkText.trim()}
+                          className="h-9 px-3.5 bg-zinc-900 hover:bg-black disabled:opacity-50 text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer shrink-0"
+                        >
+                          {isSubmittingRemark ? 'Posting...' : 'Send Note'}
+                        </button>
+                      </form>
+                    </div>
+                  )}
+
+                  {/* TAB 2: GOVERNANCE AUDIT TRAIL */}
+                  {historyTab === 'audit' && (
+                    <div className="space-y-3">
+                      {(!selectedQuote.auditLogs || selectedQuote.auditLogs.length === 0) ? (
+                        <div className="p-4 rounded-xl bg-zinc-50 border border-zinc-200 text-center">
+                          <p className="text-xs text-zinc-600 font-medium">
+                            No formal governance review events recorded yet.
+                          </p>
+                          <p className="text-[11px] text-zinc-400 mt-1">
+                            Approval submissions, manager reviews, and policy overrides will appear here.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-zinc-200 max-h-72 overflow-y-auto pr-1">
+                          {selectedQuote.auditLogs.map((log, idx) => (
+                            <div key={log.id || idx} className="relative flex items-start gap-3 pl-1">
+                              <span className="w-2.5 h-2.5 rounded-full bg-zinc-900 border-2 border-white shadow-xs shrink-0 mt-1"></span>
+                              <div className="p-3 rounded-lg bg-zinc-50 border border-zinc-200 text-xs flex-1">
+                                <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-semibold text-zinc-900">
+                                      {log.actorName}
+                                    </span>
+                                    <span className="text-[10px] text-zinc-500 font-normal">
+                                      ({log.actorRole})
+                                    </span>
+                                    {log.action && (
+                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider bg-zinc-100 text-zinc-800 border border-zinc-200">
+                                        {log.action}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-[10px] text-zinc-400">
+                                    {log.timestamp || log.createdAt
+                                      ? `${new Date(log.timestamp || log.createdAt).toLocaleDateString()} ${new Date(log.timestamp || log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                                      : ''}
+                                  </span>
+                                </div>
+                                <p className="text-zinc-700 font-normal leading-relaxed">
+                                  {log.comment || log.note || `Action recorded: ${log.action}`}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
