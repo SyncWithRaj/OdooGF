@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import TopHeader from './TopHeader';
 
-export default function AppLayout({ children }) {
+export default function AppLayout({ children, maxWidth = 'max-w-7xl' }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -57,7 +57,7 @@ export default function AppLayout({ children }) {
         />
 
         {/* Page Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main className={`flex-1 p-4 sm:p-6 lg:p-8 w-full mx-auto ${maxWidth}`}>
           {children}
         </main>
       </div>
