@@ -39,8 +39,7 @@ export default function ProfilePage() {
   const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [resetDispatched, setResetDispatched] = useState(false);
-  const [resetMagicLink, setResetMagicLink] = useState('');
-  const [copiedLink, setCopiedLink] = useState(false);
+
 
   // Derive title from role
   const getRoleTitle = (r) => {
@@ -236,13 +235,10 @@ export default function ProfilePage() {
     setIsResetting(true);
     try {
       if (initiatePasswordReset) {
-        const res = await initiatePasswordReset(profile.email);
+        await initiatePasswordReset(profile.email);
         setResetDispatched(true);
-        if (res?.magicLink) {
-          setResetMagicLink(res.magicLink);
-        }
       }
-      toast.success(`Password reset magic link dispatched to ${profile.email}`);
+      toast.success(`Password reset link dispatched to ${profile.email}`);
     } catch (err) {
       toast.error(err?.message || 'Failed to dispatch password reset');
     } finally {
@@ -253,16 +249,8 @@ export default function ProfilePage() {
   const handleCloseResetModal = () => {
     setShowResetConfirmModal(false);
     setResetDispatched(false);
-    setResetMagicLink('');
-    setCopiedLink(false);
   };
 
-  const handleCopyProfileLink = () => {
-    if (!resetMagicLink) return;
-    navigator.clipboard.writeText(resetMagicLink);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2000);
-  };
 
 
   return (
@@ -575,39 +563,27 @@ export default function ProfilePage() {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <div className="p-3.5 rounded-xl bg-zinc-50 border border-zinc-200 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-zinc-900">Email Dispatched</span>
-                      <span className="text-[10px] text-zinc-500 font-mono">Valid 15m</span>
-                    </div>
-                    <p className="text-xs text-zinc-600 leading-relaxed">
+                <div className="space-y-4 py-2">
+                  <div className="w-12 h-12 rounded-2xl bg-zinc-100 border border-zinc-200 text-zinc-900 mx-auto flex items-center justify-center">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div className="text-center">
+                    <h4 className="text-sm font-bold text-zinc-900">Check Your Email</h4>
+                    <p className="text-xs text-zinc-600 mt-1.5 leading-relaxed">
                       A secure password reset link has been dispatched to <strong className="text-zinc-900 font-mono">{profile.email}</strong>.
+                    </p>
+                    <p className="text-[11px] text-zinc-400 mt-2 leading-relaxed">
+                      Please open your email inbox and click the reset button in the message to choose your new password. For security, the link will expire in 15 minutes.
                     </p>
                   </div>
 
-                  <div className="space-y-2 pt-1">
-                    <Link
-                      href={resetMagicLink || `/auth/reset-password?email=${encodeURIComponent(profile.email)}`}
-                      className="w-full py-2.5 px-4 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-semibold transition text-center shadow-xs block"
-                    >
-                      Reset Password Now &rarr;
-                    </Link>
-
-                    {resetMagicLink && (
-                      <button
-                        type="button"
-                        onClick={handleCopyProfileLink}
-                        className="w-full py-2 px-4 rounded-xl border border-zinc-200 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition cursor-pointer"
-                      >
-                        {copiedLink ? 'Copied to Clipboard' : 'Copy Magic Link'}
-                      </button>
-                    )}
-
+                  <div className="pt-2">
                     <button
                       type="button"
                       onClick={handleCloseResetModal}
-                      className="w-full py-2 px-4 text-xs font-medium text-zinc-500 hover:text-zinc-900 transition text-center block cursor-pointer"
+                      className="w-full py-2.5 px-4 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-semibold transition shadow-xs cursor-pointer"
                     >
                       Done
                     </button>

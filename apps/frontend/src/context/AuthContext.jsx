@@ -151,82 +151,52 @@ export function AuthProvider({ children }) {
     return saveSession(sessionUser, data.accessToken, data.refreshToken);
   };
 
-  // Step 1: Initiate signup (dispatches 6-digit OTP email or generates dev OTP)
+  // Step 1: Initiate signup (dispatches 6-digit OTP email via nodemailer)
   const initiateSignup = async (fullName, email, password, confirmPassword) => {
-    try {
-      const res = await fetch(`${API_URL}/api/auth/signup/initiate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fullName: fullName.trim(),
-          email: email.trim(),
-          password,
-          confirmPassword,
-        }),
-      });
+    const res = await fetch(`${API_URL}/api/auth/signup/initiate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fullName: fullName.trim(),
+        email: email.trim(),
+        password,
+        confirmPassword,
+      }),
+    });
 
-      const data = await res.json();
-      if (res.ok) return data;
-      if (data.message) {
-        throw new Error(Array.isArray(data.message) ? data.message.join(', ') : data.message);
-      }
-    } catch (err) {
-      if (err.message && !err.message.includes('fetch')) throw err;
-    }
-
-    // Offline mock OTP generator
-    return {
-      message: 'Verification code generated.',
-      devOtp: '123456',
-    };
+    const data = await res.json();
+    if (res.ok) return data;
+    const msg = Array.isArray(data?.message) ? data.message.join(', ') : data?.message || 'Failed to initiate signup';
+    throw new Error(msg);
   };
 
   // Step 2: Verify OTP and create Customer account
   const verifySignup = async (email, otp) => {
     const normalizedEmail = email.trim().toLowerCase();
 
-    try {
-      const res = await fetch(`${API_URL}/api/auth/signup/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: normalizedEmail,
-          otp: otp.trim(),
-        }),
-      });
-
-      const data = await res.json();
-      if (res.ok && data.user) {
-        const sessionUser = {
-          id: data.user.id,
-          email: data.user.email,
-          name: data.user.fullName,
-          role: normalizeRole(data.user.role),
-          teamName: null,
-        };
-        return saveSession(sessionUser, data.accessToken, data.refreshToken);
-      }
-
-      if (!res.ok && data.message) {
-        throw new Error(Array.isArray(data.message) ? data.message.join(', ') : data.message);
-      }
-    } catch (err) {
-      if (err.message && !err.message.includes('fetch')) throw err;
-    }
-
-    // Offline fallback verification
-    if (otp === '123456' || otp.length === 6) {
-      const sessionUser = {
-        id: 'usr_' + Date.now(),
+    const res = await fetch(`${API_URL}/api/auth/signup/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         email: normalizedEmail,
-        name: normalizedEmail.split('@')[0],
-        role: 'customer',
+        otp: otp.trim(),
+      }),
+    });
+
+    const data = await res.json();
+    if (res.ok && data.user) {
+      const sessionUser = {
+        id: data.user.id,
+        email: data.user.email,
+        name: data.user.fullName,
+        role: normalizeRole(data.user.role),
         teamName: null,
       };
-      return saveSession(sessionUser, 'demo_token_' + Date.now(), 'demo_refresh');
+      return saveSession(sessionUser, data.accessToken, data.refreshToken);
     }
 
-    throw new Error('Invalid OTP code. Use 123456 in dev mode.');
+    const msg = Array.isArray(data?.message) ? data.message.join(', ') : data?.message || 'Invalid or expired verification code';
+    throw new Error(msg);
   };
 
   const logout = async () => {
@@ -246,28 +216,11 @@ export function AuthProvider({ children }) {
   };
 
   const initiatePasswordReset = async (email) => {
-    try {
-      return await apiClient.initiatePasswordReset(email);
-    } catch (err) {
-      if (err.message && !err.message.includes('fetch')) throw err;
-      return {
-        success: true,
-        message: 'Password reset link sent to your email.',
-        devOtp: '123456',
-        magicLink: `/auth/reset-password?token=dev_token_${Date.now()}&email=${encodeURIComponent(email)}`,
-      };
-    }
+    return await apiClient.initiatePasswordReset(email);
   };
 
   const validatePasswordResetToken = async (token, email) => {
-    try {
-      return await apiClient.validatePasswordResetToken(token, email);
-    } catch (err) {
-      if (token && (token.startsWith('dev_') || token.length >= 6)) {
-        return { valid: true, email: email || 'user@example.com' };
-      }
-      return { valid: false, message: 'Invalid or expired reset link' };
-    }
+    return await apiClient.validatePasswordResetToken(token, email);
   };
 
   const verifyPasswordReset = async (param1, param2, param3, param4) => {
@@ -290,13 +243,9 @@ export function AuthProvider({ children }) {
       };
     }
 
-    try {
-      return await apiClient.verifyPasswordReset(payload);
-    } catch (err) {
-      if (err.message && !err.message.includes('fetch')) throw err;
-      return { success: true, message: 'Password updated successfully!' };
-    }
+    return await apiClient.verifyPasswordReset(payload);
   };
+
 
   const updateProfile = async (data) => {
     const updated = user ? { ...user, ...data } : data;

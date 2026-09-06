@@ -24,14 +24,6 @@ export default function AuthPage() {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [resetStep, setResetStep] = useState(1);
   const [resetEmail, setResetEmail] = useState('');
-  const [resetOtp, setResetOtp] = useState('');
-  const [resetToken, setResetToken] = useState('');
-  const [resetMagicLink, setResetMagicLink] = useState('');
-  const [resetNewPassword, setResetNewPassword] = useState('');
-  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
-  const [showResetPassword, setShowResetPassword] = useState(false);
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
@@ -68,66 +60,14 @@ export default function AuthPage() {
     try {
       const res = await initiatePasswordReset(resetEmail);
       setResetStep(2);
-      setResetSuccess(res?.message || 'Password reset magic link dispatched to your registered email.');
-      if (res?.magicLink) {
-        setResetMagicLink(res.magicLink);
-      }
-      if (res?.token) {
-        setResetToken(res.token);
-        setResetOtp(res.token);
-      }
+      setResetSuccess(res?.message || 'Password reset link dispatched to your registered email.');
     } catch (err) {
-      setResetError(err.message || 'Failed to dispatch reset magic link.');
+      setResetError(err.message || 'Failed to dispatch reset link.');
     } finally {
       setResetLoading(false);
     }
   };
 
-  const handleVerifyReset = async (e) => {
-    e.preventDefault();
-    setResetError('');
-    const tokenToUse = (resetToken || resetOtp || '').trim();
-    if (!tokenToUse) {
-      return setResetError('Please enter your reset token or code.');
-    }
-    if (!resetNewPassword || resetNewPassword.length < 6) {
-      return setResetError('Password must be at least 6 characters.');
-    }
-    if (resetNewPassword !== resetConfirmPassword) {
-      return setResetError('Passwords do not match.');
-    }
-    setResetLoading(true);
-    try {
-      await verifyPasswordReset({
-        email: resetEmail,
-        token: tokenToUse,
-        newPassword: resetNewPassword,
-        confirmNewPassword: resetConfirmPassword,
-      });
-      setResetSuccess('Password reset successfully! You can now sign in.');
-      setEmail(resetEmail);
-      setTimeout(() => {
-        setIsResetModalOpen(false);
-        setResetStep(1);
-        setResetOtp('');
-        setResetToken('');
-        setResetMagicLink('');
-        setResetNewPassword('');
-        setResetConfirmPassword('');
-      }, 2000);
-    } catch (err) {
-      setResetError(err.message || 'Failed to reset password.');
-    } finally {
-      setResetLoading(false);
-    }
-  };
-
-  const handleCopyLink = () => {
-    if (!resetMagicLink) return;
-    navigator.clipboard.writeText(resetMagicLink);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2000);
-  };
 
 
 
@@ -168,10 +108,7 @@ export default function AuthPage() {
         try {
           const res = await initiateSignup(name, email, password, confirm);
           setSignupStep(2);
-          setInfoMessage(res.message || 'Verification code sent!');
-          if (res.devOtp) {
-            setInfoMessage(`Verification code sent! (Dev OTP: ${res.devOtp})`);
-          }
+          setInfoMessage(res.message || 'Verification code sent to your email address. Please check your inbox.');
         } catch (err) {
           setError(err?.message || 'Failed to initiate signup.');
         } finally {
@@ -613,155 +550,36 @@ export default function AuthPage() {
                 </div>
               </form>
             ) : (
-              <div className="space-y-4">
-                {/* Magic Link Direct Access Banner */}
-                <div className="p-3.5 rounded-xl bg-zinc-50 border border-zinc-200 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-zinc-700 uppercase tracking-wider">
-                      Magic Reset Link
-                    </span>
-                    <span className="text-[10px] text-zinc-500 font-mono">Expires in 15m</span>
-                  </div>
-                  <p className="text-xs text-zinc-600">
-                    A secure reset link has been dispatched. You can click below to open the dedicated reset page directly:
+              <div className="space-y-4 py-2">
+                <div className="w-12 h-12 rounded-2xl bg-zinc-100 border border-zinc-200 text-zinc-900 mx-auto flex items-center justify-center">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div className="text-center">
+                  <h4 className="text-sm font-bold text-zinc-900">Check Your Email</h4>
+                  <p className="text-xs text-zinc-600 mt-1.5 leading-relaxed">
+                    We have dispatched a password reset link to <strong className="text-zinc-900 font-mono">{resetEmail}</strong>.
                   </p>
-                  <div className="flex flex-col sm:flex-row gap-2 pt-1">
-                    <Link
-                      href={resetMagicLink || `/auth/reset-password?token=${resetToken}&email=${encodeURIComponent(resetEmail)}`}
-                      className="flex-1 py-2 px-3 rounded-lg bg-zinc-900 hover:bg-black text-white text-xs font-semibold transition text-center shadow-2xs"
-                    >
-                      Open Reset Page &rarr;
-                    </Link>
-                    {resetMagicLink && (
-                      <button
-                        type="button"
-                        onClick={handleCopyLink}
-                        className="py-2 px-3 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 text-xs font-medium transition cursor-pointer"
-                      >
-                        {copiedLink ? 'Copied' : 'Copy Link'}
-                      </button>
-                    )}
-                  </div>
+                  <p className="text-[11px] text-zinc-400 mt-2 leading-relaxed">
+                    Please open your email inbox and click the reset link to choose your new password. For security, the link will expire in 15 minutes.
+                  </p>
                 </div>
 
-                <div className="relative flex py-1 items-center">
-                  <div className="flex-grow border-t border-zinc-200"></div>
-                  <span className="shrink mx-3 text-[10px] text-zinc-400 uppercase tracking-widest font-semibold">
-                    Or update password here
-                  </span>
-                  <div className="flex-grow border-t border-zinc-200"></div>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsResetModalOpen(false);
+                      setResetStep(1);
+                      setResetEmail('');
+                      setResetSuccess('');
+                    }}
+                    className="w-full py-2.5 px-4 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-semibold transition shadow-xs cursor-pointer"
+                  >
+                    Back to Sign In
+                  </button>
                 </div>
-
-                <form onSubmit={handleVerifyReset} className="space-y-3.5">
-                  <div>
-                    <label className={labelCls}>New Password</label>
-                    <div className="relative">
-                      <input
-                        type={showResetPassword ? 'text' : 'password'}
-                        required
-                        placeholder="At least 6 characters"
-                        value={resetNewPassword}
-                        onChange={(e) => setResetNewPassword(e.target.value)}
-                        className={`${inputCls} pr-10`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowResetPassword(!showResetPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition cursor-pointer"
-                        aria-label={showResetPassword ? 'Hide password' : 'Show password'}
-                      >
-                        {showResetPassword ? (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
-                        ) : (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className={labelCls}>Confirm New Password</label>
-                    <div className="relative">
-                      <input
-                        type={showResetConfirm ? 'text' : 'password'}
-                        required
-                        placeholder="Re-enter new password"
-                        value={resetConfirmPassword}
-                        onChange={(e) => setResetConfirmPassword(e.target.value)}
-                        className={`${inputCls} pr-10`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowResetConfirm(!showResetConfirm)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition cursor-pointer"
-                        aria-label={showResetConfirm ? 'Hide password' : 'Show password'}
-                      >
-                        {showResetConfirm ? (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
-                        ) : (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Password Requirements Checklist (matching signup constraints) */}
-                  <div className="py-2 px-2.5 rounded-lg bg-zinc-50 border border-zinc-200/60 space-y-1">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`w-3 h-3 rounded-full flex items-center justify-center text-[8px] ${
-                          resetNewPassword.length >= 6 ? 'bg-zinc-900 text-white' : 'bg-zinc-200 text-zinc-500'
-                        }`}
-                      >
-                        {resetNewPassword.length >= 6 ? '✓' : '•'}
-                      </span>
-                      <span className={`text-[10px] ${resetNewPassword.length >= 6 ? 'text-zinc-900 font-medium' : 'text-zinc-500'}`}>
-                        Minimum 6 characters
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`w-3 h-3 rounded-full flex items-center justify-center text-[8px] ${
-                          resetNewPassword.length > 0 && resetNewPassword === resetConfirmPassword
-                            ? 'bg-zinc-900 text-white'
-                            : 'bg-zinc-200 text-zinc-500'
-                        }`}
-                      >
-                        {resetNewPassword.length > 0 && resetNewPassword === resetConfirmPassword ? '✓' : '•'}
-                      </span>
-                      <span
-                        className={`text-[10px] ${
-                          resetNewPassword.length > 0 && resetNewPassword === resetConfirmPassword
-                            ? 'text-zinc-900 font-medium'
-                            : 'text-zinc-500'
-                        }`}
-                      >
-                        Passwords must match
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setResetStep(1)}
-                      className="text-xs text-zinc-500 hover:text-zinc-900 hover:underline transition cursor-pointer"
-                    >
-                      &larr; Back to email
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={
-                        resetLoading ||
-                        resetNewPassword.length < 6 ||
-                        resetNewPassword !== resetConfirmPassword
-                      }
-                      className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-xs"
-                    >
-                      {resetLoading ? 'Updating...' : 'Update Password'}
-                    </button>
-                  </div>
-                </form>
               </div>
             )}
           </div>
