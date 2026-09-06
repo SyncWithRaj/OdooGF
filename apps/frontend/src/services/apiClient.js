@@ -730,6 +730,20 @@ export const apiClient = {
     });
   },
 
+  // ==================== Razorpay Payment Gateway ====================
+  async createRazorpayOrder(invoiceId) {
+    return apiRequest(`/api/invoices/${invoiceId}/razorpay/order`, {
+      method: 'POST',
+    });
+  },
+
+  async verifyRazorpayPayment(invoiceId, payload) {
+    return apiRequest(`/api/invoices/${invoiceId}/razorpay/verify`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
   // ==================== Password Reset & Auth ====================
   async initiatePasswordReset(email) {
     const res = await fetch(`${API_URL}/api/auth/password-reset/initiate`, {

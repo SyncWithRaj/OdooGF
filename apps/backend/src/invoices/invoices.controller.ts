@@ -12,7 +12,7 @@ import { Role } from '@prisma/client';
 import { Roles } from '../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
-import { InvoiceQueryDto, PayInvoiceDto } from './dto/invoice.dto';
+import { InvoiceQueryDto, PayInvoiceDto, VerifyRazorpayPaymentDto } from './dto/invoice.dto';
 import { InvoicesService } from './invoices.service';
 
 @ApiTags('Invoices & Payments (Screens 12 & 13, B9)')
@@ -55,5 +55,28 @@ export class InvoicesController {
     @Body() dto: PayInvoiceDto,
   ) {
     return this.invoicesService.payInvoice(id, dto);
+  }
+
+  // --------------------------------------------------------------------------
+  // RAZORPAY ENDPOINTS
+  // --------------------------------------------------------------------------
+
+  @Post(':id/razorpay/order')
+  @Roles(Role.ADMIN, Role.FINANCE, Role.CUSTOMER, Role.SALES_REP, Role.SALES_MANAGER)
+  @ApiOperation({ summary: 'Create a Razorpay order for the given invoice' })
+  @ApiResponse({ status: 201, description: 'Razorpay order created — use orderId + keyId to open checkout' })
+  async createRazorpayOrder(@Param('id') id: string) {
+    return this.invoicesService.createRazorpayOrder(id);
+  }
+
+  @Post(':id/razorpay/verify')
+  @Roles(Role.ADMIN, Role.FINANCE, Role.CUSTOMER, Role.SALES_REP, Role.SALES_MANAGER)
+  @ApiOperation({ summary: 'Verify Razorpay payment signature and record payment' })
+  @ApiResponse({ status: 200, description: 'Signature verified, payment recorded, invoice marked PAID' })
+  async verifyRazorpayPayment(
+    @Param('id') id: string,
+    @Body() dto: VerifyRazorpayPaymentDto,
+  ) {
+    return this.invoicesService.verifyAndRecordRazorpayPayment(id, dto);
   }
 }
