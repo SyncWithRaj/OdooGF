@@ -8,6 +8,8 @@ import { useAuth } from '@/context/AuthContext';
 import { quotationsService } from '@/services/quotationsService';
 import { apiClient } from '@/services/apiClient';
 import { toast } from 'react-toastify';
+import Pagination from '@/components/Pagination';
+import { usePagination } from '@/hooks/usePagination';
 
 function CustomerPortalInner() {
   const { user } = useAuth();
@@ -18,6 +20,14 @@ function CustomerPortalInner() {
   const [quotations, setQuotations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedQuote, setSelectedQuote] = useState(null);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    totalItems,
+    paginatedItems: paginatedQuotes,
+  } = usePagination(quotations, 5);
 
   // Negotiation Modal
   const [isNegotiateModalOpen, setIsNegotiateModalOpen] = useState(false);
@@ -214,7 +224,7 @@ function CustomerPortalInner() {
                 <span className="text-[11px] font-bold text-slate-500">{quotations.length}</span>
               </div>
 
-              {quotations.map((q) => {
+              {paginatedQuotes.map((q) => {
                 const isSelected = selectedQuote?.id === q.id;
                 return (
                   <div
@@ -257,6 +267,14 @@ function CustomerPortalInner() {
                   </div>
                 );
               })}
+
+              <Pagination
+                compact={true}
+                currentPage={currentPage}
+                totalItems={totalItems}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+              />
             </div>
 
             {/* Right: Selected Quotation Details & Digital Sign-off */}
