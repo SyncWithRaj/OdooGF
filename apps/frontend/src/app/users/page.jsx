@@ -5,6 +5,8 @@ import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { apiClient } from '@/services/apiClient';
 import { toast } from 'react-toastify';
+import Pagination from '@/components/Pagination';
+import { usePagination } from '@/hooks/usePagination';
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
@@ -64,6 +66,20 @@ export default function UsersPage() {
       return true;
     });
   }, [users, activeRole, searchQuery]);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems: paginatedUsers,
+    resetPage,
+  } = usePagination(filteredUsers, 10);
+
+  useEffect(() => {
+    resetPage();
+  }, [activeRole, searchQuery]);
 
   // Metrics
   const metrics = useMemo(() => {
@@ -242,14 +258,14 @@ export default function UsersPage() {
                       Loading users from database...
                     </td>
                   </tr>
-                ) : filteredUsers.length === 0 ? (
+                ) : paginatedUsers.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="py-12 text-center text-slate-400 font-medium">
                       No users found.
                     </td>
                   </tr>
                 ) : (
-                  filteredUsers.map((u) => (
+                  paginatedUsers.map((u) => (
                     <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
                       {/* Name + Email */}
                       <td className="py-4 px-4">
@@ -300,6 +316,14 @@ export default function UsersPage() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            currentPage={currentPage}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[10, 25, 50]}
+          />
         </div>
 
         {/* PROVISION USER MODAL */}
