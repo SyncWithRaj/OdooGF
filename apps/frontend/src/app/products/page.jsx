@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { apiClient } from '@/services/apiClient';
 import { toast } from 'react-toastify';
+import Pagination from '@/components/Pagination';
+import { usePagination } from '@/hooks/usePagination';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
@@ -129,6 +131,20 @@ export default function ProductsPage() {
       return true;
     });
   }, [products, activeCategory, searchQuery]);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems: paginatedProducts,
+    resetPage,
+  } = usePagination(filteredProducts, 10);
+
+  useEffect(() => {
+    resetPage();
+  }, [activeCategory, searchQuery]);
 
   // Metrics
   const metrics = useMemo(() => {
@@ -298,14 +314,14 @@ export default function ProductsPage() {
                     Loading live products from database...
                   </td>
                 </tr>
-              ) : filteredProducts.length === 0 ? (
+              ) : paginatedProducts.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-slate-400 font-medium">
                     No products found matching criteria.
                   </td>
                 </tr>
               ) : (
-                filteredProducts.map((prod) => {
+                paginatedProducts.map((prod) => {
                   const margin = prod.baseMarginPercent ?? (
                     prod.basePrice > 0
                       ? Number((((prod.basePrice - prod.baseCost) / prod.basePrice) * 100).toFixed(1))
@@ -408,6 +424,14 @@ export default function ProductsPage() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          pageSizeOptions={[10, 25, 50]}
+        />
       </div>
 
       {/* CREATE PRODUCT MODAL */}
