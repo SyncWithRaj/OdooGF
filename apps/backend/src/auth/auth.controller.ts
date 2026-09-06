@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -79,18 +80,30 @@ export class AuthController {
   @Post('password-reset/initiate')
   @RateLimit({ limit: 5, ttl: 60 })
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Step 1: Request password reset OTP email' })
-  @ApiResponse({ status: 200, description: 'Reset code dispatched if account exists' })
+  @ApiOperation({ summary: 'Step 1: Request password reset magic link email' })
+  @ApiResponse({ status: 200, description: 'Reset link dispatched if account exists' })
   async initiatePasswordReset(@Body() dto: PasswordResetInitiateDto) {
     return this.authService.initiatePasswordReset(dto);
+  }
+
+  @Get('password-reset/validate')
+  @RateLimit({ limit: 30, ttl: 60 })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Validate password reset magic link token' })
+  @ApiResponse({ status: 200, description: 'Token validation status' })
+  async validatePasswordResetToken(
+    @Query('token') token: string,
+    @Query('email') email?: string,
+  ) {
+    return this.authService.validatePasswordResetToken(token, email);
   }
 
   @Post('password-reset/verify')
   @RateLimit({ limit: 5, ttl: 60 })
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Step 2: Verify OTP and update password with argon2 hash' })
+  @ApiOperation({ summary: 'Step 2: Verify token and update password with argon2 hash' })
   @ApiResponse({ status: 200, description: 'Password reset successful' })
-  @ApiResponse({ status: 400, description: 'Invalid OTP or mismatched passwords' })
+  @ApiResponse({ status: 400, description: 'Invalid token or mismatched passwords' })
   async verifyPasswordReset(@Body() dto: PasswordResetVerifyDto) {
     return this.authService.verifyPasswordReset(dto);
   }

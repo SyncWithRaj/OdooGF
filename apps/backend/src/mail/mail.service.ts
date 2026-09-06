@@ -76,4 +76,65 @@ export class MailService {
 
     return true;
   }
+
+  async sendPasswordResetMagicLink(to: string, magicLink: string, token: string, otp?: string): Promise<boolean> {
+    const subject = 'Reset Your Password - DealFlow360';
+    const html = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; border: 1px solid #e4e4e7; border-radius: 12px; background-color: #ffffff; color: #18181b;">
+        <div style="margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #f4f4f5;">
+          <h2 style="font-size: 18px; font-weight: 800; color: #09090b; margin: 0; letter-spacing: -0.5px;">DealFlow360</h2>
+          <span style="font-size: 11px; font-weight: 600; color: #71717a; text-transform: uppercase;">Enterprise CPQ Operations</span>
+        </div>
+        <h3 style="font-size: 16px; font-weight: 700; color: #09090b; margin-top: 0;">Password Reset Request</h3>
+        <p style="font-size: 14px; line-height: 1.6; color: #3f3f46;">
+          We received a request to reset your DealFlow360 password for <strong>${to}</strong>. Click the magic button below to choose a new password:
+        </p>
+        <div style="text-align: center; margin: 28px 0;">
+          <a href="${magicLink}" target="_blank" style="display: inline-block; background-color: #18181b; color: #ffffff; font-size: 13px; font-weight: 600; text-decoration: none; padding: 12px 28px; border-radius: 8px; letter-spacing: 0.2px;">
+            Reset Password
+          </a>
+        </div>
+        <p style="font-size: 12px; color: #71717a; line-height: 1.5; margin-bottom: 6px;">
+          Or copy and paste this link into your browser:
+        </p>
+        <p style="font-size: 11px; word-break: break-all; color: #2563eb; background-color: #f4f4f5; padding: 8px 10px; border-radius: 6px; font-family: monospace;">
+          ${magicLink}
+        </p>
+        ${otp ? `
+        <p style="font-size: 12px; color: #71717a; margin-top: 16px;">
+          Fallback 6-digit verification code: <strong style="font-family: monospace; font-size: 14px; color: #09090b; letter-spacing: 2px;">${otp}</strong>
+        </p>` : ''}
+        <p style="font-size: 12px; color: #a1a1aa; margin-top: 24px; border-top: 1px solid #f4f4f5; pt-3;">
+          This link will expire in <strong>15 minutes</strong>. If you did not request this, you can safely ignore this email.
+        </p>
+      </div>
+    `;
+
+    console.log('\n======================================================');
+    console.log(`🪄 [DealFlow360 PASSWORD RESET MAGIC LINK]`);
+    console.log(`📬 To:         ${to}`);
+    console.log(`🔗 Magic Link: ${magicLink}`);
+    console.log(`🔑 Token:      ${token}`);
+    if (otp) console.log(`⚡ OTP:        ${otp}`);
+    console.log(`⏰ Expiry:     15 Minutes`);
+    console.log('======================================================\n');
+
+    if (this.transporter) {
+      try {
+        await this.transporter.sendMail({
+          from: process.env.SMTP_FROM || 'DealFlow360 <no-reply@dealflow360.com>',
+          to,
+          subject,
+          html,
+        });
+        this.logger.log(`✅ Password reset magic link email sent to ${to}`);
+        return true;
+      } catch (err) {
+        this.logger.error(`❌ SMTP send error for ${to}: ${err.message}`);
+        return true;
+      }
+    }
+
+    return true;
+  }
 }

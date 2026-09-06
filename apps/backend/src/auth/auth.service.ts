@@ -9,9 +9,11 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import * as argon2 from 'argon2';
+import * as crypto from 'crypto';
 import {
   LoginDto,
   PasswordResetInitiateDto,
+  PasswordResetValidateDto,
   PasswordResetVerifyDto,
   SignupInitiateDto,
   SignupVerifyDto,
@@ -256,7 +258,7 @@ export class AuthService {
   }
 
   // ----------------------------------------------------------------------------
-  // 6. PASSWORD RESET STEP 1: INITIATE
+  // 6. PASSWORD RESET STEP 1: INITIATE (MAGIC LINK)
   // ----------------------------------------------------------------------------
   async initiatePasswordReset(dto: PasswordResetInitiateDto) {
     const normalizedEmail = dto.email.toLowerCase().trim();
@@ -269,12 +271,14 @@ export class AuthService {
       // Don't reveal if user exists for security, but return generic success
       return {
         success: true,
-        message: 'If an account exists with this email, a reset code has been sent.',
+        message: 'If an account exists with this email, a reset magic link has been dispatched.',
       };
     }
 
+    // Generate secure 32-byte hex token and 6-digit fallback OTP
+    const token = crypto.randomBytes(32).toString('hex');
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
     await this.prisma.otpVerification.deleteMany({
       where: { email: normalizedEmail, type: 'PASSWORD_RESET' },
@@ -283,19 +287,75 @@ export class AuthService {
     await this.prisma.otpVerification.create({
       data: {
         email: normalizedEmail,
-        otp,
+        otp: token,
         type: 'PASSWORD_RESET',
+        payload: JSON.stringify({ otp, email: normalizedEmail, userId: user.id }),
         expiresAt,
       },
     });
 
-    await this.mailService.sendOtpEmail(normalizedEmail, otp, 'PASSWORD_RESET');
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const magicLink = `${frontendUrl}/auth/reset-password?token=${token}&email=${encodeURIComponent(normalizedEmail)}`;
+
+    await this.mailService.sendPasswordResetMagicLink(normalizedEmail, magicLink, token, otp);
 
     return {
       success: true,
-      message: 'Password reset code sent to your email.',
+      message: 'Password reset magic link dispatched to your registered email.',
       email: normalizedEmail,
-      devOtp: process.env.NODE_ENV !== 'production' ? otp : undefined,
+      magicLink,
+      token,
+      devOtp: process.env.NODE_ENV !== 'production' ? token : undefined,
+    };
+  }
+
+  // ----------------------------------------------------------------------------
+  // 6B. PASSWORD RESET VALIDATE TOKEN
+  // ----------------------------------------------------------------------------
+  async validatePasswordResetToken(token: string, email?: string) {
+    if (!token) {
+      throw new BadRequestException('Reset token is required.');
+    }
+
+    const where: any = {
+      type: 'PASSWORD_RESET',
+      expiresAt: { gt: new Date() },
+    };
+    if (email) {
+      where.email = email.toLowerCase().trim();
+    }
+
+    let record = await this.prisma.otpVerification.findFirst({
+      where: {
+        ...where,
+        otp: token.trim(),
+      },
+    });
+
+    if (!record) {
+      // Check fallback OTP in payload
+      const allActive = await this.prisma.otpVerification.findMany({ where });
+      record = allActive.find((r) => {
+        try {
+          const parsed = r.payload ? JSON.parse(r.payload) : {};
+          return parsed.otp === token.trim();
+        } catch {
+          return false;
+        }
+      }) || null;
+    }
+
+    if (!record) {
+      return {
+        valid: false,
+        message: 'This password reset magic link is invalid or has expired. Please request a new one.',
+      };
+    }
+
+    return {
+      valid: true,
+      email: record.email,
+      expiresAt: record.expiresAt,
     };
   }
 
@@ -307,21 +367,47 @@ export class AuthService {
       throw new BadRequestException('Passwords do not match');
     }
 
-    const normalizedEmail = dto.email.toLowerCase().trim();
+    if (!dto.newPassword || dto.newPassword.length < 6) {
+      throw new BadRequestException('Password must be at least 6 characters');
+    }
 
-    const record = await this.prisma.otpVerification.findFirst({
+    const resetToken = (dto.token || dto.otp || '').trim();
+    if (!resetToken) {
+      throw new BadRequestException('Password reset token or verification code is required');
+    }
+
+    const where: any = {
+      type: 'PASSWORD_RESET',
+      expiresAt: { gt: new Date() },
+    };
+    if (dto.email) {
+      where.email = dto.email.toLowerCase().trim();
+    }
+
+    let record = await this.prisma.otpVerification.findFirst({
       where: {
-        email: normalizedEmail,
-        otp: dto.otp.trim(),
-        type: 'PASSWORD_RESET',
-        expiresAt: { gt: new Date() },
+        ...where,
+        otp: resetToken,
       },
     });
 
     if (!record) {
-      throw new BadRequestException('Invalid or expired password reset code.');
+      const allActive = await this.prisma.otpVerification.findMany({ where });
+      record = allActive.find((r) => {
+        try {
+          const parsed = r.payload ? JSON.parse(r.payload) : {};
+          return parsed.otp === resetToken;
+        } catch {
+          return false;
+        }
+      }) || null;
     }
 
+    if (!record) {
+      throw new BadRequestException('Invalid or expired password reset link. Please request a new link.');
+    }
+
+    const normalizedEmail = record.email;
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
     });
@@ -348,6 +434,7 @@ export class AuthService {
     return {
       success: true,
       message: 'Password reset successful. You can now login with your new password.',
+      email: normalizedEmail,
     };
   }
 
