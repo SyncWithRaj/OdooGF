@@ -13,15 +13,22 @@ export class MailService {
     const pass = process.env.SMTP_PASS;
 
     if (host && user && pass) {
-      this.transporter = nodemailer.createTransport({
-        host,
-        port,
-        secure: port === 465,
-        auth: { user, pass },
-      });
-      this.logger.log(`📧 SMTP configured: ${host}:${port}`);
+      this.transporter = nodemailer.createTransport(
+        host.includes('gmail')
+          ? {
+              service: 'gmail',
+              auth: { user, pass },
+            }
+          : {
+              host,
+              port,
+              secure: port === 465,
+              auth: { user, pass },
+            }
+      );
+      this.logger.log(`SMTP service initialized: ${host}:${port}`);
     } else {
-      this.logger.warn('⚠️ SMTP credentials not set. OTPs are logged directly to the server console.');
+      this.logger.warn('SMTP credentials not configured.');
     }
   }
 
@@ -36,7 +43,7 @@ export class MailService {
 
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #ffffff;">
-        <h2 style="color: #2563eb; margin-top: 0;">DealFlow360</h2>
+        <h2 style="color: #18181b; margin-top: 0;">DealFlow360</h2>
         <p style="font-size: 15px; color: #334155;">${actionText}</p>
         <div style="text-align: center; margin: 30px 0;">
           <span style="display: inline-block; font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #0f172a; background-color: #f1f5f9; padding: 12px 24px; border-radius: 6px; border: 1px dashed #94a3b8;">
@@ -45,18 +52,9 @@ export class MailService {
         </div>
         <p style="font-size: 13px; color: #64748b;">This code will expire in <strong>10 minutes</strong>. If you did not request this, please ignore this email.</p>
         <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-        <p style="font-size: 12px; color: #94a3b8; text-align: center;">DealFlow360 — Intelligent Sales Operations Platform</p>
+        <p style="font-size: 12px; color: #94a3b8; text-align: center;">DealFlow360 - Intelligent Sales Operations Platform</p>
       </div>
     `;
-
-    // Always log with high-visibility banner for testing
-    console.log('\n======================================================');
-    console.log(`🔑 [DealFlow360 AUTH OTP]`);
-    console.log(`📬 To:      ${to}`);
-    console.log(`📋 Type:    ${type}`);
-    console.log(`⚡ OTP:     ${otp}`);
-    console.log(`⏰ Expiry:  10 Minutes`);
-    console.log('======================================================\n');
 
     if (this.transporter) {
       try {
@@ -66,15 +64,15 @@ export class MailService {
           subject,
           html,
         });
-        this.logger.log(`✅ OTP email sent to ${to}`);
+        this.logger.log(`OTP verification email successfully sent to ${to}`);
         return true;
       } catch (err) {
-        this.logger.error(`❌ SMTP send error for ${to}: ${err.message}`);
-        return true;
+        this.logger.error(`SMTP send error for ${to}: ${err.message}`);
+        return false;
       }
     }
 
-    return true;
+    return false;
   }
 
   async sendPasswordResetMagicLink(to: string, magicLink: string, token: string, otp?: string): Promise<boolean> {
@@ -87,7 +85,7 @@ export class MailService {
         </div>
         <h3 style="font-size: 16px; font-weight: 700; color: #09090b; margin-top: 0;">Password Reset Request</h3>
         <p style="font-size: 14px; line-height: 1.6; color: #3f3f46;">
-          We received a request to reset your DealFlow360 password for <strong>${to}</strong>. Click the magic button below to choose a new password:
+          We received a request to reset your DealFlow360 password for <strong>${to}</strong>. Click the button below to choose a new password:
         </p>
         <div style="text-align: center; margin: 28px 0;">
           <a href="${magicLink}" target="_blank" style="display: inline-block; background-color: #18181b; color: #ffffff; font-size: 13px; font-weight: 600; text-decoration: none; padding: 12px 28px; border-radius: 8px; letter-spacing: 0.2px;">
@@ -97,27 +95,14 @@ export class MailService {
         <p style="font-size: 12px; color: #71717a; line-height: 1.5; margin-bottom: 6px;">
           Or copy and paste this link into your browser:
         </p>
-        <p style="font-size: 11px; word-break: break-all; color: #2563eb; background-color: #f4f4f5; padding: 8px 10px; border-radius: 6px; font-family: monospace;">
+        <p style="font-size: 11px; word-break: break-all; color: #09090b; background-color: #f4f4f5; padding: 8px 10px; border-radius: 6px; font-family: monospace;">
           ${magicLink}
         </p>
-        ${otp ? `
-        <p style="font-size: 12px; color: #71717a; margin-top: 16px;">
-          Fallback 6-digit verification code: <strong style="font-family: monospace; font-size: 14px; color: #09090b; letter-spacing: 2px;">${otp}</strong>
-        </p>` : ''}
-        <p style="font-size: 12px; color: #a1a1aa; margin-top: 24px; border-top: 1px solid #f4f4f5; pt-3;">
+        <p style="font-size: 12px; color: #a1a1aa; margin-top: 24px; border-top: 1px solid #f4f4f5; padding-top: 12px;">
           This link will expire in <strong>15 minutes</strong>. If you did not request this, you can safely ignore this email.
         </p>
       </div>
     `;
-
-    console.log('\n======================================================');
-    console.log(`🪄 [DealFlow360 PASSWORD RESET MAGIC LINK]`);
-    console.log(`📬 To:         ${to}`);
-    console.log(`🔗 Magic Link: ${magicLink}`);
-    console.log(`🔑 Token:      ${token}`);
-    if (otp) console.log(`⚡ OTP:        ${otp}`);
-    console.log(`⏰ Expiry:     15 Minutes`);
-    console.log('======================================================\n');
 
     if (this.transporter) {
       try {
@@ -127,14 +112,16 @@ export class MailService {
           subject,
           html,
         });
-        this.logger.log(`✅ Password reset magic link email sent to ${to}`);
+        this.logger.log(`Password reset magic link email successfully sent to ${to}`);
         return true;
       } catch (err) {
-        this.logger.error(`❌ SMTP send error for ${to}: ${err.message}`);
-        return true;
+        this.logger.error(`SMTP send error for ${to}: ${err.message}`);
+        return false;
       }
     }
 
-    return true;
+    return false;
   }
 }
+
+

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -22,6 +23,8 @@ import { Role, User } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -77,14 +80,15 @@ export class AuthService {
       },
     });
 
-    // Dispatch email
-    await this.mailService.sendOtpEmail(normalizedEmail, otp, 'SIGNUP');
+    // Dispatch email asynchronously so response is instant
+    this.mailService
+      .sendOtpEmail(normalizedEmail, otp, 'SIGNUP')
+      .catch((err) => this.logger.error(`Failed to dispatch signup OTP: ${err.message}`));
 
     return {
       success: true,
-      message: 'Verification OTP has been sent to your email.',
+      message: 'Verification code has been sent to your email address.',
       email: normalizedEmail,
-      devOtp: process.env.NODE_ENV !== 'production' ? otp : undefined,
     };
   }
 
@@ -297,15 +301,15 @@ export class AuthService {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const magicLink = `${frontendUrl}/auth/reset-password?token=${token}&email=${encodeURIComponent(normalizedEmail)}`;
 
-    await this.mailService.sendPasswordResetMagicLink(normalizedEmail, magicLink, token, otp);
+    // Dispatch email asynchronously so client response is instant
+    this.mailService
+      .sendPasswordResetMagicLink(normalizedEmail, magicLink, token, otp)
+      .catch((err) => this.logger.error(`Failed to dispatch reset email: ${err.message}`));
 
     return {
       success: true,
-      message: 'Password reset magic link dispatched to your registered email.',
+      message: 'Password reset link dispatched to your registered email address.',
       email: normalizedEmail,
-      magicLink,
-      token,
-      devOtp: process.env.NODE_ENV !== 'production' ? token : undefined,
     };
   }
 
