@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect } from 'react';
+import apiClient from '@/services/apiClient';
 
 const AuthContext = createContext(null);
 const STORAGE_KEY = 'dealflow_user';
@@ -150,82 +151,52 @@ export function AuthProvider({ children }) {
     return saveSession(sessionUser, data.accessToken, data.refreshToken);
   };
 
-  // Step 1: Initiate signup (dispatches 6-digit OTP email or generates dev OTP)
+  // Step 1: Initiate signup (dispatches 6-digit OTP email via nodemailer)
   const initiateSignup = async (fullName, email, password, confirmPassword) => {
-    try {
-      const res = await fetch(`${API_URL}/api/auth/signup/initiate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fullName: fullName.trim(),
-          email: email.trim(),
-          password,
-          confirmPassword,
-        }),
-      });
+    const res = await fetch(`${API_URL}/api/auth/signup/initiate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fullName: fullName.trim(),
+        email: email.trim(),
+        password,
+        confirmPassword,
+      }),
+    });
 
-      const data = await res.json();
-      if (res.ok) return data;
-      if (data.message) {
-        throw new Error(Array.isArray(data.message) ? data.message.join(', ') : data.message);
-      }
-    } catch (err) {
-      if (err.message && !err.message.includes('fetch')) throw err;
-    }
-
-    // Offline mock OTP generator
-    return {
-      message: 'Verification code generated.',
-      devOtp: '123456',
-    };
+    const data = await res.json();
+    if (res.ok) return data;
+    const msg = Array.isArray(data?.message) ? data.message.join(', ') : data?.message || 'Failed to initiate signup';
+    throw new Error(msg);
   };
 
   // Step 2: Verify OTP and create Customer account
   const verifySignup = async (email, otp) => {
     const normalizedEmail = email.trim().toLowerCase();
 
-    try {
-      const res = await fetch(`${API_URL}/api/auth/signup/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: normalizedEmail,
-          otp: otp.trim(),
-        }),
-      });
-
-      const data = await res.json();
-      if (res.ok && data.user) {
-        const sessionUser = {
-          id: data.user.id,
-          email: data.user.email,
-          name: data.user.fullName,
-          role: normalizeRole(data.user.role),
-          teamName: null,
-        };
-        return saveSession(sessionUser, data.accessToken, data.refreshToken);
-      }
-
-      if (!res.ok && data.message) {
-        throw new Error(Array.isArray(data.message) ? data.message.join(', ') : data.message);
-      }
-    } catch (err) {
-      if (err.message && !err.message.includes('fetch')) throw err;
-    }
-
-    // Offline fallback verification
-    if (otp === '123456' || otp.length === 6) {
-      const sessionUser = {
-        id: 'usr_' + Date.now(),
+    const res = await fetch(`${API_URL}/api/auth/signup/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         email: normalizedEmail,
-        name: normalizedEmail.split('@')[0],
-        role: 'customer',
+        otp: otp.trim(),
+      }),
+    });
+
+    const data = await res.json();
+    if (res.ok && data.user) {
+      const sessionUser = {
+        id: data.user.id,
+        email: data.user.email,
+        name: data.user.fullName,
+        role: normalizeRole(data.user.role),
         teamName: null,
       };
-      return saveSession(sessionUser, 'demo_token_' + Date.now(), 'demo_refresh');
+      return saveSession(sessionUser, data.accessToken, data.refreshToken);
     }
 
-    throw new Error('Invalid OTP code. Use 123456 in dev mode.');
+    const msg = Array.isArray(data?.message) ? data.message.join(', ') : data?.message || 'Invalid or expired verification code';
+    throw new Error(msg);
   };
 
   const logout = async () => {
@@ -245,41 +216,36 @@ export function AuthProvider({ children }) {
   };
 
   const initiatePasswordReset = async (email) => {
-    try {
-      const res = await fetch(`${API_URL}/api/auth/password-reset/initiate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
-      });
-      const data = await res.json();
-      if (res.ok) return data;
-      throw new Error(Array.isArray(data.message) ? data.message.join(', ') : data.message);
-    } catch (err) {
-      if (err.message && !err.message.includes('fetch')) throw err;
-      return { message: 'Password reset code sent to your email (dev code: 123456)', devOtp: '123456' };
-    }
+    return await apiClient.initiatePasswordReset(email);
   };
 
-  const verifyPasswordReset = async (email, otp, newPassword, confirmNewPassword) => {
-    try {
-      const res = await fetch(`${API_URL}/api/auth/password-reset/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email.trim().toLowerCase(),
-          otp,
-          newPassword,
-          confirmNewPassword,
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) return data;
-      throw new Error(Array.isArray(data.message) ? data.message.join(', ') : data.message);
-    } catch (err) {
-      if (err.message && !err.message.includes('fetch')) throw err;
-      return { message: 'Password updated successfully!' };
-    }
+  const validatePasswordResetToken = async (token, email) => {
+    return await apiClient.validatePasswordResetToken(token, email);
   };
+
+  const verifyPasswordReset = async (param1, param2, param3, param4) => {
+    let payload = {};
+    if (typeof param1 === 'object' && param1 !== null) {
+      payload = {
+        email: param1.email?.trim()?.toLowerCase(),
+        token: param1.token || param1.otp,
+        otp: param1.otp || param1.token,
+        newPassword: param1.newPassword,
+        confirmNewPassword: param1.confirmNewPassword,
+      };
+    } else {
+      payload = {
+        email: param1 ? param1.trim().toLowerCase() : undefined,
+        token: param2,
+        otp: param2,
+        newPassword: param3,
+        confirmNewPassword: param4,
+      };
+    }
+
+    return await apiClient.verifyPasswordReset(payload);
+  };
+
 
   const updateProfile = async (data) => {
     const updated = user ? { ...user, ...data } : data;
@@ -324,6 +290,7 @@ export function AuthProvider({ children }) {
         initiateSignup,
         verifySignup,
         initiatePasswordReset,
+        validatePasswordResetToken,
         verifyPasswordReset,
         logout,
         updateProfile,

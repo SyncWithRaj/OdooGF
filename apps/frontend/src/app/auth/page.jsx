@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -24,9 +24,6 @@ export default function AuthPage() {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [resetStep, setResetStep] = useState(1);
   const [resetEmail, setResetEmail] = useState('');
-  const [resetOtp, setResetOtp] = useState('');
-  const [resetNewPassword, setResetNewPassword] = useState('');
-  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
@@ -43,6 +40,18 @@ export default function AuthPage() {
   } = useAuth();
   const router = useRouter();
 
+  // Prefill email if coming from reset password success redirect
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const emailParam = params.get('email') || params.get('resetEmail');
+      if (emailParam) {
+        setEmail(emailParam);
+        setInfoMessage('Password reset successfully. Please sign in with your new password.');
+      }
+    }
+  }, []);
+
   const handleInitiateReset = async (e) => {
     e.preventDefault();
     setResetError('');
@@ -51,44 +60,15 @@ export default function AuthPage() {
     try {
       const res = await initiatePasswordReset(resetEmail);
       setResetStep(2);
-      setResetSuccess(res.message || 'Password reset OTP dispatched to your email.');
+      setResetSuccess(res?.message || 'Password reset link dispatched to your registered email.');
     } catch (err) {
-      setResetError(err.message || 'Failed to dispatch reset OTP.');
+      setResetError(err.message || 'Failed to dispatch reset link.');
     } finally {
       setResetLoading(false);
     }
   };
 
-  const handleVerifyReset = async (e) => {
-    e.preventDefault();
-    setResetError('');
-    if (!resetOtp || resetOtp.trim().length !== 6) {
-      return setResetError('Please enter the 6-digit OTP.');
-    }
-    if (!resetNewPassword || resetNewPassword.length < 6) {
-      return setResetError('Password must be at least 6 characters.');
-    }
-    if (resetNewPassword !== resetConfirmPassword) {
-      return setResetError('Passwords do not match.');
-    }
-    setResetLoading(true);
-    try {
-      const res = await verifyPasswordReset(resetEmail, resetOtp, resetNewPassword, resetConfirmPassword);
-      setResetSuccess('Password reset successfully! You can now log in.');
-      setEmail(resetEmail);
-      setTimeout(() => {
-        setIsResetModalOpen(false);
-        setResetStep(1);
-        setResetOtp('');
-        setResetNewPassword('');
-        setResetConfirmPassword('');
-      }, 2000);
-    } catch (err) {
-      setResetError(err.message || 'Failed to reset password.');
-    } finally {
-      setResetLoading(false);
-    }
-  };
+
 
 
   // Where to route each persona upon authenticating
@@ -128,10 +108,7 @@ export default function AuthPage() {
         try {
           const res = await initiateSignup(name, email, password, confirm);
           setSignupStep(2);
-          setInfoMessage(res.message || 'Verification code sent!');
-          if (res.devOtp) {
-            setInfoMessage(`Verification code sent! (Dev OTP: ${res.devOtp})`);
-          }
+          setInfoMessage(res.message || 'Verification code sent to your email address. Please check your inbox.');
         } catch (err) {
           setError(err?.message || 'Failed to initiate signup.');
         } finally {
@@ -514,8 +491,8 @@ export default function AuthPage() {
                 <h3 className="text-base font-bold text-zinc-900">Reset Your Password</h3>
                 <p className="text-xs text-zinc-500 mt-0.5">
                   {resetStep === 1
-                    ? 'Enter your email to receive a 6-digit verification code.'
-                    : 'Enter the verification code and choose a new password.'}
+                    ? 'Enter your account email to receive a secure magic link.'
+                    : 'Use the magic link or enter your new password below.'}
                 </p>
               </div>
               <button
@@ -551,6 +528,9 @@ export default function AuthPage() {
                     onChange={(e) => setResetEmail(e.target.value)}
                     className={inputCls}
                   />
+                  <p className="text-[11px] text-zinc-400 mt-1.5 leading-normal">
+                    We will send a secure one-time magic link to this address to verify your identity.
+                  </p>
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
                   <button
@@ -565,66 +545,42 @@ export default function AuthPage() {
                     disabled={resetLoading}
                     className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-semibold transition disabled:opacity-50 cursor-pointer shadow-xs"
                   >
-                    {resetLoading ? 'Sending...' : 'Send Verification Code'}
+                    {resetLoading ? 'Sending Link...' : 'Send Magic Link'}
                   </button>
                 </div>
               </form>
             ) : (
-              <form onSubmit={handleVerifyReset} className="space-y-4">
-                <div>
-                  <label className={labelCls}>6-Digit Verification Code</label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={6}
-                    placeholder="123456"
-                    value={resetOtp}
-                    onChange={(e) => setResetOtp(e.target.value)}
-                    className={`${inputCls} text-center font-mono tracking-widest text-base`}
-                  />
+              <div className="space-y-4 py-2">
+                <div className="w-12 h-12 rounded-2xl bg-zinc-100 border border-zinc-200 text-zinc-900 mx-auto flex items-center justify-center">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div className="text-center">
+                  <h4 className="text-sm font-bold text-zinc-900">Check Your Email</h4>
+                  <p className="text-xs text-zinc-600 mt-1.5 leading-relaxed">
+                    We have dispatched a password reset link to <strong className="text-zinc-900 font-mono">{resetEmail}</strong>.
+                  </p>
+                  <p className="text-[11px] text-zinc-400 mt-2 leading-relaxed">
+                    Please open your email inbox and click the reset link to choose your new password. For security, the link will expire in 15 minutes.
+                  </p>
                 </div>
 
-                <div>
-                  <label className={labelCls}>New Password</label>
-                  <input
-                    type="password"
-                    required
-                    placeholder="At least 6 characters"
-                    value={resetNewPassword}
-                    onChange={(e) => setResetNewPassword(e.target.value)}
-                    className={inputCls}
-                  />
-                </div>
-
-                <div>
-                  <label className={labelCls}>Confirm New Password</label>
-                  <input
-                    type="password"
-                    required
-                    placeholder="Re-enter new password"
-                    value={resetConfirmPassword}
-                    onChange={(e) => setResetConfirmPassword(e.target.value)}
-                    className={inputCls}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between pt-2">
+                <div className="pt-2">
                   <button
                     type="button"
-                    onClick={() => setResetStep(1)}
-                    className="text-xs text-zinc-500 hover:text-zinc-900 hover:underline transition cursor-pointer"
+                    onClick={() => {
+                      setIsResetModalOpen(false);
+                      setResetStep(1);
+                      setResetEmail('');
+                      setResetSuccess('');
+                    }}
+                    className="w-full py-2.5 px-4 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-semibold transition shadow-xs cursor-pointer"
                   >
-                    &larr; Back to email
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={resetLoading}
-                    className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-semibold transition disabled:opacity-50 cursor-pointer shadow-xs"
-                  >
-                    {resetLoading ? 'Updating...' : 'Set New Password'}
+                    Back to Sign In
                   </button>
                 </div>
-              </form>
+              </div>
             )}
           </div>
         </div>

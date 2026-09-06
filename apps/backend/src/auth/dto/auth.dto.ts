@@ -62,16 +62,33 @@ export class PasswordResetInitiateDto {
   email: string;
 }
 
-export class PasswordResetVerifyDto {
-  @ApiProperty({ example: 'rep@dealflow.com', description: 'Registered email address' })
-  @IsEmail()
-  @IsNotEmpty()
-  email: string;
-
-  @ApiProperty({ example: '123456', description: '6-digit OTP' })
+export class PasswordResetValidateDto {
+  @ApiProperty({ example: 'a1b2c3d4e5...', description: 'Magic link token' })
   @IsString()
-  @Length(6, 6)
-  otp: string;
+  @IsNotEmpty()
+  token: string;
+
+  @ApiPropertyOptional({ example: 'rep@dealflow.com', description: 'User email address' })
+  @IsEmail()
+  @IsOptional()
+  email?: string;
+}
+
+export class PasswordResetVerifyDto {
+  @ApiPropertyOptional({ example: 'rep@dealflow.com', description: 'Registered email address' })
+  @IsEmail()
+  @IsOptional()
+  email?: string;
+
+  @ApiPropertyOptional({ example: 'a1b2c3d4...', description: 'Magic link reset token' })
+  @IsString()
+  @IsOptional()
+  token?: string;
+
+  @ApiPropertyOptional({ example: '123456', description: '6-digit OTP or reset token' })
+  @IsString()
+  @IsOptional()
+  otp?: string;
 
   @ApiProperty({ example: 'NewSecureP@ss456', description: 'New password (min 6 chars)' })
   @IsString()

@@ -540,14 +540,57 @@ export const apiClient = {
   async getQuotation(id) {
     const res = await apiRequest(`/api/quotations/${id}`);
     const quote = res.quotation || res;
+
+    // Normalize audit logs from quote.auditLogs or approvalRequests
+    const rawAuditLogs = (quote.auditLogs && Array.isArray(quote.auditLogs))
+      ? quote.auditLogs
+      : (quote.approvalRequests || []).flatMap((ar) =>
+          (ar.auditLogs || []).map((log) => ({
+            id: log.id,
+            approvalRequestId: ar.id,
+            actorName: log.user?.fullName || log.actorName || 'Internal Reviewer',
+            actorRole: log.user?.role || log.actorRole || ar.currentStage || 'SYSTEM',
+            action: log.action,
+            comment: log.note || log.comment || `Action: ${log.action}`,
+            note: log.note || log.comment,
+            timestamp: log.createdAt || log.timestamp,
+            createdAt: log.createdAt || log.timestamp,
+            stage: ar.currentStage,
+            riskLevel: ar.blendedRiskLevel,
+          }))
+        );
+
+    const comments = (quote.comments || []).map((c) => ({
+      id: c.id,
+      authorName: c.authorName || 'Participant',
+      authorRole: c.authorRole || 'USER',
+      message: c.message || '',
+      createdAt: c.createdAt,
+      timestamp: c.createdAt,
+      quotationLineId: c.quotationLineId,
+    }));
+
     return {
       ...quote,
+      auditLogs: rawAuditLogs,
+      comments,
       customerName: quote.customerName || quote.customer?.name || quote.customer?.companyName || 'Direct Client',
       customerEmail: quote.customerEmail || quote.customer?.email || '',
       customerTier: quote.customerTier || quote.customer?.tier || 'BRONZE',
       salesRepName: quote.salesRepName || quote.salesRep?.fullName || quote.salesRep?.email || 'Direct Sales Rep',
       currentStage: quote.currentStage || quote.approvalRequests?.[0]?.currentStage || (quote.blendedRiskScore === 'HIGH' ? 'FINANCE' : 'SALES_MANAGER'),
     };
+  },
+
+  async getQuotationComments(id) {
+    return apiRequest(`/api/quotations/${id}/comments`);
+  },
+
+  async addQuotationComment(id, message, quotationLineId = undefined) {
+    return apiRequest(`/api/quotations/${id}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ message, quotationLineId }),
+    });
   },
 
   async createQuotation(data) {
@@ -686,6 +729,53 @@ export const apiClient = {
       body: JSON.stringify({ message }),
     });
   },
+
+  // ==================== Password Reset & Auth ====================
+  async initiatePasswordReset(email) {
+    const res = await fetch(`${API_URL}/api/auth/password-reset/initiate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
+    });
+    const data = await parseResponseSafe(res);
+    if (!res.ok) {
+      const msg = Array.isArray(data?.message) ? data.message.join(', ') : data?.message || 'Failed to initiate password reset';
+      throw new Error(msg);
+    }
+    return data;
+  },
+
+  async validatePasswordResetToken(token, email) {
+    const params = new URLSearchParams({ token: token?.trim() });
+    if (email) params.append('email', email.trim().toLowerCase());
+    const res = await fetch(`${API_URL}/api/auth/password-reset/validate?${params.toString()}`);
+    const data = await parseResponseSafe(res);
+    if (!res.ok) {
+      return {
+        valid: false,
+        message: Array.isArray(data?.message) ? data.message.join(', ') : data?.message || 'Invalid or expired reset link',
+      };
+    }
+    return data;
+  },
+
+  async verifyPasswordReset(payload) {
+    const res = await fetch(`${API_URL}/api/auth/password-reset/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await parseResponseSafe(res);
+    if (!res.ok) {
+      const msg = Array.isArray(data?.message) ? data.message.join(', ') : data?.message || 'Failed to verify password reset';
+      throw new Error(msg);
+    }
+    return data;
+  },
 };
+
+export default apiClient;
+
+
 
 
