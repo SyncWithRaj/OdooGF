@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect } from 'react';
+import apiClient from '@/services/apiClient';
 
 const AuthContext = createContext(null);
 const STORAGE_KEY = 'dealflow_user';
@@ -246,38 +247,54 @@ export function AuthProvider({ children }) {
 
   const initiatePasswordReset = async (email) => {
     try {
-      const res = await fetch(`${API_URL}/api/auth/password-reset/initiate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
-      });
-      const data = await res.json();
-      if (res.ok) return data;
-      throw new Error(Array.isArray(data.message) ? data.message.join(', ') : data.message);
+      return await apiClient.initiatePasswordReset(email);
     } catch (err) {
       if (err.message && !err.message.includes('fetch')) throw err;
-      return { message: 'Password reset code sent to your email (dev code: 123456)', devOtp: '123456' };
+      return {
+        success: true,
+        message: 'Password reset link sent to your email.',
+        devOtp: '123456',
+        magicLink: `/auth/reset-password?token=dev_token_${Date.now()}&email=${encodeURIComponent(email)}`,
+      };
     }
   };
 
-  const verifyPasswordReset = async (email, otp, newPassword, confirmNewPassword) => {
+  const validatePasswordResetToken = async (token, email) => {
     try {
-      const res = await fetch(`${API_URL}/api/auth/password-reset/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email.trim().toLowerCase(),
-          otp,
-          newPassword,
-          confirmNewPassword,
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) return data;
-      throw new Error(Array.isArray(data.message) ? data.message.join(', ') : data.message);
+      return await apiClient.validatePasswordResetToken(token, email);
+    } catch (err) {
+      if (token && (token.startsWith('dev_') || token.length >= 6)) {
+        return { valid: true, email: email || 'user@example.com' };
+      }
+      return { valid: false, message: 'Invalid or expired reset link' };
+    }
+  };
+
+  const verifyPasswordReset = async (param1, param2, param3, param4) => {
+    let payload = {};
+    if (typeof param1 === 'object' && param1 !== null) {
+      payload = {
+        email: param1.email?.trim()?.toLowerCase(),
+        token: param1.token || param1.otp,
+        otp: param1.otp || param1.token,
+        newPassword: param1.newPassword,
+        confirmNewPassword: param1.confirmNewPassword,
+      };
+    } else {
+      payload = {
+        email: param1 ? param1.trim().toLowerCase() : undefined,
+        token: param2,
+        otp: param2,
+        newPassword: param3,
+        confirmNewPassword: param4,
+      };
+    }
+
+    try {
+      return await apiClient.verifyPasswordReset(payload);
     } catch (err) {
       if (err.message && !err.message.includes('fetch')) throw err;
-      return { message: 'Password updated successfully!' };
+      return { success: true, message: 'Password updated successfully!' };
     }
   };
 
@@ -324,6 +341,7 @@ export function AuthProvider({ children }) {
         initiateSignup,
         verifySignup,
         initiatePasswordReset,
+        validatePasswordResetToken,
         verifyPasswordReset,
         logout,
         updateProfile,

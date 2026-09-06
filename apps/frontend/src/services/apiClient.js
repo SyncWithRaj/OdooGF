@@ -729,6 +729,53 @@ export const apiClient = {
       body: JSON.stringify({ message }),
     });
   },
+
+  // ==================== Password Reset & Auth ====================
+  async initiatePasswordReset(email) {
+    const res = await fetch(`${API_URL}/api/auth/password-reset/initiate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
+    });
+    const data = await parseResponseSafe(res);
+    if (!res.ok) {
+      const msg = Array.isArray(data?.message) ? data.message.join(', ') : data?.message || 'Failed to initiate password reset';
+      throw new Error(msg);
+    }
+    return data;
+  },
+
+  async validatePasswordResetToken(token, email) {
+    const params = new URLSearchParams({ token: token?.trim() });
+    if (email) params.append('email', email.trim().toLowerCase());
+    const res = await fetch(`${API_URL}/api/auth/password-reset/validate?${params.toString()}`);
+    const data = await parseResponseSafe(res);
+    if (!res.ok) {
+      return {
+        valid: false,
+        message: Array.isArray(data?.message) ? data.message.join(', ') : data?.message || 'Invalid or expired reset link',
+      };
+    }
+    return data;
+  },
+
+  async verifyPasswordReset(payload) {
+    const res = await fetch(`${API_URL}/api/auth/password-reset/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await parseResponseSafe(res);
+    if (!res.ok) {
+      const msg = Array.isArray(data?.message) ? data.message.join(', ') : data?.message || 'Failed to verify password reset';
+      throw new Error(msg);
+    }
+    return data;
+  },
 };
+
+export default apiClient;
+
+
 
 
