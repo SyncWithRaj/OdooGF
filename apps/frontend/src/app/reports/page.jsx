@@ -5,6 +5,8 @@ import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { quotationsService } from '@/services/quotationsService';
 import { apiClient } from '@/services/apiClient';
+import Pagination from '@/components/Pagination';
+import { usePagination } from '@/hooks/usePagination';
 
 export default function ReportsPage() {
   const [quotations, setQuotations] = useState([]);
@@ -105,6 +107,15 @@ export default function ReportsPage() {
       },
     };
   }, [quotations, invoices, users]);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems: paginatedLeaderboard,
+  } = usePagination(bi.leaderboard, 10);
 
   const [exporting, setExporting] = useState(false);
 
@@ -345,54 +356,65 @@ export default function ReportsPage() {
                   <tr>
                     <td colSpan={8} className="py-8 text-center text-slate-400">Loading leaderboard...</td>
                   </tr>
-                ) : bi.leaderboard.length === 0 ? (
+                ) : paginatedLeaderboard.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="py-8 text-center text-slate-400">No sales representative records found.</td>
                   </tr>
                 ) : (
-                  bi.leaderboard.map((rep, idx) => (
-                    <tr key={rep.id} className="hover:bg-slate-50/50 transition">
-                      <td className="py-3.5 px-4 text-center font-bold text-slate-700">
-                        #{idx + 1}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="font-bold text-slate-900">{rep.name}</div>
-                        <div className="text-[10px] text-slate-400">{rep.email}</div>
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-700 font-medium">
-                        {rep.teamName}
-                      </td>
-                      <td className="py-3.5 px-4 text-center font-semibold text-slate-900">
-                        {rep.totalQuotes}
-                      </td>
-                      <td className="py-3.5 px-4 text-center font-bold text-zinc-900">
-                        {rep.closedWon}
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-black text-slate-900 whitespace-nowrap">
-                        ${rep.revenue?.toLocaleString()}
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-bold text-blue-600">
-                        {rep.avgMargin}%
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                            idx === 0
-                              ? 'bg-zinc-900 border-zinc-900 text-white'
-                              : rep.revenue > 0
-                              ? 'bg-zinc-100 border-zinc-200 text-zinc-900'
-                              : 'bg-slate-100 border-slate-300 text-slate-600'
-                          }`}
-                        >
-                          {idx === 0 ? 'Top Performer' : rep.revenue > 0 ? 'On Target' : 'Ramping Up'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
+                  paginatedLeaderboard.map((rep, idx) => {
+                    const rank = (currentPage - 1) * pageSize + idx + 1;
+                    return (
+                      <tr key={rep.id} className="hover:bg-slate-50/50 transition">
+                        <td className="py-3.5 px-4 text-center font-bold text-slate-700">
+                          #{rank}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-slate-900">{rep.name}</div>
+                          <div className="text-[10px] text-slate-400">{rep.email}</div>
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-700 font-medium">
+                          {rep.teamName}
+                        </td>
+                        <td className="py-3.5 px-4 text-center font-semibold text-slate-900">
+                          {rep.totalQuotes}
+                        </td>
+                        <td className="py-3.5 px-4 text-center font-bold text-zinc-900">
+                          {rep.closedWon}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-black text-slate-900 whitespace-nowrap">
+                          ${rep.revenue?.toLocaleString()}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-bold text-blue-600">
+                          {rep.avgMargin}%
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <span
+                            className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                              rank === 1
+                                ? 'bg-zinc-900 border-zinc-900 text-white'
+                                : rep.revenue > 0
+                                ? 'bg-zinc-100 border-zinc-200 text-zinc-900'
+                                : 'bg-slate-100 border-slate-300 text-slate-600'
+                            }`}
+                          >
+                            {rank === 1 ? 'Top Performer' : rep.revenue > 0 ? 'On Target' : 'Ramping Up'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
+          <Pagination
+            currentPage={currentPage}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[5, 10, 20]}
+          />
         </div>
       </AppLayout>
     </RequireRole>
