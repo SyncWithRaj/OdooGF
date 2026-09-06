@@ -133,6 +133,9 @@ model User {
   approvalLogs       ApprovalAuditLog[]
   dealAlertsAssigned DealHealthAlert[]
   customersManaged   Customer[]           @relation("ManagedCustomers")
+
+  @@index([role])
+  @@index([teamName])
 }
 
 model OtpVerification {
@@ -170,6 +173,10 @@ model Customer {
   quotations       Quotation[]
   subscriptions    Subscription[]
   invoices         Invoice[]
+
+  @@index([assignedRepId])
+  @@index([tier])
+  @@index([name])
 }
 
 // ------------------------------------------------------------------------------
@@ -211,6 +218,11 @@ model Product {
   curatedRecommendations AdminCuratedUpsell[]    @relation("BaseCuratedUpsells")
   recommendedInCurated   AdminCuratedUpsell[]    @relation("TargetCuratedUpsells")
   fulfillmentSplits      FulfillmentSplitItem[]
+
+  @@index([category])
+  @@index([isActive])
+  @@index([isSubscription])
+  @@index([name])
 }
 
 model ProductVariant {
@@ -224,6 +236,8 @@ model ProductVariant {
   createdAt  DateTime @default(now())
 
   quotationLines QuotationLine[]
+
+  @@index([productId])
 }
 
 model PriceListRule {
@@ -234,6 +248,9 @@ model PriceListRule {
   currency        String       @default("USD")
   priceRuleDesc   String?
   discountPercent Float        @default(0.0)
+
+  @@index([productId])
+  @@index([productId, customerTier])
 }
 
 // ------------------------------------------------------------------------------
@@ -292,6 +309,8 @@ model WarehouseStock {
   updatedAt         DateTime @updatedAt
 
   @@unique([warehouseId, productId])
+  @@index([productId])
+  @@index([inStock])
 }
 
 // ------------------------------------------------------------------------------
@@ -350,6 +369,14 @@ model Quotation {
   subscriptions           Subscription[]
   invoices                Invoice[]
   dealHealthAlerts        DealHealthAlert[]
+
+  @@index([customerId])
+  @@index([salesRepId])
+  @@index([status])
+  @@index([blendedRiskScore])
+  @@index([createdAt])
+  @@index([salesRepId, status])
+  @@index([status, createdAt])
 }
 
 model QuotationLine {
@@ -379,6 +406,10 @@ model QuotationLine {
 
   createdAt           DateTime        @default(now())
   comments            QuotationComment[]
+
+  @@index([quotationId])
+  @@index([productId])
+  @@index([variantId])
 }
 
 model QuotationComment {
@@ -391,6 +422,9 @@ model QuotationComment {
   authorName      String
   message         String
   createdAt       DateTime       @default(now())
+
+  @@index([quotationId])
+  @@index([quotationLineId])
 }
 
 // ------------------------------------------------------------------------------
@@ -410,6 +444,12 @@ model ApprovalRequest {
   updatedAt          DateTime       @updatedAt
 
   auditLogs          ApprovalAuditLog[]
+
+  @@index([quotationId])
+  @@index([currentStage])
+  @@index([blendedRiskLevel])
+  @@index([isCompleted])
+  @@index([isCompleted, currentStage])
 }
 
 model ApprovalAuditLog {
@@ -421,6 +461,10 @@ model ApprovalAuditLog {
   action            ApprovalAction
   note              String?
   createdAt         DateTime        @default(now())
+
+  @@index([approvalRequestId])
+  @@index([userId])
+  @@index([createdAt])
 }
 
 // ------------------------------------------------------------------------------
@@ -440,6 +484,9 @@ model FulfillmentOrder {
   updatedAt          DateTime          @updatedAt
 
   splitItems         FulfillmentSplitItem[]
+
+  @@index([status])
+  @@index([createdAt])
 }
 
 model FulfillmentSplitItem {
@@ -454,6 +501,10 @@ model FulfillmentSplitItem {
   quantityBackordered Int             @default(0)
   estimatedShipCost  Float            @default(0.0)
   createdAt          DateTime         @default(now())
+
+  @@index([fulfillmentOrderId])
+  @@index([warehouseId])
+  @@index([productId])
 }
 
 // ------------------------------------------------------------------------------
@@ -472,6 +523,9 @@ model SubscriptionPlanTemplate {
   isActive           Boolean           @default(true)
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
+
+  @@index([interval])
+  @@index([isActive])
 }
 
 model Subscription {
@@ -492,6 +546,12 @@ model Subscription {
 
   prorationLogs      SubscriptionProrationLog[]
   invoices           Invoice[]
+
+  @@index([customerId])
+  @@index([quotationId])
+  @@index([status])
+  @@index([nextBillingDate])
+  @@index([status, nextBillingDate])
 }
 
 model SubscriptionProrationLog {
@@ -505,6 +565,8 @@ model SubscriptionProrationLog {
   newRecurringAmount  Float
   proratedDeltaAmount Float
   reason              String?
+
+  @@index([subscriptionId])
 }
 
 // ------------------------------------------------------------------------------
@@ -530,6 +592,13 @@ model Invoice {
   updatedAt       DateTime      @updatedAt
 
   payments        Payment[]
+
+  @@index([customerId])
+  @@index([quotationId])
+  @@index([subscriptionId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([status, dueDate])
 }
 
 model Payment {
@@ -540,6 +609,9 @@ model Payment {
   paymentMethod String   @default("Bank Transfer")
   reference     String?
   paidAt        DateTime @default(now())
+
+  @@index([invoiceId])
+  @@index([paidAt])
 }
 
 // ------------------------------------------------------------------------------
@@ -558,6 +630,12 @@ model DealHealthAlert {
   assignedTo  User?           @relation(fields: [assignedToId], references: [id])
   flaggedAt   DateTime        @default(now())
   resolvedAt  DateTime?
+
+  @@index([quotationId])
+  @@index([issueType])
+  @@index([isResolved])
+  @@index([assignedToId])
+  @@index([isResolved, issueType])
 }
 
 // ------------------------------------------------------------------------------
@@ -577,6 +655,8 @@ model ProductCoPurchaseRule {
   createdAt            DateTime @default(now())
 
   @@unique([baseProductId, recommendedProductId])
+  @@index([baseProductId])
+  @@index([recommendedProductId])
 }
 
 // ------------------------------------------------------------------------------
@@ -595,4 +675,6 @@ model AdminCuratedUpsell {
 
   @@unique([baseProductId, rank])
   @@unique([baseProductId, recommendedProductId])
+  @@index([baseProductId])
+  @@index([recommendedProductId])
 }
