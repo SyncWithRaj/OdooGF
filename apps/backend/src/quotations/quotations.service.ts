@@ -250,8 +250,25 @@ export class QuotationsService {
       throw new NotFoundException(`Quotation with ID '${id}' not found`);
     }
 
+    const auditLogs = (quote.approvalRequests || []).flatMap((ar) =>
+      (ar.auditLogs || []).map((log) => ({
+        id: log.id,
+        approvalRequestId: ar.id,
+        actorName: log.user?.fullName || 'System User',
+        actorRole: log.user?.role || ar.currentStage || 'SYSTEM',
+        action: log.action,
+        comment: log.note || `Action: ${log.action}`,
+        note: log.note,
+        timestamp: log.createdAt,
+        createdAt: log.createdAt,
+        stage: ar.currentStage,
+        riskLevel: ar.blendedRiskLevel,
+      }))
+    );
+
     return {
       ...quote,
+      auditLogs,
       customerName: (quote as any).customer?.name || (quote as any).customer?.companyName || 'Direct Client',
       customerEmail: (quote as any).customer?.email || '',
       customerTier: (quote as any).customer?.tier || 'BRONZE',

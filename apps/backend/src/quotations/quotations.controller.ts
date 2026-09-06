@@ -255,7 +255,7 @@ export class QuotationsController {
   // COMMENTS / SALES NOTES
   // ----------------------------------------------------------------------------
   @Get(':id/comments')
-  @Roles(Role.ADMIN, Role.SALES_REP, Role.SALES_MANAGER, Role.FINANCE)
+  @Roles(Role.ADMIN, Role.SALES_REP, Role.SALES_MANAGER, Role.FINANCE, Role.CUSTOMER)
   @ApiOperation({ summary: 'Get all comments for a quotation' })
   @ApiResponse({ status: 200, description: 'List of quotation comments' })
   async getComments(@Param('id') id: string) {
@@ -263,7 +263,7 @@ export class QuotationsController {
   }
 
   @Post(':id/comments')
-  @Roles(Role.ADMIN, Role.SALES_REP, Role.SALES_MANAGER, Role.FINANCE)
+  @Roles(Role.ADMIN, Role.SALES_REP, Role.SALES_MANAGER, Role.FINANCE, Role.CUSTOMER)
   @ApiOperation({ summary: 'Add a comment / negotiation note to a quotation' })
   @ApiResponse({ status: 201, description: 'Comment added' })
   async addComment(

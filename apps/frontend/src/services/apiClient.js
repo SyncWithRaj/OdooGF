@@ -540,14 +540,57 @@ export const apiClient = {
   async getQuotation(id) {
     const res = await apiRequest(`/api/quotations/${id}`);
     const quote = res.quotation || res;
+
+    // Normalize audit logs from quote.auditLogs or approvalRequests
+    const rawAuditLogs = (quote.auditLogs && Array.isArray(quote.auditLogs))
+      ? quote.auditLogs
+      : (quote.approvalRequests || []).flatMap((ar) =>
+          (ar.auditLogs || []).map((log) => ({
+            id: log.id,
+            approvalRequestId: ar.id,
+            actorName: log.user?.fullName || log.actorName || 'Internal Reviewer',
+            actorRole: log.user?.role || log.actorRole || ar.currentStage || 'SYSTEM',
+            action: log.action,
+            comment: log.note || log.comment || `Action: ${log.action}`,
+            note: log.note || log.comment,
+            timestamp: log.createdAt || log.timestamp,
+            createdAt: log.createdAt || log.timestamp,
+            stage: ar.currentStage,
+            riskLevel: ar.blendedRiskLevel,
+          }))
+        );
+
+    const comments = (quote.comments || []).map((c) => ({
+      id: c.id,
+      authorName: c.authorName || 'Participant',
+      authorRole: c.authorRole || 'USER',
+      message: c.message || '',
+      createdAt: c.createdAt,
+      timestamp: c.createdAt,
+      quotationLineId: c.quotationLineId,
+    }));
+
     return {
       ...quote,
+      auditLogs: rawAuditLogs,
+      comments,
       customerName: quote.customerName || quote.customer?.name || quote.customer?.companyName || 'Direct Client',
       customerEmail: quote.customerEmail || quote.customer?.email || '',
       customerTier: quote.customerTier || quote.customer?.tier || 'BRONZE',
       salesRepName: quote.salesRepName || quote.salesRep?.fullName || quote.salesRep?.email || 'Direct Sales Rep',
       currentStage: quote.currentStage || quote.approvalRequests?.[0]?.currentStage || (quote.blendedRiskScore === 'HIGH' ? 'FINANCE' : 'SALES_MANAGER'),
     };
+  },
+
+  async getQuotationComments(id) {
+    return apiRequest(`/api/quotations/${id}/comments`);
+  },
+
+  async addQuotationComment(id, message, quotationLineId = undefined) {
+    return apiRequest(`/api/quotations/${id}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ message, quotationLineId }),
+    });
   },
 
   async createQuotation(data) {
