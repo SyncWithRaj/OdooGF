@@ -33,6 +33,58 @@ export class ProductsService {
       },
     });
 
+    // Provision curated upsell recommendations if provided by Admin
+    if (dto.curatedUpsells && dto.curatedUpsells.length > 0) {
+      for (let i = 0; i < dto.curatedUpsells.length; i++) {
+        const item = dto.curatedUpsells[i];
+        const rank = item.rank || (i + 1);
+        if (item.recommendedProductId && item.recommendedProductId !== product.id) {
+          await this.prisma.adminCuratedUpsell.upsert({
+            where: {
+              baseProductId_rank: {
+                baseProductId: product.id,
+                rank: Math.min(5, Math.max(1, rank)),
+              },
+            },
+            create: {
+              baseProductId: product.id,
+              recommendedProductId: item.recommendedProductId,
+              rank: Math.min(5, Math.max(1, rank)),
+              isActive: true,
+            },
+            update: {
+              recommendedProductId: item.recommendedProductId,
+              isActive: true,
+            },
+          }).catch(() => {});
+        }
+      }
+    } else if (dto.upsellProductIds && dto.upsellProductIds.length > 0) {
+      for (let i = 0; i < dto.upsellProductIds.length; i++) {
+        const recId = dto.upsellProductIds[i];
+        if (recId && recId !== product.id) {
+          await this.prisma.adminCuratedUpsell.upsert({
+            where: {
+              baseProductId_rank: {
+                baseProductId: product.id,
+                rank: Math.min(5, i + 1),
+              },
+            },
+            create: {
+              baseProductId: product.id,
+              recommendedProductId: recId,
+              rank: Math.min(5, i + 1),
+              isActive: true,
+            },
+            update: {
+              recommendedProductId: recId,
+              isActive: true,
+            },
+          }).catch(() => {});
+        }
+      }
+    }
+
     return {
       success: true,
       message: 'Product created successfully',
@@ -145,6 +197,14 @@ export class ProductsService {
             },
           },
         },
+        curatedRecommendations: {
+          include: {
+            recommendedProduct: {
+              select: { id: true, sku: true, name: true, basePrice: true, baseCost: true, category: true, isPromoted: true },
+            },
+          },
+          orderBy: { rank: 'asc' },
+        },
       },
     });
 
@@ -191,6 +251,12 @@ export class ProductsService {
           promotionTag: pair.promotionTag,
           recommendedProduct: pair.recommendedProduct,
         })),
+        curatedUpsells: product.curatedRecommendations?.map((c) => ({
+          id: c.id,
+          rank: c.rank,
+          isActive: c.isActive,
+          recommendedProduct: c.recommendedProduct,
+        })) || [],
         ...(isCustomer
           ? {}
           : {

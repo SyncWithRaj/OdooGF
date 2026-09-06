@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ProductCategory, RecurringInterval } from '@prisma/client';
 import {
+  IsArray,
   IsBoolean,
   IsEnum,
   IsNotEmpty,
@@ -70,6 +71,23 @@ export class CreateProductDto {
   @IsNumber()
   @IsOptional()
   minMarginThreshold?: number;
+
+  @ApiPropertyOptional({
+    description: 'List of recommended product IDs for upselling',
+    type: [String],
+    example: ['uuid-1', 'uuid-2'],
+  })
+  @IsArray()
+  @IsOptional()
+  upsellProductIds?: string[];
+
+  @ApiPropertyOptional({
+    description: 'List of curated upsell recommendations with priority rank (1 to 5)',
+    example: [{ recommendedProductId: 'uuid-1', rank: 1 }],
+  })
+  @IsArray()
+  @IsOptional()
+  curatedUpsells?: Array<{ recommendedProductId: string; rank?: number }>;
 }
 
 export class UpdateProductDto {

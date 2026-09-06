@@ -382,6 +382,24 @@ export const apiClient = {
     });
   },
 
+  async getCuratedUpsells(baseProductId) {
+    const query = baseProductId ? `?baseProductId=${encodeURIComponent(baseProductId)}` : '';
+    return apiRequest(`/api/config/upsell-rules/curated/list${query}`);
+  },
+
+  async createCuratedUpsell(data) {
+    return apiRequest('/api/config/upsell-rules/curated', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async deleteCuratedUpsell(id) {
+    return apiRequest(`/api/config/upsell-rules/curated/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
   // ==================== Deal Health & Analytics (Screen 14 / B9) ====================
   async getDealHealth() {
     return apiRequest('/api/analytics/deal-health');

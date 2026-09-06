@@ -27,6 +27,22 @@ export default function ProductsPage() {
     skuSuffix: '',
   });
 
+  // Upsell management state (for existing product modal)
+  const [selectedProductForUpsells, setSelectedProductForUpsells] = useState(null);
+  const [isUpsellModalOpen, setIsUpsellModalOpen] = useState(false);
+  const [curatedUpsellsList, setCuratedUpsellsList] = useState([]);
+  const [upsellLoading, setUpsellLoading] = useState(false);
+  const [upsellModalForm, setUpsellModalForm] = useState({
+    recommendedProductId: '',
+    rank: 1,
+  });
+
+  // Create modal upsell picker state
+  const [createModalUpsellSelection, setCreateModalUpsellSelection] = useState({
+    recommendedProductId: '',
+    rank: 1,
+  });
+
   const [newProduct, setNewProduct] = useState({
     sku: '',
     name: '',
@@ -39,6 +55,7 @@ export default function ProductsPage() {
     isSubscription: false,
     recurringInterval: 'MONTHLY',
     minMarginThreshold: 20,
+    curatedUpsells: [],
   });
 
   const showToast = (message, type = 'success') => {
@@ -96,6 +113,55 @@ export default function ProductsPage() {
       setVariantList(detail.variants || []);
     } catch (err) {
       alert(err.message || 'Failed to delete variant');
+    }
+  };
+
+  // Upsell management handlers
+  const handleOpenUpsells = async (product) => {
+    setSelectedProductForUpsells(product);
+    setIsUpsellModalOpen(true);
+    setUpsellLoading(true);
+    setUpsellModalForm({ recommendedProductId: '', rank: 1 });
+    try {
+      const list = await apiClient.getCuratedUpsells(product.id);
+      setCuratedUpsellsList(list || []);
+    } catch (err) {
+      console.error(err);
+      showToast('Could not load upsell recommendations', 'error');
+    } finally {
+      setUpsellLoading(false);
+    }
+  };
+
+  const handleAddUpsellInModal = async (e) => {
+    e.preventDefault();
+    if (!upsellModalForm.recommendedProductId) {
+      alert('Please select a recommended product to upsell.');
+      return;
+    }
+    try {
+      await apiClient.createCuratedUpsell({
+        baseProductId: selectedProductForUpsells.id,
+        recommendedProductId: upsellModalForm.recommendedProductId,
+        rank: Number(upsellModalForm.rank) || 1,
+      });
+      showToast('Upsell recommendation added successfully!');
+      setUpsellModalForm({ recommendedProductId: '', rank: 1 });
+      const list = await apiClient.getCuratedUpsells(selectedProductForUpsells.id);
+      setCuratedUpsellsList(list || []);
+    } catch (err) {
+      alert(err.message || 'Failed to add upsell recommendation');
+    }
+  };
+
+  const handleDeleteCuratedUpsell = async (ruleId) => {
+    try {
+      await apiClient.deleteCuratedUpsell(ruleId);
+      showToast('Upsell recommendation removed');
+      const list = await apiClient.getCuratedUpsells(selectedProductForUpsells.id);
+      setCuratedUpsellsList(list || []);
+    } catch (err) {
+      alert(err.message || 'Failed to remove upsell');
     }
   };
 
@@ -171,6 +237,10 @@ export default function ProductsPage() {
         basePrice: Number(newProduct.basePrice),
         taxPercent: Number(newProduct.taxPercent),
         minMarginThreshold: Number(newProduct.minMarginThreshold),
+        curatedUpsells: newProduct.curatedUpsells.map((u) => ({
+          recommendedProductId: u.recommendedProductId,
+          rank: u.rank,
+        })),
       });
       showToast(`Product "${newProduct.name}" created successfully!`);
       setIsCreateModalOpen(false);
@@ -186,7 +256,9 @@ export default function ProductsPage() {
         isSubscription: false,
         recurringInterval: 'MONTHLY',
         minMarginThreshold: 20,
+        curatedUpsells: [],
       });
+      setCreateModalUpsellSelection({ recommendedProductId: '', rank: 1 });
       loadProducts();
     } catch (err) {
       showToast(err.message || 'Failed to create product', 'error');
@@ -399,13 +471,20 @@ export default function ProductsPage() {
                       </td>
 
                       {/* Actions */}
-                      <td className="py-4 px-4 text-center whitespace-nowrap space-x-1">
+                      <td className="py-4 px-4 text-center whitespace-nowrap space-x-1.5">
                         <button
                           onClick={() => handleOpenVariants(prod)}
                           className="px-2 py-1 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900 text-[11px] font-semibold transition cursor-pointer"
                           title="Manage Variants"
                         >
                           Variants
+                        </button>
+                        <button
+                          onClick={() => handleOpenUpsells(prod)}
+                          className="px-2 py-1 rounded-lg border border-purple-200 bg-purple-50/70 text-purple-700 hover:bg-purple-100 hover:text-purple-900 text-[11px] font-semibold transition cursor-pointer"
+                          title="Manage Upsell & Cross-Sell Suggestions"
+                        >
+                          Upsells
                         </button>
                         <button
                           onClick={() => handleDeleteProduct(prod.id, prod.name)}
@@ -437,7 +516,7 @@ export default function ProductsPage() {
       {/* CREATE PRODUCT MODAL */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 max-w-lg w-full max-h-[90vh] overflow-y-auto p-6">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 max-w-xl w-full max-h-[92vh] overflow-y-auto p-6">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
               <div>
                 <h3 className="text-lg font-bold text-slate-900">Add Catalog Product</h3>
@@ -562,6 +641,170 @@ export default function ProductsPage() {
                     className="w-full h-9 px-3 rounded-lg border border-slate-200 focus:outline-none focus:border-slate-400 text-xs"
                   />
                 </div>
+              </div>
+
+              {/* UPSELL / HIGH MARGIN RECOMMENDATIONS SECTION */}
+              <div className="pt-3 border-t border-slate-100">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div>
+                    <label className="font-bold text-slate-800 text-xs block">
+                      Upsell &amp; High-Margin Recommendations (Optional)
+                    </label>
+                    <p className="text-[11px] text-slate-400">
+                      Curate high-margin products that will automatically be suggested to customers when they add this product.
+                    </p>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                    {newProduct.curatedUpsells.length} / 5 selected
+                  </span>
+                </div>
+
+                {/* Picker */}
+                <div className="p-3 bg-purple-50/40 rounded-xl border border-purple-200/80 mb-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                    <div className="sm:col-span-8">
+                      <label className="text-[10px] font-semibold text-slate-600 block mb-1">
+                        Select Product from Catalog:
+                      </label>
+                      <select
+                        value={createModalUpsellSelection.recommendedProductId}
+                        onChange={(e) =>
+                          setCreateModalUpsellSelection({
+                            ...createModalUpsellSelection,
+                            recommendedProductId: e.target.value,
+                          })
+                        }
+                        className="w-full h-8 px-2 rounded-lg border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:border-slate-400"
+                      >
+                        <option value="">-- Choose high-margin product --</option>
+                        {products
+                          .filter((p) => !newProduct.curatedUpsells.some((u) => u.recommendedProductId === p.id))
+                          .map((p) => {
+                            const margin = p.basePrice > 0 ? (((p.basePrice - p.baseCost) / p.basePrice) * 100).toFixed(1) : 0;
+                            return (
+                              <option key={p.id} value={p.id}>
+                                {p.name} (₹{p.basePrice?.toLocaleString()} | Margin: {margin}%)
+                              </option>
+                            );
+                          })}
+                      </select>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="text-[10px] font-semibold text-slate-600 block mb-1">
+                        Priority Rank:
+                      </label>
+                      <select
+                        value={createModalUpsellSelection.rank}
+                        onChange={(e) =>
+                          setCreateModalUpsellSelection({
+                            ...createModalUpsellSelection,
+                            rank: Number(e.target.value),
+                          })
+                        }
+                        className="w-full h-8 px-2 rounded-lg border border-slate-200 bg-white text-xs font-semibold focus:outline-none focus:border-slate-400"
+                      >
+                        <option value={1}>Rank 1 (Top)</option>
+                        <option value={2}>Rank 2</option>
+                        <option value={3}>Rank 3</option>
+                        <option value={4}>Rank 4</option>
+                        <option value={5}>Rank 5</option>
+                      </select>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!createModalUpsellSelection.recommendedProductId) {
+                            alert('Please select a product to add as upsell.');
+                            return;
+                          }
+                          if (newProduct.curatedUpsells.length >= 5) {
+                            alert('You can add a maximum of 5 curated upsells per product.');
+                            return;
+                          }
+                          const recProd = products.find((p) => p.id === createModalUpsellSelection.recommendedProductId);
+                          setNewProduct({
+                            ...newProduct,
+                            curatedUpsells: [
+                              ...newProduct.curatedUpsells.filter(
+                                (u) =>
+                                  u.recommendedProductId !== createModalUpsellSelection.recommendedProductId &&
+                                  u.rank !== createModalUpsellSelection.rank
+                              ),
+                              {
+                                recommendedProductId: createModalUpsellSelection.recommendedProductId,
+                                rank: createModalUpsellSelection.rank,
+                                productName: recProd?.name,
+                                sku: recProd?.sku,
+                                basePrice: recProd?.basePrice,
+                                baseCost: recProd?.baseCost,
+                                category: recProd?.category,
+                              },
+                            ].sort((a, b) => a.rank - b.rank),
+                          });
+                          setCreateModalUpsellSelection({ recommendedProductId: '', rank: Math.min(5, createModalUpsellSelection.rank + 1) });
+                        }}
+                        className="w-full h-8 px-2 rounded-lg bg-purple-700 hover:bg-purple-800 text-white font-semibold text-xs transition cursor-pointer"
+                      >
+                        + Add
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Selected Upsells List */}
+                {newProduct.curatedUpsells.length > 0 && (
+                  <div className="space-y-1.5 mb-3">
+                    {newProduct.curatedUpsells.map((u) => {
+                      const prod = products.find((p) => p.id === u.recommendedProductId) || u;
+                      const margin = prod.basePrice > 0 ? (((prod.basePrice - prod.baseCost) / prod.basePrice) * 100).toFixed(1) : 0;
+                      return (
+                        <div
+                          key={u.recommendedProductId}
+                          className="p-2 rounded-lg border border-purple-200/80 bg-purple-50/50 flex items-center justify-between text-xs"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="px-1.5 py-0.5 rounded font-bold text-[10px] bg-purple-700 text-white">
+                              Rank #{u.rank}
+                            </span>
+                            <div>
+                              <span className="font-semibold text-slate-800">{prod.name}</span>
+                              <span className="text-[10px] font-mono text-slate-400 ml-1.5">({prod.sku})</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-slate-700 font-bold">
+                              ₹{prod.basePrice?.toLocaleString()}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              {margin}% Margin
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setNewProduct({
+                                  ...newProduct,
+                                  curatedUpsells: newProduct.curatedUpsells.filter(
+                                    (item) => item.recommendedProductId !== u.recommendedProductId
+                                  ),
+                                })
+                              }
+                              className="text-slate-400 hover:text-rose-600 p-1"
+                              title="Remove recommendation"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
@@ -713,6 +956,160 @@ export default function ProductsPage() {
                   className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs shadow-xs transition"
                 >
                   + Add Variant to Catalog
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* UPSELL MANAGEMENT MODAL */}
+      {isUpsellModalOpen && selectedProductForUpsells && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 max-w-xl w-full max-h-[92vh] overflow-y-auto p-6">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-100 text-purple-800">
+                    High Margin Upsells
+                  </span>
+                  <h3 className="text-base font-bold text-slate-900">
+                    {selectedProductForUpsells.name}
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500 font-mono mt-0.5">
+                  SKU: {selectedProductForUpsells.sku} | When added to quote, suggest these products:
+                </p>
+              </div>
+              <button
+                onClick={() => setIsUpsellModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                aria-label="Close"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            {/* Existing Curated Upsells List */}
+            <div className="mb-6">
+              <p className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                Curated Recommendations ({curatedUpsellsList.length}/5)
+              </p>
+              {upsellLoading ? (
+                <div className="py-6 text-center text-xs text-slate-400">Loading recommendations...</div>
+              ) : curatedUpsellsList.length === 0 ? (
+                <div className="py-6 text-center text-xs text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                  No upsell items curated yet for this product. Add high-margin products below!
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {curatedUpsellsList.map((item) => {
+                    const rec = item.recommendedProduct;
+                    const margin = rec?.basePrice > 0
+                      ? (((rec.basePrice - rec.baseCost) / rec.basePrice) * 100).toFixed(1)
+                      : 0;
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="p-2.5 rounded-xl border border-slate-200 bg-slate-50/80 flex items-center justify-between text-xs"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded font-bold text-[10px] bg-purple-700 text-white shadow-2xs">
+                            Rank #{item.rank}
+                          </span>
+                          <div>
+                            <span className="font-bold text-slate-800">{rec?.name}</span>
+                            <span className="text-[10px] font-mono text-slate-400 ml-1.5">
+                              ({rec?.sku})
+                            </span>
+                            <span className="ml-2 text-[10px] text-slate-500 font-medium">
+                              {rec?.category}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <span className="font-semibold text-zinc-900">
+                            ₹{rec?.basePrice?.toLocaleString()}
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            {margin}% Margin
+                          </span>
+                          <button
+                            onClick={() => handleDeleteCuratedUpsell(item.id)}
+                            className="text-slate-400 hover:text-rose-600 p-1 rounded-md transition"
+                            title="Delete Upsell Rule"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Add New Upsell Recommendation Form */}
+            <form onSubmit={handleAddUpsellInModal} className="p-3 bg-purple-50/40 rounded-xl border border-purple-200/80 space-y-3 text-xs">
+              <p className="font-bold text-slate-900 text-xs">
+                + Add High-Margin Product to Suggest
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                <div className="sm:col-span-8">
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Select Product from Catalog *
+                  </label>
+                  <select
+                    required
+                    value={upsellModalForm.recommendedProductId}
+                    onChange={(e) => setUpsellModalForm({ ...upsellModalForm, recommendedProductId: e.target.value })}
+                    className="w-full h-9 px-2 rounded-lg border border-slate-200 bg-white text-xs focus:outline-none focus:border-slate-400"
+                  >
+                    <option value="">-- Choose product with higher margin --</option>
+                    {products
+                      .filter((p) => p.id !== selectedProductForUpsells.id)
+                      .map((p) => {
+                        const margin = p.basePrice > 0
+                          ? (((p.basePrice - p.baseCost) / p.basePrice) * 100).toFixed(1)
+                          : 0;
+                        return (
+                          <option key={p.id} value={p.id}>
+                            {p.name} (₹{p.basePrice?.toLocaleString()} | Margin: {margin}%)
+                          </option>
+                        );
+                      })}
+                  </select>
+                </div>
+
+                <div className="sm:col-span-4">
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Priority Rank (1 = Top) *
+                  </label>
+                  <select
+                    value={upsellModalForm.rank}
+                    onChange={(e) => setUpsellModalForm({ ...upsellModalForm, rank: Number(e.target.value) })}
+                    className="w-full h-9 px-2 rounded-lg border border-slate-200 bg-white text-xs font-semibold focus:outline-none focus:border-slate-400"
+                  >
+                    <option value={1}>Rank 1 (Top Priority)</option>
+                    <option value={2}>Rank 2</option>
+                    <option value={3}>Rank 3</option>
+                    <option value={4}>Rank 4</option>
+                    <option value={5}>Rank 5</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-semibold text-xs shadow-xs transition cursor-pointer"
+                >
+                  Save Upsell Recommendation
                 </button>
               </div>
             </form>
