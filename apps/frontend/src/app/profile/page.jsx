@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { useAuth } from '@/context/AuthContext';
@@ -37,6 +38,9 @@ export default function ProfilePage() {
   // Confirmation Modal State for Reset Password
   const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [resetDispatched, setResetDispatched] = useState(false);
+  const [resetMagicLink, setResetMagicLink] = useState('');
+  const [copiedLink, setCopiedLink] = useState(false);
 
   // Derive title from role
   const getRoleTitle = (r) => {
@@ -232,16 +236,34 @@ export default function ProfilePage() {
     setIsResetting(true);
     try {
       if (initiatePasswordReset) {
-        await initiatePasswordReset(profile.email);
+        const res = await initiatePasswordReset(profile.email);
+        setResetDispatched(true);
+        if (res?.magicLink) {
+          setResetMagicLink(res.magicLink);
+        }
       }
-      toast.success(`Password reset verification dispatched to ${profile.email}`);
-      setShowResetConfirmModal(false);
+      toast.success(`Password reset magic link dispatched to ${profile.email}`);
     } catch (err) {
       toast.error(err?.message || 'Failed to dispatch password reset');
     } finally {
       setIsResetting(false);
     }
   };
+
+  const handleCloseResetModal = () => {
+    setShowResetConfirmModal(false);
+    setResetDispatched(false);
+    setResetMagicLink('');
+    setCopiedLink(false);
+  };
+
+  const handleCopyProfileLink = () => {
+    if (!resetMagicLink) return;
+    navigator.clipboard.writeText(resetMagicLink);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
 
   return (
     <RequireRole roles={['rep', 'manager', 'finance', 'admin', 'customer']}>
@@ -499,15 +521,20 @@ export default function ProfilePage() {
                     </svg>
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-zinc-900">Reset Password</h3>
-                    <p className="text-[11px] text-zinc-400">Confirmation Required</p>
+                    <h3 className="text-sm font-bold text-zinc-900">
+                      {resetDispatched ? 'Magic Link Dispatched' : 'Reset Password'}
+                    </h3>
+                    <p className="text-[11px] text-zinc-400">
+                      {resetDispatched ? 'Secure link generated' : 'Magic link verification'}
+                    </p>
                   </div>
                 </div>
 
                 <button
                   type="button"
-                  onClick={() => setShowResetConfirmModal(false)}
+                  onClick={handleCloseResetModal}
                   className="p-1.5 text-zinc-400 hover:text-zinc-700 rounded-lg hover:bg-zinc-100 transition cursor-pointer"
+                  aria-label="Close"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -515,35 +542,78 @@ export default function ProfilePage() {
                 </button>
               </div>
 
-              <div className="mb-6">
-                <p className="text-xs text-zinc-600 leading-relaxed">
-                  Are you sure you want to request a password reset for your account?
-                </p>
-                <p className="text-xs text-zinc-500 mt-2 p-3 rounded-xl bg-zinc-50 border border-zinc-200/80 font-mono">
-                  Target Account: <strong className="text-zinc-900">{profile.email}</strong>
-                </p>
-                <p className="text-[11px] text-zinc-400 mt-2">
-                  A verification code and password reset instructions will be dispatched to this email address.
-                </p>
-              </div>
+              {!resetDispatched ? (
+                <div>
+                  <div className="mb-6">
+                    <p className="text-xs text-zinc-600 leading-relaxed">
+                      Are you sure you want to request a password reset for your account?
+                    </p>
+                    <p className="text-xs text-zinc-500 mt-2 p-3 rounded-xl bg-zinc-50 border border-zinc-200/80 font-mono">
+                      Target Account: <strong className="text-zinc-900">{profile.email}</strong>
+                    </p>
+                    <p className="text-[11px] text-zinc-400 mt-2 leading-relaxed">
+                      A secure one-time password reset magic link will be dispatched to this email address. The link will remain valid for 15 minutes.
+                    </p>
+                  </div>
 
-              <div className="flex gap-2 justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowResetConfirmModal(false)}
-                  className="px-4 py-2 rounded-xl border border-zinc-200 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={isResetting}
-                  onClick={handleConfirmResetPassword}
-                  className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-semibold transition disabled:opacity-50 shadow-xs cursor-pointer"
-                >
-                  {isResetting ? 'Sending Request...' : 'Confirm & Send Reset Code'}
-                </button>
-              </div>
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={handleCloseResetModal}
+                      className="px-4 py-2 rounded-xl border border-zinc-200 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 transition cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isResetting}
+                      onClick={handleConfirmResetPassword}
+                      className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-semibold transition disabled:opacity-50 shadow-xs cursor-pointer"
+                    >
+                      {isResetting ? 'Sending Link...' : 'Confirm & Send Magic Link'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="p-3.5 rounded-xl bg-zinc-50 border border-zinc-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-zinc-900">Email Dispatched</span>
+                      <span className="text-[10px] text-zinc-500 font-mono">Valid 15m</span>
+                    </div>
+                    <p className="text-xs text-zinc-600 leading-relaxed">
+                      A secure password reset link has been dispatched to <strong className="text-zinc-900 font-mono">{profile.email}</strong>.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 pt-1">
+                    <Link
+                      href={resetMagicLink || `/auth/reset-password?email=${encodeURIComponent(profile.email)}`}
+                      className="w-full py-2.5 px-4 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-semibold transition text-center shadow-xs block"
+                    >
+                      Reset Password Now &rarr;
+                    </Link>
+
+                    {resetMagicLink && (
+                      <button
+                        type="button"
+                        onClick={handleCopyProfileLink}
+                        className="w-full py-2 px-4 rounded-xl border border-zinc-200 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition cursor-pointer"
+                      >
+                        {copiedLink ? 'Copied to Clipboard' : 'Copy Magic Link'}
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={handleCloseResetModal}
+                      className="w-full py-2 px-4 text-xs font-medium text-zinc-500 hover:text-zinc-900 transition text-center block cursor-pointer"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
