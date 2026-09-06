@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { apiClient } from '@/services/apiClient';
 import { toast } from 'react-toastify';
+import Pagination from '@/components/Pagination';
+import { usePagination } from '@/hooks/usePagination';
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState([]);
@@ -85,6 +87,20 @@ export default function CustomersPage() {
       return true;
     });
   }, [customers, activeTier, searchQuery]);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems: paginatedCustomers,
+    resetPage,
+  } = usePagination(filteredCustomers, 10);
+
+  useEffect(() => {
+    resetPage();
+  }, [activeTier, searchQuery]);
 
   // Metrics
   const metrics = useMemo(() => {
@@ -268,14 +284,14 @@ export default function CustomersPage() {
                     Loading accounts from database...
                   </td>
                 </tr>
-              ) : filteredCustomers.length === 0 ? (
+              ) : paginatedCustomers.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-400 font-medium">
                     No customer accounts found.
                   </td>
                 </tr>
               ) : (
-                filteredCustomers.map((cust) => (
+                paginatedCustomers.map((cust) => (
                   <tr key={cust.id} className="hover:bg-slate-50/70 transition-colors">
                     {/* Customer Name */}
                     <td className="py-4 px-4">
@@ -334,6 +350,14 @@ export default function CustomersPage() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          pageSizeOptions={[10, 25, 50]}
+        />
       </div>
 
       {/* CREATE CUSTOMER MODAL */}
