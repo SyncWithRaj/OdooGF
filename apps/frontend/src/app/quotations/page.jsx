@@ -674,7 +674,7 @@ export default function QuotationsPage() {
               <span className="text-zinc-900 font-semibold flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-zinc-900 animate-pulse"></span>Live</span>
             </div>
             <div className="text-2xl font-semibold text-zinc-900 tracking-tight">
-              ${metrics.totalPipeline.toLocaleString()}
+              ₹{metrics.totalPipeline.toLocaleString()}
             </div>
             <div className="text-xs text-gray-500 mt-1">
               {quotations.length} total active proposals
@@ -1026,7 +1026,7 @@ export default function QuotationsPage() {
 
                         {/* Price */}
                         <td className="py-4 px-4 font-semibold text-slate-900 whitespace-nowrap">
-                          ${Number(quote.totalAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          ₹{Number(quote.totalAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
 
                         {/* Date */}
@@ -1184,7 +1184,7 @@ export default function QuotationsPage() {
                                   ) : (
                                     products.map((p) => (
                                       <option key={p.id} value={p.id}>
-                                        {p.name} (${p.basePrice})
+                                        {p.name} (₹{p.basePrice})
                                       </option>
                                     ))
                                   )}
@@ -1200,7 +1200,7 @@ export default function QuotationsPage() {
                                 />
                               </td>
                               <td className="py-2 px-3 text-right font-medium text-gray-700">
-                                ${line.unitPrice}
+                                ₹{line.unitPrice}
                               </td>
                               <td className="py-2 px-3 text-right">
                                 <div className="inline-flex items-center justify-end gap-1">
@@ -1299,7 +1299,7 @@ export default function QuotationsPage() {
                                 {rec.name}
                               </h5>
                               <p className="text-[11px] text-gray-500 mt-0.5">
-                                ${rec.basePrice} <span className="text-gray-400">({rec.marginPct || 30}% margin)</span>
+                                ₹{rec.basePrice} <span className="text-gray-400">({rec.marginPct || 30}% margin)</span>
                               </p>
                             </div>
                             <button
@@ -1369,15 +1369,15 @@ export default function QuotationsPage() {
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
                       <div className="bg-white p-3 rounded-md border border-gray-200">
                         <span className="text-xs text-gray-500 block">Subtotal</span>
-                        <span className="text-base font-semibold text-gray-900">${blendedEvaluation.financials.totalSubtotal}</span>
+                        <span className="text-base font-semibold text-gray-900">₹{blendedEvaluation.financials.totalSubtotal}</span>
                       </div>
                       <div className="bg-white p-3 rounded-md border border-gray-200">
                         <span className="text-xs text-gray-500 block">Total Discount</span>
-                        <span className="text-base font-semibold text-amber-700">-${blendedEvaluation.financials.totalDiscountAmount}</span>
+                        <span className="text-base font-semibold text-amber-700">-₹{blendedEvaluation.financials.totalDiscountAmount}</span>
                       </div>
                       <div className="bg-white p-3 rounded-md border border-gray-200">
                         <span className="text-xs text-gray-500 block">Net Order Value</span>
-                        <span className="text-base font-semibold text-zinc-900">${blendedEvaluation.financials.totalRevenue}</span>
+                        <span className="text-base font-semibold text-zinc-900">₹{blendedEvaluation.financials.totalRevenue}</span>
                       </div>
                       <div className="bg-white p-3 rounded-md border border-gray-200">
                         <span className="text-xs text-gray-500 block">Gross Margin</span>
@@ -1485,15 +1485,15 @@ export default function QuotationsPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 rounded-lg bg-gray-50 border border-gray-200">
                   <div>
                     <span className="text-xs text-gray-500 block">Subtotal</span>
-                    <span className="text-sm font-semibold text-gray-900">${selectedQuote.subtotalAmount?.toLocaleString()}</span>
+                    <span className="text-sm font-semibold text-gray-900">₹{selectedQuote.subtotalAmount?.toLocaleString()}</span>
                   </div>
                   <div>
                     <span className="text-xs text-gray-500 block">Concession Discount</span>
-                    <span className="text-sm font-semibold text-rose-700">-${selectedQuote.totalDiscountAmount?.toLocaleString()}</span>
+                    <span className="text-sm font-semibold text-rose-700">-₹{selectedQuote.totalDiscountAmount?.toLocaleString()}</span>
                   </div>
                   <div>
                     <span className="text-xs text-gray-500 block">Net Deal Total</span>
-                    <span className="text-sm font-semibold text-gray-900">${selectedQuote.totalAmount?.toLocaleString()}</span>
+                    <span className="text-sm font-semibold text-gray-900">₹{selectedQuote.totalAmount?.toLocaleString()}</span>
                   </div>
                   <div>
                     <span className="text-xs text-gray-500 block">Gross Margin %</span>
@@ -1577,7 +1577,7 @@ export default function QuotationsPage() {
                                 <span className="text-[10px] text-gray-400">{line.category}</span>
                               </td>
                               <td className="py-2.5 px-2 text-center font-medium">{line.quantity}</td>
-                              <td className="py-2.5 px-3 text-right">${line.unitPrice}</td>
+                              <td className="py-2.5 px-3 text-right">₹{line.unitPrice}</td>
                               <td className="py-2.5 px-3 text-right">
                                 <span className={`font-medium ${line.isOverLimit ? 'text-rose-600' : 'text-gray-700'}`}>
                                   {line.discountPercent}%
@@ -1590,7 +1590,7 @@ export default function QuotationsPage() {
                                 {line.lineMarginPercent}%
                               </td>
                               <td className="py-2.5 px-3 text-right font-semibold text-gray-900">
-                                ${line.lineRevenue || (line.quantity * line.unitPrice * (1 - line.discountPercent / 100)).toFixed(2)}
+                                ₹{line.lineRevenue || (line.quantity * line.unitPrice * (1 - line.discountPercent / 100)).toFixed(2)}
                               </td>
                             </tr>
                           ))}
@@ -2015,10 +2015,10 @@ export default function QuotationsPage() {
                               <span className="text-[11px] text-gray-500">{line.category} Category</span>
                             </td>
                             <td className="py-3 px-3 text-center font-medium">{line.quantity}</td>
-                            <td className="py-3 px-4 text-right">${line.unitPrice}</td>
+                            <td className="py-3 px-4 text-right">₹{line.unitPrice}</td>
                             <td className="py-3 px-4 text-right text-amber-700 font-medium">{line.discountPercent}%</td>
                             <td className="py-3 px-4 text-right font-semibold text-gray-900">
-                              ${line.lineRevenue || (line.quantity * line.unitPrice * (1 - line.discountPercent / 100)).toFixed(2)}
+                              ₹{line.lineRevenue || (line.quantity * line.unitPrice * (1 - line.discountPercent / 100)).toFixed(2)}
                             </td>
                           </tr>
                         ))}
@@ -2032,15 +2032,15 @@ export default function QuotationsPage() {
                   <div className="w-64 space-y-2 p-4 rounded-lg bg-gray-50 border border-gray-200">
                     <div className="flex justify-between text-gray-600">
                       <span>Subtotal:</span>
-                      <span className="font-medium text-gray-900">${selectedQuote.subtotalAmount?.toLocaleString()}</span>
+                      <span className="font-medium text-gray-900">₹{selectedQuote.subtotalAmount?.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-gray-600">
                       <span>Total Savings:</span>
-                      <span className="font-medium text-amber-700">-${selectedQuote.totalDiscountAmount?.toLocaleString()}</span>
+                      <span className="font-medium text-amber-700">-₹{selectedQuote.totalDiscountAmount?.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-sm font-semibold text-gray-900 border-t border-gray-200 pt-2">
                       <span>Total Payable:</span>
-                      <span className="text-zinc-900 font-bold">${selectedQuote.totalAmount?.toLocaleString()} USD</span>
+                      <span className="text-zinc-900 font-bold">₹{selectedQuote.totalAmount?.toLocaleString()} INR</span>
                     </div>
                   </div>
                 </div>

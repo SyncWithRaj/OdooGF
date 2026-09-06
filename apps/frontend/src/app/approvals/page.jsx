@@ -408,7 +408,7 @@ export default function ApprovalsPage() {
                         {/* Discount */}
                         <td className="py-3 px-4 text-right font-medium text-amber-700">
                           {quote.orderDiscountPercent}%
-                          <span className="block text-[10px] text-gray-400">-${quote.totalDiscountAmount}</span>
+                          <span className="block text-[10px] text-gray-400">-₹{quote.totalDiscountAmount}</span>
                           {quote.counterDiscountProposed > 0 && (
                             <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
                               Counter: {quote.counterDiscountProposed}%
@@ -418,7 +418,7 @@ export default function ApprovalsPage() {
 
                         {/* Total Amount */}
                         <td className="py-3 px-4 text-right font-semibold text-gray-900">
-                          ${quote.totalAmount?.toLocaleString()}
+                          ₹{quote.totalAmount?.toLocaleString()}
                         </td>
 
                         {/* Margin */}
@@ -519,7 +519,7 @@ export default function ApprovalsPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-gray-50 rounded border border-gray-100 text-xs">
                   <div>
                     <span className="text-gray-500 block">Total Value</span>
-                    <span className="font-semibold text-gray-900">${selectedQuote.totalAmount?.toLocaleString()}</span>
+                    <span className="font-semibold text-gray-900">₹{selectedQuote.totalAmount?.toLocaleString()}</span>
                   </div>
                   <div>
                     <span className="text-gray-500 block">Requested Discount</span>
@@ -527,7 +527,7 @@ export default function ApprovalsPage() {
                   </div>
                   <div>
                     <span className="text-gray-500 block">Total Concession</span>
-                    <span className="font-semibold text-gray-900">-${selectedQuote.totalDiscountAmount}</span>
+                    <span className="font-semibold text-gray-900">-₹{selectedQuote.totalDiscountAmount}</span>
                   </div>
                   <div>
                     <span className="text-gray-500 block">Total Margin</span>
@@ -572,10 +572,10 @@ export default function ApprovalsPage() {
                             <tr key={i}>
                               <td className="py-2 px-3 font-medium">{l.productName}</td>
                               <td className="py-2 px-2 text-center">{l.quantity}</td>
-                              <td className="py-2 px-3 text-right">${l.unitPrice}</td>
+                              <td className="py-2 px-3 text-right">₹{l.unitPrice}</td>
                               <td className="py-2 px-3 text-right text-amber-700">{l.discountPercent}%</td>
                               <td className="py-2 px-3 text-right font-semibold">
-                                ${l.lineRevenue || (l.quantity * l.unitPrice * (1 - l.discountPercent / 100)).toFixed(2)}
+                                ₹{l.lineRevenue || (l.quantity * l.unitPrice * (1 - l.discountPercent / 100)).toFixed(2)}
                               </td>
                             </tr>
                           ))}

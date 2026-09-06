@@ -134,14 +134,14 @@ export default function PipelinePage() {
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Active Pipeline</p>
             <p className="text-xl font-black text-slate-900 mt-1">
-              ${metrics.totalPipelineValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              ₹{metrics.totalPipelineValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
             </p>
             <p className="text-[10px] text-slate-400 mt-1">{metrics.activeCount} deals currently in flight</p>
           </div>
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Closed Won Revenue</p>
             <p className="text-xl font-black text-zinc-900 mt-1">
-              ${metrics.wonValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              ₹{metrics.wonValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
             </p>
             <p className="text-[10px] text-slate-400 mt-1">{metrics.wonCount} finalized orders</p>
           </div>
@@ -194,7 +194,7 @@ export default function PipelinePage() {
                         </span>
                       </div>
                       <p className="text-[10px] font-semibold text-slate-500 mt-0.5">
-                        ${stageValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        ₹{stageValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       </p>
                     </div>
                   </div>
@@ -246,7 +246,7 @@ export default function PipelinePage() {
                               <div>
                                 <span className="text-[10px] text-slate-400 block leading-none">Deal Value</span>
                                 <span className="font-black text-slate-900 mt-0.5 block">
-                                  ${deal.totalAmount?.toLocaleString()}
+                                  ₹{deal.totalAmount?.toLocaleString()}
                                 </span>
                               </div>
                               <div className="text-right">

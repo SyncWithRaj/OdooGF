@@ -213,7 +213,7 @@ export default function DashboardPage() {
               <span className="text-zinc-900 font-bold lowercase text-[11px] px-1.5 py-0.5 rounded bg-zinc-100 border border-zinc-200">live</span>
             </div>
             <div className="text-2xl font-black text-zinc-900 tracking-tight">
-              ${loading ? '...' : stats.totalPipeline.toLocaleString()}
+              ₹{loading ? '...' : stats.totalPipeline.toLocaleString()}
             </div>
             <p className="text-xs text-zinc-400 mt-1">
               {stats.totalQuotes} active proposals in database
@@ -234,7 +234,7 @@ export default function DashboardPage() {
               {loading ? '...' : stats.pendingCount}
             </div>
             <p className="text-xs text-zinc-400 mt-1">
-              ${stats.pendingValue.toLocaleString()} awaiting audit review
+              ₹{stats.pendingValue.toLocaleString()} awaiting audit review
             </p>
           </div>
 
@@ -245,7 +245,7 @@ export default function DashboardPage() {
               <span className="text-zinc-900 font-bold lowercase text-[11px] px-1.5 py-0.5 rounded bg-zinc-100 border border-zinc-200">closed</span>
             </div>
             <div className="text-2xl font-black text-zinc-900 tracking-tight">
-              ${loading ? '...' : stats.confirmedValue.toLocaleString()}
+              ₹{loading ? '...' : stats.confirmedValue.toLocaleString()}
             </div>
             <p className="text-xs text-zinc-400 mt-1">
               {stats.confirmedCount} order contracts converted
@@ -415,7 +415,7 @@ export default function DashboardPage() {
                             {getRiskBadge(q.blendedRiskScore)}
                           </td>
                           <td className="py-2.5 px-3 text-right font-bold text-zinc-900">
-                            ${q.totalAmount?.toLocaleString()}
+                            ₹{q.totalAmount?.toLocaleString()}
                           </td>
                           <td className="py-2.5 px-3 text-right font-medium">
                             <span className={q.totalMarginPercent < 20 ? 'text-zinc-900 font-bold underline' : 'text-zinc-700'}>

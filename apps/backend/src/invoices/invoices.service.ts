@@ -19,13 +19,42 @@ import { InvoiceQueryDto, PayInvoiceDto, VerifyRazorpayPaymentDto } from './dto/
 @Injectable()
 export class InvoicesService {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private razorpay: any;
+  private razorpay: any = null;
 
   constructor(private readonly prisma: PrismaService) {
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (keyId && keySecret) {
+      try {
+        this.razorpay = new Razorpay({
+          key_id: keyId,
+          key_secret: keySecret,
+        });
+      } catch (err) {
+        console.warn('Could not initialize Razorpay client at startup:', err);
+      }
+    }
+  }
+
+  private getRazorpayClient() {
+    if (this.razorpay) {
+      return this.razorpay;
+    }
+
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+    if (!keyId || !keySecret) {
+      throw new BadRequestException(
+        'Razorpay credentials are not configured. Please provide RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in .env',
+      );
+    }
+
     this.razorpay = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID || '',
-      key_secret: process.env.RAZORPAY_KEY_SECRET || '',
+      key_id: keyId,
+      key_secret: keySecret,
     });
+    return this.razorpay;
   }
 
   // ----------------------------------------------------------------------------
@@ -291,8 +320,9 @@ export class InvoicesService {
 
     // Razorpay amounts are in the smallest currency unit (paise for INR, cents for USD, etc.)
     const amountInPaise = Math.round(invoice.amount * 100);
+    const razorpay = this.getRazorpayClient();
 
-    const order = await this.razorpay.orders.create({
+    const order = await razorpay.orders.create({
       amount: amountInPaise,
       currency: 'INR',
       receipt: invoice.invoiceNumber,
@@ -321,9 +351,14 @@ export class InvoicesService {
       throw new NotFoundException(`Invoice with ID '${id}' not found`);
     }
 
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (!keySecret) {
+      throw new BadRequestException('Razorpay secret is not configured on the server.');
+    }
+
     // Verify HMAC-SHA256 signature: razorpay_order_id + "|" + razorpay_payment_id
     const generatedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || '')
+      .createHmac('sha256', keySecret)
       .update(`${dto.razorpay_order_id}|${dto.razorpay_payment_id}`)
       .digest('hex');
 

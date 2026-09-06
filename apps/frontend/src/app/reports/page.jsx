@@ -142,14 +142,14 @@ export default function ReportsPage() {
       [],
       ['KPI', 'Value'],
       ['Win Rate', `${bi.winRate}%`],
-      ['Total Bookings', `$${bi.totalBookings}`],
-      ['Average Deal Size', `$${bi.avgDealSize}`],
+      ['Total Bookings', `₹${bi.totalBookings}`],
+      ['Average Deal Size', `₹${bi.avgDealSize}`],
       ['Blended Margin', `${bi.avgMargin}%`],
-      ['Total Discount Given', `$${bi.totalDiscountGiven}`],
+      ['Total Discount Given', `₹${bi.totalDiscountGiven}`],
       [],
       ['Sales Rep Leaderboard'],
       ['Name', 'Team', 'Deals', 'Won', 'Revenue', 'Avg Margin'],
-      ...bi.leaderboard.map((r) => [r.name, r.teamName, r.totalQuotes, r.closedWon, `$${r.revenue}`, `${r.avgMargin}%`]),
+      ...bi.leaderboard.map((r) => [r.name, r.teamName, r.totalQuotes, r.closedWon, `₹${r.revenue}`, `${r.avgMargin}%`]),
     ];
 
     const csvContent = 'data:text/csv;charset=utf-8,' + csvRows.map((e) => e.join(',')).join('\n');
@@ -229,8 +229,8 @@ export default function ReportsPage() {
           </div>
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Gross Contracted Bookings</p>
-            <p className="text-xl font-black text-slate-900 mt-1">${bi.totalBookings.toLocaleString()}</p>
-            <p className="text-[10px] text-slate-400 mt-1">Average deal size: ${bi.avgDealSize.toLocaleString()}</p>
+            <p className="text-xl font-black text-slate-900 mt-1">₹{bi.totalBookings.toLocaleString()}</p>
+            <p className="text-[10px] text-slate-400 mt-1">Average deal size: ₹{bi.avgDealSize.toLocaleString()}</p>
           </div>
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Average Deal Margin</p>
@@ -239,7 +239,7 @@ export default function ReportsPage() {
           </div>
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Concession Discount</p>
-            <p className="text-xl font-black text-amber-600 mt-1">-${bi.totalDiscountGiven.toLocaleString()}</p>
+            <p className="text-xl font-black text-amber-600 mt-1">-₹{bi.totalDiscountGiven.toLocaleString()}</p>
             <p className="text-[10px] text-slate-400 mt-1">{bi.highRiskDeals} deals flagged High Risk</p>
           </div>
         </div>
@@ -256,7 +256,7 @@ export default function ReportsPage() {
                 <div>
                   <div className="flex justify-between font-semibold mb-1">
                     <span className="text-slate-700">Hardware Equipment</span>
-                    <span className="text-slate-900">${bi.categories.hardwareTotal.toLocaleString()}</span>
+                    <span className="text-slate-900">₹{bi.categories.hardwareTotal.toLocaleString()}</span>
                   </div>
                   <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                     <div className="h-full bg-blue-600 rounded-full" style={{ width: '55%' }} />
@@ -265,7 +265,7 @@ export default function ReportsPage() {
                 <div>
                   <div className="flex justify-between font-semibold mb-1">
                     <span className="text-slate-700">Professional Services</span>
-                    <span className="text-slate-900">${bi.categories.servicesTotal.toLocaleString()}</span>
+                    <span className="text-slate-900">₹{bi.categories.servicesTotal.toLocaleString()}</span>
                   </div>
                   <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                     <div className="h-full bg-zinc-900 rounded-full" style={{ width: '25%' }} />
@@ -274,7 +274,7 @@ export default function ReportsPage() {
                 <div>
                   <div className="flex justify-between font-semibold mb-1">
                     <span className="text-slate-700">SaaS Subscriptions</span>
-                    <span className="text-slate-900">${bi.categories.subscriptionTotal.toLocaleString()}</span>
+                    <span className="text-slate-900">₹{bi.categories.subscriptionTotal.toLocaleString()}</span>
                   </div>
                   <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                     <div className="h-full bg-zinc-700 rounded-full" style={{ width: '20%' }} />
@@ -382,7 +382,7 @@ export default function ReportsPage() {
                           {rep.closedWon}
                         </td>
                         <td className="py-3.5 px-4 text-right font-black text-slate-900 whitespace-nowrap">
-                          ${rep.revenue?.toLocaleString()}
+                          ₹{rep.revenue?.toLocaleString()}
                         </td>
                         <td className="py-3.5 px-4 text-right font-bold text-blue-600">
                           {rep.avgMargin}%

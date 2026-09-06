@@ -555,7 +555,7 @@ export default function CustomersPage() {
                       {selectedCustomerDetail.quotations.map((q) => (
                         <div key={q.id} className="p-2 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-between text-xs">
                           <span className="font-mono font-bold text-slate-800">{q.quoteNumber}</span>
-                          <span className="text-slate-500">${q.totalAmount?.toLocaleString()}</span>
+                          <span className="text-slate-500">₹{q.totalAmount?.toLocaleString()}</span>
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-700">
                             {q.status}
                           </span>

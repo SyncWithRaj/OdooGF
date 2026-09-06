@@ -239,7 +239,7 @@ model PriceListRule {
   productId       String
   product         Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
   customerTier    CustomerTier
-  currency        String       @default("USD")
+  currency        String       @default("INR")
   priceRuleDesc   String?
   discountPercent Float        @default(0.0)
 

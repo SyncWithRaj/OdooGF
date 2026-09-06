@@ -434,7 +434,7 @@ async function main() {
       id: crypto.randomUUID(),
       productId: productIds[i],
       customerTier: tier,
-      currency: 'USD',
+      currency: 'INR',
       priceRuleDesc: `${tier} Tier Volume Agreement #${i + 1}`,
       discountPercent: Number((3.0 + (i % 8) * 1.2).toFixed(1)),
     });

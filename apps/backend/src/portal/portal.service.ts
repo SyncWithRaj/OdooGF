@@ -472,7 +472,7 @@ export class PortalService {
           quotationId: quote.id,
           authorName: quote.customer.name,
           authorRole: Role.CUSTOMER,
-          message: `Customer accepted partial order of ${partialQty} units for immediate dispatch. Order total adjusted to $${finalAmount.toFixed(2)}.`,
+          message: `Customer accepted partial order of ${partialQty} units for immediate dispatch. Order total adjusted to ₹${finalAmount.toFixed(2)}.`,
         },
       });
 

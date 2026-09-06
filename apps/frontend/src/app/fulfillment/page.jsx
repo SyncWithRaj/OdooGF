@@ -287,7 +287,7 @@ export default function FulfillmentPage() {
                           </div>
                         </td>
                         <td className="py-3.5 px-4 text-right font-black text-slate-900">
-                          ${order.estimatedCostTotal?.toLocaleString() || '0'}
+                          ₹{order.estimatedCostTotal?.toLocaleString() || '0'}
                         </td>
                         <td className="py-3.5 px-4 text-center">
                           <span
@@ -399,14 +399,14 @@ export default function FulfillmentPage() {
                     <div className="flex items-center justify-between text-slate-600">
                       <span>Fulfilled: <strong className="text-zinc-900">{item.quantityFulfilled} units</strong></span>
                       <span>Backordered: <strong className="text-amber-700">{item.quantityBackordered} units</strong></span>
-                      <span>Est. Ship: <strong>${item.estimatedShipCost || 0}</strong></span>
+                      <span>Est. Ship: <strong>₹{item.estimatedShipCost || 0}</strong></span>
                     </div>
                   </div>
                 ))}
               </div>
 
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700">Total Estimated Freight: ${selectedOrder.estimatedCostTotal?.toLocaleString() || 0}</span>
+                <span className="text-xs font-bold text-slate-700">Total Estimated Freight: ₹{selectedOrder.estimatedCostTotal?.toLocaleString() || 0}</span>
                 <button
                   onClick={() => setSelectedOrder(null)}
                   className="px-4 py-2 rounded-xl bg-slate-950 text-white font-semibold text-xs hover:bg-slate-800 transition cursor-pointer"

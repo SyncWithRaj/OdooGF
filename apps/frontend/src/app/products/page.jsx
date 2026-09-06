@@ -376,12 +376,12 @@ export default function ProductsPage() {
 
                       {/* Base Cost */}
                       <td className="py-4 px-4 text-right font-normal text-slate-600 whitespace-nowrap">
-                        ${Number(prod.baseCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        ₹{Number(prod.baseCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </td>
 
                       {/* Base Price */}
                       <td className="py-4 px-4 text-right font-semibold text-slate-900 whitespace-nowrap">
-                        ${Number(prod.basePrice || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        ₹{Number(prod.basePrice || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </td>
 
                       {/* Margin % */}
@@ -514,7 +514,7 @@ export default function ProductsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Base Cost ($) *</label>
+                  <label className="font-semibold text-slate-700 block mb-1">Base Cost (₹) *</label>
                   <input
                     type="number"
                     step="0.01"
@@ -526,7 +526,7 @@ export default function ProductsPage() {
                   />
                 </div>
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Base Selling Price ($) *</label>
+                  <label className="font-semibold text-slate-700 block mb-1">Base Selling Price (₹) *</label>
                   <input
                     type="number"
                     step="0.01"
@@ -636,7 +636,7 @@ export default function ProductsPage() {
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="font-semibold text-zinc-900">
-                          {v.extraPrice > 0 ? `+$${v.extraPrice}` : 'Included'}
+                          {v.extraPrice > 0 ? `+₹${v.extraPrice}` : 'Included'}
                         </span>
                         <button
                           onClick={() => handleDeleteVariant(v.id)}
@@ -685,7 +685,7 @@ export default function ProductsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-600 font-medium mb-1">Extra Price ($)</label>
+                  <label className="block text-slate-600 font-medium mb-1">Extra Price (₹)</label>
                   <input
                     type="number"
                     min="0"

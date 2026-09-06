@@ -473,7 +473,7 @@ export default function WarehousesPage() {
                     </td>
                     <td className="py-3 px-4 text-slate-500">{stock.unit || 'Each'}</td>
                     <td className="py-3 px-4 text-right font-medium text-slate-900">
-                      ${stock.basePrice?.toLocaleString()}
+                      ₹{stock.basePrice?.toLocaleString()}
                     </td>
                     <td className="py-3 px-4 text-right font-bold text-blue-600">
                       {stock.inStock}

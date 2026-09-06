@@ -545,11 +545,11 @@ function DiscountSimulator() {
                 <div className="grid grid-cols-3 gap-2 text-center text-xs pt-2 border-t border-zinc-200">
                   <div>
                     <span className="text-[10px] text-slate-400 block">Revenue</span>
-                    <span className="font-bold text-slate-900">${blendedResult.financials.totalRevenue?.toLocaleString()}</span>
+                    <span className="font-bold text-slate-900">₹{blendedResult.financials.totalRevenue?.toLocaleString()}</span>
                   </div>
                   <div>
                     <span className="text-[10px] text-slate-400 block">Discount</span>
-                    <span className="font-bold text-rose-600">-${blendedResult.financials.totalDiscountAmount?.toLocaleString()}</span>
+                    <span className="font-bold text-rose-600">-₹{blendedResult.financials.totalDiscountAmount?.toLocaleString()}</span>
                   </div>
                   <div>
                     <span className="text-[10px] text-slate-400 block">Net Margin</span>

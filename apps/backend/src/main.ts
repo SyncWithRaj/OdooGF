@@ -1,4 +1,9 @@
 import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Load .env from backend dir and fallback to root
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(process.cwd(), 'apps/backend/.env') });
 dotenv.config();
 
 import { NestFactory } from '@nestjs/core';

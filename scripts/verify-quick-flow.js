@@ -85,7 +85,7 @@ async function run() {
   const quote = await createQuoteRes.json();
   if (!quote.id) throw new Error(`Create quotation failed: ${JSON.stringify(quote)}`);
   logPass(2, `Quotation ${quote.quoteNumber} built for ${betaSilver.name} with 14% discount (exceeds Silver 10% ceiling)`);
-  logInfo(`Initial Valuation: $${quote.totalAmount.toFixed(2)} | Margin: ${quote.totalMarginPercent.toFixed(1)}% | Blended Risk: ${quote.blendedRiskScore}`);
+  logInfo(`Initial Valuation: ₹${quote.totalAmount.toFixed(2)} | Margin: ${quote.totalMarginPercent.toFixed(1)}% | Blended Risk: ${quote.blendedRiskScore}`);
 
   // --------------------------------------------------------------------------
   // STEP 3: Accept Upsell Suggestion & Confirm Real-Time Margin Recalculation
@@ -112,7 +112,7 @@ async function run() {
     });
     const updatedWithUpsell = await addUpsellRes.json();
     logPass(3, `Accepted 1-click upsell (${suggestedName}) — Total & Margin updated in real time`);
-    logInfo(`New Valuation: $${Number(updatedWithUpsell.totalAmount ?? 0).toFixed(2)} | New Margin: ${Number(updatedWithUpsell.totalMarginPercent ?? 0).toFixed(1)}%`);
+    logInfo(`New Valuation: ₹${Number(updatedWithUpsell.totalAmount ?? 0).toFixed(2)} | New Margin: ${Number(updatedWithUpsell.totalMarginPercent ?? 0).toFixed(1)}%`);
   } else {
     logPass(3, 'Upsell suggestions verified (no additional pairing needed)');
   }
@@ -245,7 +245,7 @@ async function run() {
   logPass(8, `Hybrid Billing Generated: Split into One-Time and Recurring Invoices`);
   for (const inv of (invoicesCreated.invoices || [])) {
     const amount = Number(inv.amount ?? inv.totalAmount ?? 0);
-    logInfo(`→ Invoice ${inv.invoiceNumber} (${inv.invoiceType || inv.type}): $${amount.toFixed(2)} [${inv.status}]`);
+    logInfo(`→ Invoice ${inv.invoiceNumber} (${inv.invoiceType || inv.type}): ₹${amount.toFixed(2)} [${inv.status}]`);
     // Record payment for invoice
     const payRes = await fetch(`${BASE_URL}/api/invoices/${inv.id}/pay`, {
       method: 'POST',

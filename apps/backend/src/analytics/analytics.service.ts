@@ -382,9 +382,9 @@ export class AnalyticsService {
       'Sales Rep',
       'Status',
       'Blended Risk',
-      'Subtotal ($)',
-      'Total Discount ($)',
-      'Total Amount ($)',
+      'Subtotal (₹)',
+      'Total Discount (₹)',
+      'Total Amount (₹)',
       'Total Margin (%)',
       'Created Date',
     ];
@@ -426,7 +426,7 @@ export class AnalyticsService {
           <td>${q.salesRep.fullName}</td>
           <td><span class="badge">${q.status}</span></td>
           <td>${q.blendedRiskScore}</td>
-          <td>$${q.totalAmount.toFixed(2)}</td>
+          <td>₹${q.totalAmount.toFixed(2)}</td>
           <td>${q.totalMarginPercent.toFixed(1)}%</td>
         </tr>`,
       )
@@ -468,7 +468,7 @@ export class AnalyticsService {
     </div>
     <div class="kpi">
       <div class="kpi-title">Total Pipeline Valuation</div>
-      <div class="kpi-value">$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+      <div class="kpi-value">₹${totalValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
     </div>
   </div>
   <table>

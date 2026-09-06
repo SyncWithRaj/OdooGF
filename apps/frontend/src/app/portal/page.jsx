@@ -248,7 +248,7 @@ function CustomerPortalInner() {
                     </div>
                     <div className="flex items-baseline justify-between mt-1">
                       <p className={`text-xs font-semibold ${isSelected ? 'text-slate-200' : 'text-slate-800'}`}>
-                        ${q.totalAmount?.toLocaleString()}
+                        ₹{q.totalAmount?.toLocaleString()}
                       </p>
                       {q.counterDiscountProposed > 0 && (
                         <span className={`text-[10px] font-bold ${isSelected ? 'text-purple-300' : 'text-purple-700'}`}>
@@ -444,13 +444,13 @@ function CustomerPortalInner() {
                                 {line.quantity}
                               </td>
                               <td className="py-3 px-3 text-right font-medium text-slate-900">
-                                ${line.unitPrice?.toLocaleString()}
+                                ₹{line.unitPrice?.toLocaleString()}
                               </td>
                               <td className="py-3 px-3 text-right font-semibold text-amber-600">
                                 {line.discountPercent || 0}%
                               </td>
                               <td className="py-3 px-3 text-right font-black text-slate-900">
-                                ${(line.lineTotal || (line.unitPrice * line.quantity * (1 - (line.discountPercent || 0) / 100)))?.toLocaleString()}
+                                ₹{(line.lineTotal || (line.unitPrice * line.quantity * (1 - (line.discountPercent || 0) / 100)))?.toLocaleString()}
                               </td>
                             </tr>
                           ))}
@@ -472,20 +472,20 @@ function CustomerPortalInner() {
                   <div className="p-4 rounded-xl bg-white border border-slate-200 text-xs space-y-2">
                     <div className="flex justify-between text-slate-600">
                       <span>Gross Subtotal</span>
-                      <span className="font-medium">${(selectedQuote.subtotalAmount || selectedQuote.totalAmount)?.toLocaleString()}</span>
+                      <span className="font-medium">₹{(selectedQuote.subtotalAmount || selectedQuote.totalAmount)?.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-amber-600">
                       <span>Approved Concession Discount</span>
-                      <span className="font-semibold">-${(selectedQuote.totalDiscountAmount || 0)?.toLocaleString()}</span>
+                      <span className="font-semibold">-₹{(selectedQuote.totalDiscountAmount || 0)?.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-slate-600">
                       <span>Applicable Tax (18% GST / VAT)</span>
-                      <span className="font-medium">${(selectedQuote.totalTaxAmount || 0)?.toLocaleString()}</span>
+                      <span className="font-medium">₹{(selectedQuote.totalTaxAmount || 0)?.toLocaleString()}</span>
                     </div>
                     <div className="pt-2 border-t border-slate-200 flex justify-between items-baseline">
                       <span className="text-sm font-bold text-slate-900">Final Order Investment</span>
                       <span className="text-xl font-black text-slate-900">
-                        ${selectedQuote.totalAmount?.toLocaleString()}
+                        ₹{selectedQuote.totalAmount?.toLocaleString()}
                       </span>
                     </div>
                   </div>

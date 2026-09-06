@@ -143,7 +143,7 @@ export default function InvoicesPage() {
         reference: paymentForm.reference || `WIRE-${Date.now().toString().slice(-4)}`,
       });
 
-      showToast(`Payment of $${paymentForm.amount || selectedInvoice.amount} logged successfully!`);
+      showToast(`Payment of ₹${paymentForm.amount || selectedInvoice.amount} logged successfully!`);
       setIsPayModalOpen(false);
       await loadInvoices();
     } catch (err) {
@@ -220,11 +220,25 @@ export default function InvoicesPage() {
     }
     setSubmitting(true);
     try {
-      await apiClient.generateInvoicesFromQuotation(createForm.quotationId);
+      const res = await apiClient.generateInvoicesFromQuotation(createForm.quotationId);
       showToast('Invoice generated from quotation successfully!');
       setIsCreateModalOpen(false);
+
+      const chosenCust = customers.find((c) => c.id === createForm.customerId);
+      const chosenQuote = quotations.find((q) => q.id === createForm.quotationId);
+
       setCreateForm({ customerId: '', quotationId: '', amount: '', dueDate: '' });
       await loadInvoices();
+
+      // Automatically launch printable PDF blob for the newly created invoice
+      if (res?.invoices && res.invoices.length > 0) {
+        const newlyCreated = res.invoices[0];
+        handleDownloadInvoice({
+          ...newlyCreated,
+          customer: chosenCust || newlyCreated.customer || { name: 'Customer Account' },
+          quotation: chosenQuote || newlyCreated.quotation || { quoteNumber: 'Commercial Proposal' },
+        });
+      }
     } catch (err) {
       alert(err.message || 'Failed to generate invoice');
     } finally {
@@ -233,46 +247,86 @@ export default function InvoicesPage() {
   };
 
   const handleDownloadInvoice = (inv) => {
+    const formattedAmount = Number(inv.amount || 0).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    const issuedDate = inv.createdAt ? new Date(inv.createdAt).toLocaleDateString() : new Date().toLocaleDateString();
+    const dueDateStr = inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : new Date(Date.now() + 30 * 86400000).toLocaleDateString();
+
     const htmlContent = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <title>Invoice - ${inv.invoiceNumber}</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0f172a; margin: 40px; background: #fff; }
-    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 24px; margin-bottom: 30px; }
-    .brand { font-size: 24px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px; }
-    .brand span { color: #10b981; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #18181b; margin: 40px; background: #ffffff; }
+    .no-print { display: flex; }
+    @media print {
+      .no-print { display: none !important; }
+      body { margin: 0; padding: 15mm; font-size: 11pt; background: #fff; }
+      @page { margin: 10mm; size: A4 portrait; }
+    }
+    .actions-bar {
+      position: sticky; top: 0; left: 0; right: 0;
+      justify-content: space-between; align-items: center;
+      background: #18181b; color: #f4f4f5; padding: 12px 24px;
+      font-size: 12px; z-index: 9999; margin: -40px -40px 30px -40px;
+      border-bottom: 1px solid #27272a;
+    }
+    .actions-left { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .btn-print {
+      background: #ffffff; color: #18181b; border: none; padding: 7px 16px;
+      font-size: 12px; font-weight: 700; border-radius: 6px; cursor: pointer;
+    }
+    .btn-print:hover { background: #e4e4e7; }
+    .btn-close {
+      background: transparent; color: #a1a1aa; border: 1px solid #3f3f46; padding: 6px 14px;
+      font-size: 12px; font-weight: 600; border-radius: 6px; cursor: pointer; margin-left: 8px;
+    }
+    .btn-close:hover { color: #ffffff; border-color: #71717a; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #e4e4e7; padding-bottom: 24px; margin-bottom: 30px; }
+    .brand { font-size: 22px; font-weight: 900; color: #18181b; letter-spacing: -0.5px; }
+    .brand span { color: #71717a; }
     .inv-title { text-align: right; }
-    .inv-number { font-size: 20px; font-weight: 800; color: #0f172a; font-family: monospace; }
-    .badge { display: inline-block; padding: 4px 12px; border-radius: 9999px; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-top: 6px; }
-    .badge-paid { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
-    .badge-unpaid { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
-    .badge-overdue { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
+    .inv-number { font-size: 18px; font-weight: 800; color: #18181b; font-family: monospace; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 9999px; font-size: 10px; font-weight: 700; text-transform: uppercase; margin-top: 6px; }
+    .badge-paid { background: #f4f4f5; color: #18181b; border: 1px solid #d4d4d8; }
+    .badge-unpaid { background: #fafafa; color: #52525b; border: 1px solid #e4e4e7; }
+    .badge-overdue { background: #fafafa; color: #71717a; border: 1px solid #d4d4d8; }
     .grid { display: flex; justify-content: space-between; margin-bottom: 30px; gap: 20px; }
-    .col { flex: 1; font-size: 13px; line-height: 1.6; }
-    .col h4 { font-size: 11px; text-transform: uppercase; color: #64748b; margin-bottom: 6px; font-weight: 700; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 13px; }
-    th { text-align: left; background: #f8fafc; padding: 12px; border-bottom: 2px solid #e2e8f0; font-size: 11px; text-transform: uppercase; color: #64748b; }
-    td { padding: 12px; border-bottom: 1px solid #f1f5f9; }
+    .col { flex: 1; font-size: 12px; line-height: 1.6; }
+    .col h4 { font-size: 10px; text-transform: uppercase; color: #71717a; margin-bottom: 6px; font-weight: 700; letter-spacing: 0.5px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 12px; }
+    th { text-align: left; background: #fafafa; padding: 10px 12px; border-bottom: 1px solid #e4e4e7; font-size: 10px; text-transform: uppercase; color: #71717a; letter-spacing: 0.5px; }
+    td { padding: 12px; border-bottom: 1px solid #f4f4f5; }
     .text-right { text-align: right; }
-    .totals { margin-left: auto; width: 300px; font-size: 13px; margin-bottom: 30px; }
+    .totals { margin-left: auto; width: 300px; font-size: 12px; margin-bottom: 30px; }
     .totals-row { display: flex; justify-content: space-between; padding: 6px 0; }
-    .totals-row.grand { border-top: 2px solid #0f172a; font-size: 16px; font-weight: 900; margin-top: 8px; padding-top: 10px; }
-    .remittance { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; font-size: 12px; color: #475569; }
-    .remittance h4 { font-size: 12px; font-weight: 800; color: #0f172a; margin-top: 0; margin-bottom: 6px; }
-    @media print { body { margin: 0; padding: 20px; } }
+    .totals-row.grand { border-top: 2px solid #18181b; font-size: 15px; font-weight: 900; margin-top: 8px; padding-top: 10px; }
+    .remittance { background: #fafafa; border: 1px solid #e4e4e7; border-radius: 8px; padding: 16px; font-size: 11px; color: #52525b; }
+    .remittance h4 { font-size: 11px; font-weight: 800; color: #18181b; margin-top: 0; margin-bottom: 4px; }
   </style>
 </head>
 <body>
+  <div class="no-print actions-bar">
+    <div class="actions-left">
+      <span>Invoice Document: <strong>${inv.invoiceNumber}</strong></span>
+    </div>
+    <div>
+      <button type="button" onclick="window.print()" class="btn-print">Print to PDF</button>
+      <button type="button" onclick="window.close()" class="btn-close">Close</button>
+    </div>
+  </div>
+
   <div class="header">
     <div>
       <div class="brand">DealFlow<span>360</span></div>
-      <p style="font-size: 12px; color: #64748b; margin: 4px 0 0 0;">Enterprise CPQ &amp; Sales Operations Platform</p>
-      <p style="font-size: 11px; color: #94a3b8; margin: 2px 0 0 0;">100 Montgomery St, Suite 1400, San Francisco, CA</p>
+      <p style="font-size: 11px; color: #71717a; margin: 4px 0 0 0;">Enterprise CPQ &amp; Sales Operations Platform</p>
+      <p style="font-size: 10px; color: #a1a1aa; margin: 2px 0 0 0;">100 Montgomery St, Suite 1400, San Francisco, CA</p>
     </div>
     <div class="inv-title">
-      <div style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;">Commercial Invoice</div>
+      <div style="font-size: 11px; font-weight: 700; color: #71717a; text-transform: uppercase; letter-spacing: 0.5px;">Commercial Invoice</div>
       <div class="inv-number">${inv.invoiceNumber}</div>
       <span class="badge ${inv.status === 'PAID' ? 'badge-paid' : inv.status === 'OVERDUE' ? 'badge-overdue' : 'badge-unpaid'}">
         ${inv.status}
@@ -290,9 +344,9 @@ export default function InvoicesPage() {
     </div>
     <div class="col" style="text-align: right;">
       <h4>Invoice Summary</h4>
-      Date Issued: <strong>${new Date(inv.createdAt).toLocaleDateString()}</strong><br>
-      Payment Due: <strong>${new Date(inv.dueDate).toLocaleDateString()}</strong><br>
-      Origin Quotation: <strong>${inv.quotation?.quoteNumber || 'Q-1506'}</strong><br>
+      Date Issued: <strong>${issuedDate}</strong><br>
+      Payment Due: <strong>${dueDateStr}</strong><br>
+      Origin Quotation: <strong>${inv.quotation?.quoteNumber || 'Q-Order'}</strong><br>
       Billing Type: <strong>${inv.invoiceType || 'ONE_TIME'}</strong>
     </div>
   </div>
@@ -310,11 +364,11 @@ export default function InvoicesPage() {
       <tr>
         <td>
           <strong>Commercial Proposal Order (${inv.quotation?.quoteNumber || inv.invoiceNumber})</strong><br>
-          <span style="font-size: 11px; color: #64748b;">Enterprise CPQ contracted line items and SLA delivery</span>
+          <span style="font-size: 11px; color: #71717a;">Enterprise CPQ contracted line items and SLA delivery</span>
         </td>
         <td>${inv.invoiceType || 'ONE_TIME'}</td>
-        <td class="text-right">$${inv.amount?.toLocaleString()}</td>
-        <td class="text-right"><strong>$${inv.amount?.toLocaleString()}</strong></td>
+        <td class="text-right">₹${formattedAmount}</td>
+        <td class="text-right"><strong>₹${formattedAmount}</strong></td>
       </tr>
     </tbody>
   </table>
@@ -322,23 +376,31 @@ export default function InvoicesPage() {
   <div class="totals">
     <div class="totals-row">
       <span>Net Subtotal:</span>
-      <span>$${inv.amount?.toLocaleString()}</span>
+      <span>₹${formattedAmount}</span>
     </div>
     <div class="totals-row">
       <span>Applicable Tax:</span>
-      <span>$0.00</span>
+      <span>₹0.00</span>
     </div>
     <div class="totals-row grand">
       <span>Total Investment:</span>
-      <span>$${inv.amount?.toLocaleString()}</span>
+      <span>₹${formattedAmount}</span>
     </div>
   </div>
 
   <div class="remittance">
     <h4>Payment &amp; Remittance Wire Instructions</h4>
     <p style="margin: 0 0 6px 0;">Please wire payments quoting invoice number <strong>${inv.invoiceNumber}</strong> as remittance memo.</p>
-    <p style="margin: 0; font-family: monospace;">Silicon Valley Bank &bull; Routing: 121000358 &bull; Account: 9844-0192-3819 &bull; SWIFT: SVBUS6S</p>
+    <p style="margin: 0; font-family: monospace;">HDFC Bank Ltd &bull; IFSC: HDFC0000128 &bull; Account: 5020-0019-3819-22 &bull; UPI: dealflow360@hdfcbank</p>
   </div>
+
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        window.print();
+      }, 350);
+    });
+  </script>
 </body>
 </html>`;
 
@@ -399,28 +461,28 @@ export default function InvoicesPage() {
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Invoiced</p>
             <p className="text-xl font-black text-slate-900 mt-1">
-              ${metrics.totalInvoiced.toLocaleString()}
+              ₹{metrics.totalInvoiced.toLocaleString()}
             </p>
             <p className="text-[10px] text-slate-400 mt-1">Gross billings across all accounts</p>
           </div>
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Collected / Settled</p>
             <p className="text-xl font-black text-zinc-900 mt-1">
-              ${metrics.paid.toLocaleString()}
+              ₹{metrics.paid.toLocaleString()}
             </p>
             <p className="text-[10px] text-slate-400 mt-1">Cash received in bank</p>
           </div>
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Outstanding Unpaid</p>
             <p className="text-xl font-black text-amber-600 mt-1">
-              ${metrics.unpaid.toLocaleString()}
+              ₹{metrics.unpaid.toLocaleString()}
             </p>
             <p className="text-[10px] text-slate-400 mt-1">Active payment terms</p>
           </div>
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Overdue Balances</p>
             <p className="text-xl font-black text-rose-600 mt-1">
-              ${metrics.overdue.toLocaleString()}
+              ₹{metrics.overdue.toLocaleString()}
             </p>
             <p className="text-[10px] text-slate-400 mt-1">Past payment maturity</p>
           </div>
@@ -500,7 +562,7 @@ export default function InvoicesPage() {
                         {inv.quotation?.quoteNumber || '—'}
                       </td>
                       <td className="py-3.5 px-4 text-right font-black text-slate-900 whitespace-nowrap">
-                        ${inv.amount?.toLocaleString()}
+                        ₹{inv.amount?.toLocaleString()}
                       </td>
                       <td className="py-3.5 px-4 text-center whitespace-nowrap">
                         <span
@@ -578,7 +640,7 @@ export default function InvoicesPage() {
 
               <form onSubmit={handleRecordPayment} className="space-y-4 text-xs">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Settlement Amount ($) *</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Settlement Amount (₹) *</label>
                   <input
                     type="number"
                     step="0.01"
@@ -596,10 +658,10 @@ export default function InvoicesPage() {
                     onChange={(e) => setPaymentForm({ ...paymentForm, paymentMethod: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-slate-900/10"
                   >
-                    <option value="Wire Transfer">Wire Transfer (Fedwire / SWIFT)</option>
-                    <option value="ACH">ACH Direct Deposit</option>
-                    <option value="Credit Card">Corporate Card (Stripe)</option>
-                    <option value="Check">Commercial Check</option>
+                    <option value="Wire Transfer">NEFT / RTGS / IMPS</option>
+                    <option value="ACH">UPI / Net Banking</option>
+                    <option value="Credit Card">Credit / Debit Card</option>
+                    <option value="Check">Cheque / Demand Draft</option>
                   </select>
                 </div>
 
@@ -608,7 +670,7 @@ export default function InvoicesPage() {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. TR-9981245-USD"
+                    placeholder="e.g. UTR-9981245-INR"
                     value={paymentForm.reference}
                     onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-slate-900/10"
@@ -694,7 +756,7 @@ export default function InvoicesPage() {
                   >
                     {quotations.map((q) => (
                       <option key={q.id} value={q.id}>
-                        {q.quoteNumber} — ${q.totalAmount?.toLocaleString()} [{q.status}]
+                        {q.quoteNumber} — ₹{q.totalAmount?.toLocaleString()} [{q.status}]
                       </option>
                     ))}
                   </select>
@@ -702,7 +764,7 @@ export default function InvoicesPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Invoice Amount ($) *</label>
+                    <label className="block font-semibold text-slate-700 mb-1">Invoice Amount (₹) *</label>
                     <input
                       type="number"
                       step="0.01"

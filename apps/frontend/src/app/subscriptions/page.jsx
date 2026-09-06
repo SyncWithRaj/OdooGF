@@ -110,7 +110,7 @@ export default function SubscriptionsPage() {
     setSubmitting(true);
     try {
       const res = await apiClient.adjustSubscriptionQuantity(selectedSub.id, adjustQuantity, adjustReason);
-      showToast(`Seats updated to ${adjustQuantity}! Prorated delta: $${res?.proratedDeltaAmount || 0}`);
+      showToast(`Seats updated to ${adjustQuantity}! Prorated delta: ₹${res?.proratedDeltaAmount || 0}`);
       setIsAdjustModalOpen(false);
       await loadSubscriptions();
     } catch (err) {
@@ -223,12 +223,12 @@ export default function SubscriptionsPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 mb-6">
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Monthly Recurring (MRR)</p>
-            <p className="text-xl font-black text-slate-900 mt-1">${metrics.mrr.toLocaleString()}</p>
+            <p className="text-xl font-black text-slate-900 mt-1">₹{metrics.mrr.toLocaleString()}</p>
             <p className="text-[10px] text-slate-400 mt-1">Normalized monthly recurring run</p>
           </div>
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Annual Run Rate (ARR)</p>
-            <p className="text-xl font-black text-blue-600 mt-1">${metrics.arr.toLocaleString()}</p>
+            <p className="text-xl font-black text-blue-600 mt-1">₹{metrics.arr.toLocaleString()}</p>
             <p className="text-[10px] text-slate-400 mt-1">12-month forward contract baseline</p>
           </div>
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
@@ -238,7 +238,7 @@ export default function SubscriptionsPage() {
           </div>
           <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Avg Contract Value</p>
-            <p className="text-xl font-black text-purple-600 mt-1">${metrics.acv.toLocaleString()}</p>
+            <p className="text-xl font-black text-purple-600 mt-1">₹{metrics.acv.toLocaleString()}</p>
             <p className="text-[10px] text-slate-400 mt-1">Annual value per customer</p>
           </div>
         </div>
@@ -314,7 +314,7 @@ export default function SubscriptionsPage() {
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-right font-black text-slate-900 whitespace-nowrap">
-                        ${sub.amount?.toLocaleString()}
+                        ₹{sub.amount?.toLocaleString()}
                         <span className="text-[10px] text-slate-400 font-normal">/{sub.cycle === 'YEARLY' ? 'yr' : 'mo'}</span>
                       </td>
                       <td className="py-3.5 px-4 text-center whitespace-nowrap">
@@ -430,7 +430,7 @@ export default function SubscriptionsPage() {
                     ) : (
                       quotations.map((q) => (
                         <option key={q.id} value={q.id}>
-                          {q.quoteNumber} — {q.customer?.name || q.customerName || 'Customer'} [${q.totalAmount?.toLocaleString()}]
+                          {q.quoteNumber} — {q.customer?.name || q.customerName || 'Customer'} [₹{q.totalAmount?.toLocaleString()}]
                         </option>
                       ))
                     )}
@@ -463,7 +463,7 @@ export default function SubscriptionsPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Recurring Amount ($) *</label>
+                    <label className="block font-semibold text-slate-700 mb-1">Recurring Amount (₹) *</label>
                     <input
                       type="number"
                       step="0.01"
@@ -514,7 +514,7 @@ export default function SubscriptionsPage() {
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 space-y-1">
                   <div className="flex justify-between">
                     <span>Current Recurring Rate:</span>
-                    <strong>${selectedSub.amount?.toLocaleString()}/{selectedSub.cycle?.toLowerCase()}</strong>
+                    <strong>₹{selectedSub.amount?.toLocaleString()}/{selectedSub.cycle?.toLowerCase()}</strong>
                   </div>
                   <div className="flex justify-between">
                     <span>Next Billing Cycle:</span>
