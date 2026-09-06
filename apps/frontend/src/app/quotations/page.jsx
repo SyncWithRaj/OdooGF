@@ -7,6 +7,8 @@ import { useAuth } from '@/context/AuthContext';
 import { quotationsService } from '@/services/quotationsService';
 import { apiClient } from '@/services/apiClient';
 import { toast } from 'react-toastify';
+import Pagination from '@/components/Pagination';
+import { usePagination } from '@/hooks/usePagination';
 
 export default function QuotationsPage() {
   const { user, login } = useAuth();
@@ -236,6 +238,20 @@ export default function QuotationsPage() {
 
     return filtered;
   }, [quotations, activeTab, statusFilter, riskFilter, searchQuery, sortField, sortDirection]);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems: paginatedQuotations,
+    resetPage,
+  } = usePagination(filteredQuotations, 10);
+
+  useEffect(() => {
+    resetPage();
+  }, [activeTab, statusFilter, riskFilter, searchQuery]);
 
   // Overall KPI metrics
   const metrics = useMemo(() => {
@@ -754,12 +770,14 @@ export default function QuotationsPage() {
                   <th className="py-3.5 px-4 w-10 text-center">
                     <input
                       type="checkbox"
-                      checked={filteredQuotations.length > 0 && selectedQuoteIds.length === filteredQuotations.length}
+                      checked={paginatedQuotations.length > 0 && paginatedQuotations.every((q) => selectedQuoteIds.includes(q.id))}
                       onChange={() => {
-                        if (selectedQuoteIds.length === filteredQuotations.length) {
-                          setSelectedQuoteIds([]);
+                        const pageIds = paginatedQuotations.map((q) => q.id);
+                        const allPageSelected = pageIds.every((id) => selectedQuoteIds.includes(id));
+                        if (allPageSelected) {
+                          setSelectedQuoteIds((prev) => prev.filter((id) => !pageIds.includes(id)));
                         } else {
-                          setSelectedQuoteIds(filteredQuotations.map((q) => q.id));
+                          setSelectedQuoteIds((prev) => Array.from(new Set([...prev, ...pageIds])));
                         }
                       }}
                       className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-0 cursor-pointer"
@@ -881,14 +899,14 @@ export default function QuotationsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
-                {filteredQuotations.length === 0 ? (
+                {paginatedQuotations.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="py-12 text-center text-slate-400 font-medium">
                       No quotations found matching the selected view or filter criteria.
                     </td>
                   </tr>
                 ) : (
-                  filteredQuotations.map((quote) => {
+                  paginatedQuotations.map((quote) => {
                     const isSelected = selectedQuoteIds.includes(quote.id);
                     const prodName = quote.lines?.[0]?.productName || 'Enterprise Deal Solution';
                     const customerEmail = quote.customerEmail || `${(quote.customerName || 'customer').toLowerCase().replace(/\s+/g, '.')}@example.com`;
@@ -998,6 +1016,14 @@ export default function QuotationsPage() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            currentPage={currentPage}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[10, 25, 50]}
+          />
         </div>
 
         {/* ========================================================================= */}
