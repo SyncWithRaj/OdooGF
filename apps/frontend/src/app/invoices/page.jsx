@@ -153,6 +153,65 @@ export default function InvoicesPage() {
     }
   };
 
+  const handleRazorpayPayment = async () => {
+    if (!selectedInvoice) return;
+    setSubmitting(true);
+    try {
+      // 1. Create Razorpay order on backend
+      const order = await apiClient.createRazorpayOrder(selectedInvoice.id);
+
+      // 2. Dynamically load Razorpay checkout.js if not already loaded
+      if (!window.Razorpay) {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+          script.onload = resolve;
+          script.onerror = () => reject(new Error('Failed to load Razorpay checkout'));
+          document.head.appendChild(script);
+        });
+      }
+
+      // 3. Open Razorpay checkout popup
+      await new Promise((resolve, reject) => {
+        const rzp = new window.Razorpay({
+          key: order.keyId,
+          amount: order.amount,
+          currency: order.currency || 'INR',
+          name: 'DealFlow360',
+          description: `Payment for ${order.invoiceNumber}`,
+          order_id: order.orderId,
+          theme: { color: '#0f172a' },
+          handler: async (response) => {
+            try {
+              // 4. Verify signature on backend & record payment
+              await apiClient.verifyRazorpayPayment(selectedInvoice.id, {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              });
+              showToast(`Payment of ₹${(order.amount / 100).toLocaleString()} received via Razorpay!`);
+              setIsPayModalOpen(false);
+              await loadInvoices();
+              resolve();
+            } catch (verifyErr) {
+              reject(verifyErr);
+            }
+          },
+          modal: {
+            ondismiss: () => reject(new Error('Payment cancelled')),
+          },
+        });
+        rzp.open();
+      });
+    } catch (err) {
+      if (err.message !== 'Payment cancelled') {
+        alert(err.message || 'Razorpay payment failed');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleCreateInvoice = async (e) => {
     e.preventDefault();
     if (!createForm.quotationId) {
@@ -556,21 +615,36 @@ export default function InvoicesPage() {
                   />
                 </div>
 
-                <div className="pt-2 flex justify-end gap-2">
+                <div className="pt-3 border-t border-slate-100">
+                  <p className="text-[10px] text-slate-400 mb-2 font-medium uppercase tracking-wide">Quick Pay</p>
                   <button
                     type="button"
-                    onClick={() => setIsPayModalOpen(false)}
-                    className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
                     disabled={submitting}
-                    className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-black text-white font-semibold shadow-xs disabled:opacity-50"
+                    onClick={handleRazorpayPayment}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#2D81F7] hover:bg-[#1a6de0] text-white font-bold text-xs shadow-sm disabled:opacity-50 transition mb-3"
                   >
-                    {submitting ? 'Recording...' : 'Confirm Payment'}
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" />
+                    </svg>
+                    {submitting ? 'Processing...' : `Pay ₹${((Number(paymentForm.amount) || selectedInvoice?.amount || 0) * 100 / 100).toLocaleString()} with Razorpay`}
                   </button>
+                  <p className="text-[10px] text-slate-400 text-center mb-3">— or record manually —</p>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsPayModalOpen(false)}
+                      className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-black text-white font-semibold shadow-xs disabled:opacity-50"
+                    >
+                      {submitting ? 'Recording...' : 'Confirm Manually'}
+                    </button>
+                  </div>
                 </div>
               </form>
             </div>

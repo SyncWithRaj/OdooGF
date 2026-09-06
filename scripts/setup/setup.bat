@@ -13,7 +13,7 @@ echo [1/6] Checking system prerequisites...
 where node >nul 2>nul
 if %errorlevel% neq 0 (
     echo [ERROR] Node.js is not installed!
-    echo Please install Node.js (v18+ or v20+): https://nodejs.org/
+    echo Please install Node.js v18+ or v20+: https://nodejs.org/
     pause
     exit /b 1
 )

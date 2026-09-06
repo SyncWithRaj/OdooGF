@@ -10,12 +10,23 @@ import {
   RecurringInterval,
   SubscriptionStatus,
 } from '@prisma/client';
+import * as crypto from 'crypto';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const Razorpay = require('razorpay');
 import { PrismaService } from '../prisma/prisma.service';
-import { InvoiceQueryDto, PayInvoiceDto } from './dto/invoice.dto';
+import { InvoiceQueryDto, PayInvoiceDto, VerifyRazorpayPaymentDto } from './dto/invoice.dto';
 
 @Injectable()
 export class InvoicesService {
-  constructor(private readonly prisma: PrismaService) {}
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private razorpay: any;
+
+  constructor(private readonly prisma: PrismaService) {
+    this.razorpay = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID || '',
+      key_secret: process.env.RAZORPAY_KEY_SECRET || '',
+    });
+  }
 
   // ----------------------------------------------------------------------------
   // B9: GENERATE SPLIT INVOICES (ONE-TIME & RECURRING) FROM CONFIRMED QUOTE
@@ -257,5 +268,74 @@ export class InvoicesService {
       remainingBalance: Math.max(0, Number((invoice.amount - totalPaid).toFixed(2))),
       invoice: updatedInvoice,
     };
+  }
+
+  // ----------------------------------------------------------------------------
+  // RAZORPAY INTEGRATION
+  // ----------------------------------------------------------------------------
+
+  /**
+   * Creates a Razorpay order for the given invoice.
+   * Amount is converted from USD to paise (×100) as Razorpay expects smallest currency unit.
+   */
+  async createRazorpayOrder(id: string) {
+    const invoice = await this.prisma.invoice.findUnique({ where: { id } });
+
+    if (!invoice) {
+      throw new NotFoundException(`Invoice with ID '${id}' not found`);
+    }
+
+    if (invoice.status === InvoiceStatus.PAID) {
+      throw new BadRequestException('This invoice has already been fully paid');
+    }
+
+    // Razorpay amounts are in the smallest currency unit (paise for INR, cents for USD, etc.)
+    const amountInPaise = Math.round(invoice.amount * 100);
+
+    const order = await this.razorpay.orders.create({
+      amount: amountInPaise,
+      currency: 'INR',
+      receipt: invoice.invoiceNumber,
+      notes: {
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+      },
+    });
+
+    return {
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      keyId: process.env.RAZORPAY_KEY_ID,
+      invoiceNumber: invoice.invoiceNumber,
+    };
+  }
+
+  /**
+   * Verifies the Razorpay payment signature and records the payment against the invoice.
+   */
+  async verifyAndRecordRazorpayPayment(id: string, dto: VerifyRazorpayPaymentDto) {
+    const invoice = await this.prisma.invoice.findUnique({ where: { id } });
+
+    if (!invoice) {
+      throw new NotFoundException(`Invoice with ID '${id}' not found`);
+    }
+
+    // Verify HMAC-SHA256 signature: razorpay_order_id + "|" + razorpay_payment_id
+    const generatedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || '')
+      .update(`${dto.razorpay_order_id}|${dto.razorpay_payment_id}`)
+      .digest('hex');
+
+    if (generatedSignature !== dto.razorpay_signature) {
+      throw new BadRequestException('Payment signature verification failed. Possible tampering detected.');
+    }
+
+    // Signature is valid — record payment using existing logic
+    return this.payInvoice(id, {
+      amount: invoice.amount,
+      paymentMethod: 'Razorpay',
+      reference: dto.razorpay_payment_id,
+    });
   }
 }
