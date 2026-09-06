@@ -5,6 +5,8 @@ import AppLayout from '@/components/AppLayout';
 import RequireRole from '@/components/RequireRole';
 import { apiClient } from '@/services/apiClient';
 import { toast } from 'react-toastify';
+import Pagination from '@/components/Pagination';
+import { usePagination } from '@/hooks/usePagination';
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState([]);
@@ -99,6 +101,20 @@ export default function InvoicesPage() {
       return true;
     });
   }, [invoices, activeStatus, searchQuery]);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems: paginatedInvoices,
+    resetPage,
+  } = usePagination(filteredInvoices, 10);
+
+  useEffect(() => {
+    resetPage();
+  }, [activeStatus, searchQuery]);
 
   // Financial Metrics
   const metrics = useMemo(() => {
@@ -407,12 +423,12 @@ export default function InvoicesPage() {
                   <tr>
                     <td colSpan={8} className="py-8 text-center text-slate-400">Loading invoices...</td>
                   </tr>
-                ) : filteredInvoices.length === 0 ? (
+                ) : paginatedInvoices.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="py-8 text-center text-slate-400">No invoices found.</td>
                   </tr>
                 ) : (
-                  filteredInvoices.map((inv) => (
+                  paginatedInvoices.map((inv) => (
                     <tr key={inv.id} className="hover:bg-slate-50/50 transition">
                       <td className="py-3.5 px-4 font-mono font-bold text-slate-900 whitespace-nowrap">
                         {inv.invoiceNumber}
@@ -477,6 +493,14 @@ export default function InvoicesPage() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            currentPage={currentPage}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[10, 25, 50]}
+          />
         </div>
 
         {/* Modal: Record Payment */}
